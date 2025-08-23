@@ -1,0 +1,29 @@
+name: CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Respect .nvmrc
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'npm'
+
+      - run: npm ci
+
+      # Type check, lint, tests (adjust if you don't run tests yet)
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm test -- --ci --reporters=default
+
+      # Expo Doctor: sanity check SDK & deps
+      - run: npx expo-doctor --verbose
