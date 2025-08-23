@@ -100,5 +100,6 @@
     },
     "testEnvironment": "jsdom"
   },
-  "private": true
+  "private": true,
+  "engines": { "node": ">=20 <21" }
 }
