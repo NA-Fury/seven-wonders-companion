@@ -1,13 +1,12 @@
 // components/ui/wonder-card.tsx - Fixed flipping and side state management
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   Dimensions,
   Pressable,
   Text,
   View,
 } from 'react-native';
-import Animated,
-{
+import Animated, {
   interpolate,
   runOnJS,
   useAnimatedStyle,
@@ -36,35 +35,35 @@ export function WonderCard({
   onSelect
 }: WonderCardProps) {
   const [isFlipping, setIsFlipping] = useState(false);
-  const [currentSide, setCurrentSide] = useState(selectedSide);
+  const [displaySide, setDisplaySide] = useState(selectedSide);
   const flipRotation = useSharedValue(selectedSide === 'night' ? 180 : 0);
   const scale = useSharedValue(1);
 
-  // Initialize flip rotation based on selected side
+  // Sync display side with prop changes
   useEffect(() => {
-    setCurrentSide(selectedSide);
-    flipRotation.value = selectedSide === 'night' ? 180 : 0;
-  }, [selectedSide, flipRotation]); // Added flipRotation to dependencies
+    if (displaySide !== selectedSide && !isFlipping) {
+      setDisplaySide(selectedSide);
+      flipRotation.value = selectedSide === 'night' ? 180 : 0;
+    }
+  }, [selectedSide, displaySide, isFlipping, flipRotation]);
 
-  useEffect(() => {
-    // Your flip animation logic
-  }, [flipRotation]);
-
-  const handleFlip = () => {
+  const handleFlip = useCallback(() => {
     if (isFlipping) return;
 
     setIsFlipping(true);
-    const newSide = currentSide === 'day' ? 'night' : 'day';
+    const newSide = displaySide === 'day' ? 'night' : 'day';
     const targetRotation = newSide === 'night' ? 180 : 0;
 
-    flipRotation.value = withTiming(targetRotation, { duration: 600 }, () => {
-      runOnJS(setIsFlipping)(false);
+    flipRotation.value = withTiming(targetRotation, { duration: 600 }, (finished) => {
+      if (finished) {
+        runOnJS(() => {
+          setIsFlipping(false);
+          setDisplaySide(newSide);
+          onSideChange(newSide);
+        })();
+      }
     });
-
-    // Update internal state and notify parent immediately
-    setCurrentSide(newSide);
-    onSideChange(newSide);
-  };
+  }, [displaySide, isFlipping, flipRotation, onSideChange]);
 
   const frontAnimatedStyle = useAnimatedStyle(() => {
     const rotateY = interpolate(flipRotation.value, [0, 180], [0, 180]);
@@ -77,6 +76,10 @@ export function WonderCard({
         { scale: scale.value }
       ],
       opacity,
+      position: 'absolute' as const,
+      width: '100%',
+      height: '100%',
+      backfaceVisibility: 'hidden' as const,
     };
   });
 
@@ -91,22 +94,26 @@ export function WonderCard({
         { scale: scale.value }
       ],
       opacity,
+      position: 'absolute' as const,
+      width: '100%',
+      height: '100%',
+      backfaceVisibility: 'hidden' as const,
     };
   });
 
-  const handlePressIn = () => {
+  const handlePressIn = useCallback(() => {
     scale.value = withTiming(0.95, { duration: 150 });
-  };
+  }, [scale]);
 
-  const handlePressOut = () => {
+  const handlePressOut = useCallback(() => {
     scale.value = withTiming(1, { duration: 150 });
-  };
+  }, [scale]);
 
-  const handlePress = () => {
+  const handlePress = useCallback(() => {
     if (onSelect) {
       onSelect();
     }
-  };
+  }, [onSelect]);
 
   return (
     <View style={{
@@ -123,17 +130,7 @@ export function WonderCard({
         style={{ position: 'relative', width: CARD_WIDTH, height: CARD_HEIGHT }}
       >
         {/* Day Side (Front) */}
-        <Animated.View
-          style={[
-            {
-              position: 'absolute',
-              width: '100%',
-              height: '100%',
-              backfaceVisibility: 'hidden',
-            },
-            frontAnimatedStyle,
-          ]}
-        >
+        <Animated.View style={frontAnimatedStyle}>
           <WonderCardSide
             wonder={wonder}
             side={wonder.daySide}
@@ -143,17 +140,7 @@ export function WonderCard({
         </Animated.View>
 
         {/* Night Side (Back) */}
-        <Animated.View
-          style={[
-            {
-              position: 'absolute',
-              width: '100%',
-              height: '100%',
-              backfaceVisibility: 'hidden',
-            },
-            backAnimatedStyle,
-          ]}
-        >
+        <Animated.View style={backAnimatedStyle}>
           <WonderCardSide
             wonder={wonder}
             side={wonder.nightSide}
@@ -161,9 +148,29 @@ export function WonderCard({
             isSelected={isSelected}
           />
         </Animated.View>
+
+        {/* Selection Indicator */}
+        {isSelected && (
+          <View style={{
+            position: 'absolute',
+            top: -10,
+            right: -10,
+            width: 30,
+            height: 30,
+            borderRadius: 15,
+            backgroundColor: '#22C55E',
+            alignItems: 'center',
+            justifyContent: 'center',
+            borderWidth: 3,
+            borderColor: '#1C1A1A',
+            zIndex: 10,
+          }}>
+            <Text style={{ color: 'white', fontSize: 16, fontWeight: 'bold' }}>✓</Text>
+          </View>
+        )}
       </Pressable>
 
-      {/* Flip Button - Enhanced with better state indication */}
+      {/* Flip Button */}
       <View style={{ marginTop: 12, alignItems: 'center' }}>
         <Pressable
           onPress={handleFlip}
@@ -182,6 +189,7 @@ export function WonderCard({
             elevation: 8,
             minWidth: 160,
             justifyContent: 'center',
+            opacity: isFlipping ? 0.7 : 1,
           }}
         >
           <Text style={{
@@ -190,33 +198,32 @@ export function WonderCard({
             fontSize: 14,
             marginRight: 8,
           }}>
-            {isFlipping ? 'Flipping...' : `Flip to ${currentSide === 'day' ? 'Night' : 'Day'}`}
+            {isFlipping ? 'Flipping...' : `Flip to ${displaySide === 'day' ? 'Night' : 'Day'}`}
           </Text>
           <Text style={{ fontSize: 18 }}>
-            {currentSide === 'day' ? '🌙' : '☀️'}
+            {displaySide === 'day' ? '🌙' : '☀️'}
           </Text>
         </Pressable>
-
       </View>
 
-      {/* Selection Indicator */}
-      {isSelected && (
-        <View style={{
-          position: 'absolute',
-          top: -10,
-          right: 10,
-          width: 30,
-          height: 30,
-          borderRadius: 15,
-          backgroundColor: '#22C55E',
-          alignItems: 'center',
-          justifyContent: 'center',
-          borderWidth: 3,
-          borderColor: '#1C1A1A',
+      {/* Side Indicator */}
+      <View style={{
+        marginTop: 8,
+        backgroundColor: displaySide === 'day' ? 'rgba(255, 165, 0, 0.2)' : 'rgba(65, 105, 225, 0.2)',
+        borderRadius: 12,
+        paddingHorizontal: 12,
+        paddingVertical: 4,
+        borderWidth: 1,
+        borderColor: displaySide === 'day' ? '#FFA500' : '#4169E1',
+      }}>
+        <Text style={{
+          color: displaySide === 'day' ? '#FFA500' : '#4169E1',
+          fontSize: 12,
+          fontWeight: 'bold',
         }}>
-          <Text style={{ color: 'white', fontSize: 16, fontWeight: 'bold' }}>✓</Text>
-        </View>
-      )}
+          {displaySide === 'day' ? '☀️ DAY SIDE' : '🌙 NIGHT SIDE'}
+        </Text>
+      </View>
     </View>
   );
 }
@@ -340,7 +347,7 @@ function WonderCardSide({ wonder, side, sideType, isSelected }: WonderCardSidePr
       </View>
 
       {/* Wonder Stages */}
-      <View style={{ flex: 1 }}>
+      <View style={{ flex: 1, maxHeight: 120 }}>
         <Text style={{
           fontSize: 12,
           fontWeight: 'bold',
@@ -350,14 +357,27 @@ function WonderCardSide({ wonder, side, sideType, isSelected }: WonderCardSidePr
           Wonder Stages ({side.stages.length})
         </Text>
 
-        {side.stages.map((stage, index) => (
-          <WonderStageItem
-            key={index}
-            stage={stage}
-            stageNumber={index + 1}
-            isDayMode={isDayMode}
-          />
-        ))}
+        <View style={{ flex: 1 }}>
+          {side.stages.slice(0, 3).map((stage, index) => (
+            <WonderStageItem
+              key={index}
+              stage={stage}
+              stageNumber={index + 1}
+              isDayMode={isDayMode}
+            />
+          ))}
+          {side.stages.length > 3 && (
+            <Text style={{
+              fontSize: 8,
+              color: isDayMode ? 'rgba(139, 69, 19, 0.7)' : 'rgba(230, 230, 250, 0.7)',
+              fontStyle: 'italic',
+              textAlign: 'center',
+              marginTop: 2,
+            }}>
+              +{side.stages.length - 3} more stage{side.stages.length - 3 > 1 ? 's' : ''}
+            </Text>
+          )}
+        </View>
       </View>
 
       {/* Special Ability */}
@@ -375,11 +395,14 @@ function WonderCardSide({ wonder, side, sideType, isSelected }: WonderCardSidePr
           }}>
             Special Ability
           </Text>
-          <Text style={{
-            fontSize: 10,
-            fontWeight: 'bold',
-            color: isDayMode ? '#DAA520' : '#9370DB',
-          }}>
+          <Text
+            style={{
+              fontSize: 10,
+              fontWeight: 'bold',
+              color: isDayMode ? '#DAA520' : '#9370DB',
+            }}
+            numberOfLines={2}
+          >
             {side.specialAbility}
           </Text>
         </View>
@@ -412,27 +435,31 @@ function WonderStageItem({ stage, stageNumber, isDayMode }: WonderStageItemProps
         alignItems: 'center',
         justifyContent: 'center',
         marginRight: 6,
+        flexShrink: 0,
       }}>
         <Text style={{ color: 'white', fontSize: 9, fontWeight: 'bold' }}>
           {stageNumber}
         </Text>
       </View>
-
-      <View style={{ flex: 1 }}>
-        <Text style={{
+      <Text
+        style={{
           fontSize: 9,
           color: isDayMode ? '#8B4513' : '#E6E6FA',
-        }}>
-          Cost: {stage.cost.map(c => `${c.amount} ${c.resource}`).join(', ')}
-        </Text>
-        <Text style={{
+        }}
+        numberOfLines={1}
+      >
+        Cost: {stage.cost.map(c => `${c.amount} ${c.resource}`).join(', ')}
+      </Text>
+      <Text
+        style={{
           fontSize: 8,
           color: isDayMode ? '#DAA520' : '#9370DB',
           fontWeight: 'bold',
-        }}>
-          {stage.effect.description}
-        </Text>
-      </View>
+        }}
+        numberOfLines={2}
+      >
+        {stage.effect.description}
+      </Text>
     </View>
   );
 }

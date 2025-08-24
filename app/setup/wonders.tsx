@@ -1,6 +1,6 @@
-// app/setup/wonders.tsx - Fixed version with proper Armada integration and expansion filtering
+// app/setup/wonders.tsx - Fixed version with proper state management
 import { router } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Platform, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button, Card, H1, H2, P } from '../../components/ui';
@@ -17,59 +17,26 @@ export default function WonderAssignmentScreen() {
   const [selectedSide, setSelectedSide] = useState<'day' | 'night'>('day');
   const [assigningToPlayer, setAssigningToPlayer] = useState<string | null>(null);
   const [showShipyards, setShowShipyards] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
 
-  // Add useEffect to restore selection state
-  useEffect(() => {
-    if (assigningToPlayer && !wonders[assigningToPlayer]?.boardId) {
-      setAssigningToPlayer(null);
-      setSelectedWonder(null);
-    }
-  }, [wonders, assigningToPlayer]);
-
-  useEffect(() => {
-    // Simulate loading to prevent UI flash
-    const timer = setTimeout(() => setIsLoading(false), 100);
-    return () => clearTimeout(timer);
-  }, []);
-
-  // Add this useEffect for cleanup
-  useEffect(() => {
-    return () => {
-      // Cleanup selection state when component unmounts
-      setSelectedWonder(null);
-      setAssigningToPlayer(null);
-      setSelectedSide('day');
-    };
-  }, []);
-
-  const getOrderedPlayers = () => {
+  const getOrderedPlayers = useCallback(() => {
     if (seating.length === 0) return players;
     return seating.map(seatId => players.find(p => p.id === seatId)).filter(Boolean) as typeof players;
-  };
+  }, [players, seating]);
 
   const orderedPlayers = getOrderedPlayers();
 
-  const getAvailableWonders = () => {
+  const getAvailableWonders = useCallback(() => {
     const assignedWonderIds = Object.values(wonders)
       .map(w => w.boardId)
       .filter(Boolean);
     
-    console.log('Current expansions:', expansions);
-    console.log('Assigned wonder IDs:', assignedWonderIds);
-    
-    // Filter wonders based on enabled expansions
-    const filteredWonders = WONDERS_DATABASE.filter(wonder => {
+    return WONDERS_DATABASE.filter(wonder => {
       // Check if wonder is already assigned
       if (assignedWonderIds.includes(wonder.id)) return false;
       
-      console.log(`Checking wonder ${wonder.name} (${wonder.expansion})`);
-      
       // Always include base wonders
-      if (wonder.expansion === 'Base') {
-        console.log(`Including base wonder: ${wonder.name}`);
-        return true;
-      }
+      if (wonder.expansion === 'Base') return true;
       
       // Include expansion wonders only if expansion is enabled
       const expansionMap = {
@@ -79,17 +46,11 @@ export default function WonderAssignmentScreen() {
         'Edifice': expansions.edifice,
       };
       
-      const isEnabled = expansionMap[wonder.expansion as keyof typeof expansionMap] === true;
-      console.log(`Wonder ${wonder.name} from ${wonder.expansion}: enabled = ${isEnabled}`);
-      
-      return isEnabled;
+      return expansionMap[wonder.expansion as keyof typeof expansionMap] === true;
     });
-    
-    console.log('Available wonders after filtering:', filteredWonders.map(w => w.name));
-    return filteredWonders;
-  };
+  }, [wonders, expansions]);
 
-  const getAssignedWonders = () => {
+  const getAssignedWonders = useCallback(() => {
     return orderedPlayers.map(player => ({
       player,
       wonder: wonders[player.id]?.boardId ? 
@@ -98,34 +59,35 @@ export default function WonderAssignmentScreen() {
       side: wonders[player.id]?.side || 'day',
       shipyard: wonders[player.id]?.shipyardId || null,
     }));
-  };
+  }, [orderedPlayers, wonders]);
 
-  const handleWonderSelect = (wonder: Wonder) => {
-    // If user taps the already-selected wonder, toggle the side (day <-> night)
-    if (selectedWonder?.id === wonder.id) {
-      const nextSide: 'day' | 'night' = selectedSide === 'day' ? 'night' : 'day';
-      console.log(`Toggling side for ${wonder.name} -> ${nextSide}`);
-      setSelectedSide(nextSide);
-      return;
-    }
-
-    console.log('Selected wonder:', wonder.name);
-    setSelectedWonder(wonder);
-    setSelectedSide('day');
-
-    // If there's only one unassigned player, open the assignment panel for convenience
-    const unassignedPlayers = orderedPlayers.filter(p => !wonders[p.id]?.boardId);
-    if (unassignedPlayers.length === 1) {
-      setAssigningToPlayer(unassignedPlayers[0].id);
-    } else {
-      // keep assigningToPlayer unchanged so user can choose who to assign to
+  // Reset selection when wonder is assigned
+  useEffect(() => {
+    if (assigningToPlayer && wonders[assigningToPlayer]?.boardId) {
       setAssigningToPlayer(null);
+      setSelectedWonder(null);
+      setSelectedSide('day');
     }
-  };
+  }, [wonders, assigningToPlayer]);
 
-  const handleAssignWonder = (playerId: string) => {
-    console.log('Assigning wonder:', selectedWonder?.name, 'to player:', playerId, 'side:', selectedSide);
+  const handleWonderSelect = useCallback((wonder: Wonder) => {
+    if (selectedWonder?.id === wonder.id) {
+      // Toggle side if same wonder is selected
+      setSelectedSide(prev => prev === 'day' ? 'night' : 'day');
+    } else {
+      // New wonder selected
+      setSelectedWonder(wonder);
+      setSelectedSide('day');
+      
+      // If only one unassigned player, auto-select them
+      const unassignedPlayers = orderedPlayers.filter(p => !wonders[p.id]?.boardId);
+      if (unassignedPlayers.length === 1) {
+        setAssigningToPlayer(unassignedPlayers[0].id);
+      }
+    }
+  }, [selectedWonder, orderedPlayers, wonders]);
 
+  const handleAssignWonder = useCallback((playerId: string) => {
     if (!selectedWonder) {
       Alert.alert('No Wonder Selected', 'Please select a wonder first.');
       return;
@@ -136,13 +98,13 @@ export default function WonderAssignmentScreen() {
       side: selectedSide,
     });
 
-    // Reset selection state after assignment so UI is ready for next selection
+    // Reset selection state
     setSelectedWonder(null);
     setAssigningToPlayer(null);
     setSelectedSide('day');
-  };
+  }, [selectedWonder, selectedSide, assignWonder]);
 
-  const handleRandomAssignment = () => {
+  const handleRandomAssignment = useCallback(() => {
     Alert.alert(
       'Random Assignment',
       'This will randomly assign wonders to all players. Continue?',
@@ -152,7 +114,7 @@ export default function WonderAssignmentScreen() {
           text: 'Assign', 
           onPress: () => {
             const availableWonders = getAvailableWonders();
-            const shuffledWonders = availableWonders.sort(() => Math.random() - 0.5);
+            const shuffledWonders = [...availableWonders].sort(() => Math.random() - 0.5);
             
             orderedPlayers.forEach((player, index) => {
               if (index < shuffledWonders.length) {
@@ -167,17 +129,17 @@ export default function WonderAssignmentScreen() {
         },
       ]
     );
-  };
+  }, [getAvailableWonders, orderedPlayers, assignWonder]);
 
-  const handleSmartAssignment = () => {
+  const handleSmartAssignment = useCallback(() => {
     Alert.alert(
       'Smart Assignment',
       'This will analyze player count and expansions to assign balanced wonders. Coming in future update!',
       [{ text: 'OK' }]
     );
-  };
+  }, []);
 
-  const handleClearAssignments = () => {
+  const handleClearAssignments = useCallback(() => {
     Alert.alert(
       'Clear All Assignments',
       'This will remove all wonder assignments. Continue?',
@@ -194,9 +156,9 @@ export default function WonderAssignmentScreen() {
         },
       ]
     );
-  };
+  }, [orderedPlayers, assignWonder]);
 
-  const handleContinue = () => {
+  const handleContinue = useCallback(() => {
     const unassignedPlayers = orderedPlayers.filter(player => !wonders[player.id]?.boardId);
     
     if (unassignedPlayers.length > 0) {
@@ -208,28 +170,23 @@ export default function WonderAssignmentScreen() {
       return;
     }
 
-    // Fix navigation paths to be absolute
     if (expansions.armada) {
       setShowShipyards(true);
-      return;
+    } else if (expansions.edifice) {
+      router.push('/setup/edifice');
+    } else {
+      router.push('/setup/scoring-mode');
     }
+  }, [orderedPlayers, wonders, expansions]);
 
+  const handleShipyardComplete = useCallback(() => {
+    setShowShipyards(false);
     if (expansions.edifice) {
       router.push('/setup/edifice');
-      return;
-    }
-
-    router.push('/setup/scoring-mode');
-  };
-
-  const handleBack = () => {
-    // Clear assignments if needed
-    if (Object.keys(wonders).length === 0) {
-      router.push('/setup/seating');
     } else {
-      router.back();
+      router.push('/setup/scoring-mode');
     }
-  };  
+  }, [expansions.edifice]);
 
   const assignedWonders = getAssignedWonders();
   const availableWonders = getAvailableWonders();
@@ -243,12 +200,29 @@ export default function WonderAssignmentScreen() {
     return active.length > 0 ? `Base + ${active.join(' + ')}` : 'Base Game Only';
   };
 
-  // Add loading indicator in render
   if (isLoading) {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: '#1C1A1A' }}>
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
           <ActivityIndicator color="#C4A24C" />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // Show shipyard selector if Armada is enabled and we're in shipyard mode
+  if (showShipyards) {
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: '#1C1A1A' }}>
+        <View style={{ flex: 1, paddingHorizontal: 20 }}>
+          <ScrollView>
+            <H1>Shipyard Assignment</H1>
+            <ProperArmadaShipyardSelector
+              players={orderedPlayers}
+              onComplete={handleShipyardComplete}
+              onBack={() => setShowShipyards(false)}
+            />
+          </ScrollView>
         </View>
       </SafeAreaView>
     );
@@ -270,7 +244,7 @@ export default function WonderAssignmentScreen() {
           }}
           style={{ flex: 1 }}
         >
-          <H1>🎴 Wonder Assignment</H1>
+          <H1>Wonder Assignment</H1>
           <P className="mb-4">
             Assign wonder boards to each player. Each wonder has unique abilities and strategies.
           </P>
@@ -280,7 +254,7 @@ export default function WonderAssignmentScreen() {
             <H2>Game Setup</H2>
             <P className="text-aurum mb-1">{getExpansionText()}</P>
             <P className="text-parchment/60 text-sm mb-3">
-              {orderedPlayers.length} players {availableWonders.length} wonders available {Object.keys(wonders).filter(id => wonders[id]?.boardId).length} assigned
+              {orderedPlayers.length} players • {availableWonders.length} wonders available • {assignedWonders.filter(a => a.wonder).length} assigned
             </P>
           </Card>
 
@@ -328,7 +302,7 @@ export default function WonderAssignmentScreen() {
                         selectedSide={selectedSide}
                         onSideChange={setSelectedSide}
                         isSelected={true}
-                        onSelect={() => {}} // Empty handler since it's already selected
+                        onSelect={() => {}}
                       />
                     </View>
                   )}
@@ -340,6 +314,7 @@ export default function WonderAssignmentScreen() {
                       onPress={() => {
                         setAssigningToPlayer(null);
                         setSelectedWonder(null);
+                        setSelectedSide('day');
                       }}
                       className="flex-1"
                     />
@@ -377,13 +352,11 @@ export default function WonderAssignmentScreen() {
                           wonder={wonder}
                           selectedSide={selectedWonder?.id === wonder.id ? selectedSide : 'day'}
                           onSideChange={(side) => {
-                            // Keep side in sync if user explicitly flips inside the card
                             if (selectedWonder?.id === wonder.id) {
                               setSelectedSide(side);
                             }
                           }}
                           isSelected={selectedWonder?.id === wonder.id}
-                          // onSelect now uses the improved selector which toggles side if re-tapping same card
                           onSelect={() => handleWonderSelect(wonder)}
                         />
                       ))}
@@ -404,10 +377,10 @@ export default function WonderAssignmentScreen() {
               
               {orderedPlayers
                 .filter(player => !wonders[player.id]?.boardId)
-                .map((player) => (
+                .map((player, index) => (
                   <Button
                     key={player.id}
-                    title={`Assign to ${player.name} (Position ${seating.indexOf(player.id) + 1 || orderedPlayers.indexOf(player) + 1})`}
+                    title={`Assign to ${player.name} (Position ${index + 1})`}
                     variant="ghost"
                     onPress={() => handleAssignWonder(player.id)}
                     className="mb-2"
@@ -416,23 +389,6 @@ export default function WonderAssignmentScreen() {
             </Card>
           )}
 
-          {/* Shipyard Assignment (Armada Expansion) */}
-          {showShipyards && (
-            <ProperArmadaShipyardSelector
-              players={orderedPlayers}
-              onComplete={() => {
-                setShowShipyards(false);
-                if (expansions.edifice) {
-                  router.push('/setup/edifice');
-                } else {
-                  router.push('/setup/scoring-mode');
-                }
-              }}
-              onBack={() => setShowShipyards(false)}
-            />
-          )}
-
-          {/* Add some space before navigation */}
           <View style={{ height: 20 }} />
         </ScrollView>
 
@@ -462,11 +418,11 @@ export default function WonderAssignmentScreen() {
                   ? "Continue to Shipyards" 
                   : expansions.edifice 
                     ? "Continue to Edifice" 
-                    : "Continue to Scoring"
+                    : "Continue to Summary"
               }
               onPress={handleContinue}
               className="flex-1"
-              disabled={!allAssigned || (expansions.armada && !allShipyardsAssigned)}
+              disabled={!allAssigned}
             />
           </View>
         </View>

@@ -1,18 +1,18 @@
 // components/ui/proper-armada-shipyard.tsx - Updated for 7 shipyard system
 import React, { useState } from 'react';
 import {
-  View,
-  Text,
+  Alert,
   Pressable,
   ScrollView,
-  Alert,
+  Text,
+  View,
 } from 'react-native';
 import Animated, {
-  useSharedValue,
   useAnimatedStyle,
+  useSharedValue,
   withSpring,
 } from 'react-native-reanimated';
-import { ArmadaShipyard, NavalTrack, NavalSpace, ARMADA_SHIPYARDS, getShipyardDistribution, getBalancedRandomShipyards } from '../../data/armadaDatabase';
+import { ARMADA_SHIPYARDS, ArmadaShipyard, getBalancedRandomShipyards, getShipyardDistribution, NavalSpace, NavalTrack } from '../../data/armadaDatabase';
 import { useSetupStore } from '../../store/setupStore';
 
 interface ProperArmadaShipyardSelectorProps {
