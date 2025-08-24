@@ -173,18 +173,21 @@ export default function WonderAssignmentScreen() {
     if (expansions.armada) {
       setShowShipyards(true);
     } else if (expansions.edifice) {
+      // When Edifice is enabled, go to the edifice selection next.
       router.push('/setup/edifice');
     } else {
-      router.push('/setup/scoring-mode');
+      // No further setup expansions — go to Game Summary before scoring.
+      router.push('/setup/game-summary');
     }
   }, [orderedPlayers, wonders, expansions]);
 
   const handleShipyardComplete = useCallback(() => {
     setShowShipyards(false);
+    // After shipyards, either go to Edifice (if enabled) or Game Summary
     if (expansions.edifice) {
       router.push('/setup/edifice');
     } else {
-      router.push('/setup/scoring-mode');
+      router.push('/setup/game-summary');
     }
   }, [expansions.edifice]);
 

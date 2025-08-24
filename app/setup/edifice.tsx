@@ -20,9 +20,9 @@ export default function EdificeSelectionScreen() {
 
   // Add navigation guard at the start
   useEffect(() => {
-    // Redirect if Edifice expansion isn't enabled
+    // Redirect if Edifice expansion isn't enabled -> go to Game Summary
     if (!expansions.edifice) {
-      router.replace('/setup/scoring-mode');
+      router.replace('/setup/game-summary');
     }
   }, [expansions.edifice]);
 
@@ -70,7 +70,8 @@ export default function EdificeSelectionScreen() {
   const handleContinue = () => {
     // Save edifice selections first
     setEdificeProjects(selectedProjects);
-    router.push('/setup/scoring-mode');
+    // Always go to game summary before scoring
+    router.push('/setup/game-summary');
   };
 
   // Update the back navigation to be more robust
