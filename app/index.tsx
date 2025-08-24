@@ -1,7 +1,7 @@
-import React from 'react';
-import { View, Text, Pressable } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
+import React from 'react';
+import { Pressable, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function Index() {
   return (
@@ -23,7 +23,7 @@ export default function Index() {
         </Text>
         
         <Pressable
-          onPress={() => router.push('/test-mobile')}
+          onPress={() => router.push('./test-mobile')}
           style={{
             backgroundColor: '#C4A24C',
             paddingHorizontal: 20,

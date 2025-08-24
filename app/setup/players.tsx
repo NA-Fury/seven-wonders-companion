@@ -1,10 +1,10 @@
 // app/setup/players.tsx - Fixed version with proper scrolling and safe areas
-import React, { useState } from 'react';
 import { router } from 'expo-router';
-import { Alert, TextInput, ScrollView, View, KeyboardAvoidingView, Platform } from 'react-native';
+import React, { useState } from 'react';
+import { Alert, KeyboardAvoidingView, Platform, ScrollView, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { H1, H2, P, Card, Button } from '../../components/ui'; // removed unused Screen
-import { PlayerListItem, AnimatedButton } from '../../components/ui/enhanced';
+import { Button, Card, H1, H2, P } from '../../components/ui'; // removed unused Screen
+import { AnimatedButton, PlayerListItem } from '../../components/ui/enhanced';
 import { useSetupStore } from '../../store/setupStore';
 
 export default function PlayersScreen() {
@@ -42,7 +42,7 @@ export default function PlayersScreen() {
       Alert.alert('Too Many Players', '7 Wonders supports a maximum of 7 players.');
       return;
     }
-    router.push('/setup/seating');
+    router.push('./setup/seating');
   };
 
   const getExpansionText = () => {

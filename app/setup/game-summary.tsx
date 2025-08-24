@@ -1,12 +1,12 @@
 // app/setup/game-summary.tsx - FIXED with single clear navigation
-import React from 'react';
 import { router } from 'expo-router';
-import { ScrollView, View, Text } from 'react-native';
-import { Screen, H1, H2, P, Card, Button } from '../../components/ui';
-import { useSetupStore } from '../../store/setupStore';
-import { WONDERS_DATABASE } from '../../data/wondersDatabase';
+import React from 'react';
+import { ScrollView, Text, View } from 'react-native';
+import { Button, Card, H1, H2, P, Screen } from '../../components/ui';
 import { ARMADA_SHIPYARDS } from '../../data/armadaDatabase';
 import { getProjectById } from '../../data/edificeDatabase';
+import { WONDERS_DATABASE } from '../../data/wondersDatabase';
+import { useSetupStore } from '../../store/setupStore';
 
 export default function GameSummaryScreen() {
   const { players, seating, expansions, wonders, edificeProjects } = useSetupStore();
@@ -34,7 +34,7 @@ export default function GameSummaryScreen() {
       return;
     }
     
-    router.push('/scoring');
+    router.push('./scoring');
   };
 
   const handleBackToSetup = () => {

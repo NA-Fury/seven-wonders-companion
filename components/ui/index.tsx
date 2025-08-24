@@ -1,13 +1,13 @@
 // components/ui/index.tsx - Fixed with proper safe areas
 import React from 'react';
 import {
-    Pressable,
-    Text,
-    View,
-    type PressableProps,
-    type TextProps,
-    type ViewProps,
-    Platform,
+  Platform,
+  Pressable,
+  Text,
+  View,
+  type PressableProps,
+  type TextProps,
+  type ViewProps,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -213,5 +213,5 @@ export function ToggleRow(
 
 // Re-export enhanced components
 export * from './enhanced';
-export * from './wonder-card';
 export * from './wonder-assignment';
+export * from './wonder-card';

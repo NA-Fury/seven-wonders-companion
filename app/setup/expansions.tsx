@@ -2,7 +2,7 @@
 // app/setup/expansions.tsx - FIXED: Navigate to players first
 import { router } from 'expo-router';
 import React, { useState } from 'react';
-import { View, Platform, Pressable, Text, ScrollView } from 'react-native';
+import { Platform, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button, Card, H1, H2, P, ToggleRow } from '../../components/ui';
 import { useSetupStore } from '../../store/setupStore';
@@ -12,7 +12,7 @@ export default function ExpansionsScreen() {
 
   const handleContinue = () => {
     // FIXED: Go to players first, not seating
-    router.push('/setup/players');
+    router.push('./setup/players');
   };
 
   const handleBack = () => {

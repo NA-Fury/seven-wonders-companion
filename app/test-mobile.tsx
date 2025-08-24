@@ -1,7 +1,7 @@
 // app/test-mobile.tsx (Simple test to isolate issues)
-import React from 'react';
-import { View, Text, Pressable } from 'react-native';
 import { router } from 'expo-router';
+import React from 'react';
+import { Pressable, Text, View } from 'react-native';
 
 export default function TestMobileScreen() {
   return (
@@ -47,7 +47,7 @@ export default function TestMobileScreen() {
       </Pressable>
       
       <Pressable
-        onPress={() => router.push('/setup/expansions')}
+        onPress={() => router.push('./setup/expansions')}
         style={{
           backgroundColor: 'transparent',
           borderWidth: 1,

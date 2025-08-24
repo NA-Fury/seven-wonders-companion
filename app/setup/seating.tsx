@@ -1,13 +1,13 @@
 // app/setup/seating.tsx - Fixed modal and enhanced with age/conflict modes
-import React, { useState, useEffect } from 'react';
 import { router } from 'expo-router';
-import { Alert, ScrollView, View, Platform } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { Alert, Platform, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { H1, H2, P, Card, Button } from '../../components/ui';
-import { 
-  AerialTableView, 
-  PlayerDetailsModal,
+import { Button, Card, H1, H2, P } from '../../components/ui';
+import {
+  AerialTableView,
   DragDropPlayerList,
+  PlayerDetailsModal,
   SeatingControls,
   SeatingStats,
   TableModeSelector
@@ -74,7 +74,7 @@ export default function SeatingScreen() {
     }
 
     setSeating(selectedSeating);
-    router.push('/setup/wonders');
+    router.push('./setup/wonders');
   };
 
   const getPlayerName = (playerId: string) => {

@@ -1,17 +1,15 @@
 // app/setup/edifice.tsx
-import React, { useState } from 'react';
 import { router } from 'expo-router';
-import { Alert, ScrollView, View, Text } from 'react-native';
-import { Screen, H1, H2, P, Card, Button } from '../../components/ui';
-import { EdificeProjectCard, EdificeProjectDetail } from '../../components/ui/edifice-card';
+import React, { useState } from 'react';
+import { Alert, ScrollView, View } from 'react-native';
+import { Button, Card, H1, H2, P, Screen } from '../../components/ui';
+import { EdificeProjectDetail } from '../../components/ui/edifice-card';
 import { EdificeProjectSelector, EdificeSelectionSummary } from '../../components/ui/edifice-selection';
-import { useSetupStore } from '../../store/setupStore';
-import { 
-  getProjectsByAge, 
-  getRandomProjects, 
-  getProjectById,
-  EdificeProject 
+import {
+  EdificeProject,
+  getRandomProjects
 } from '../../data/edificeDatabase';
+import { useSetupStore } from '../../store/setupStore';
 
 export default function EdificeSelectionScreen() {
   const { players, expansions, edificeProjects, setEdificeProjects } = useSetupStore();
@@ -74,7 +72,7 @@ export default function EdificeSelectionScreen() {
     }
 
     setEdificeProjects(selectedProjects);
-    router.push('/setup/game-summary');
+    router.push('./setup/game-summary');
   };
 
   const isComplete = selectedProjects.age1 && selectedProjects.age2 && selectedProjects.age3;

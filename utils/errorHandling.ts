@@ -1,6 +1,6 @@
 // utils/errorHandling.ts - Comprehensive error handling utilities
-import { Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Alert } from 'react-native';
 
 // Error types for the app
 export enum ErrorType {
@@ -437,7 +437,7 @@ export function debounce<T extends (...args: any[]) => any>(
   func: T,
   wait: number
 ): (...args: Parameters<T>) => void {
-  let timeout: NodeJS.Timeout;
+  let timeout: any;
   
   return (...args: Parameters<T>) => {
     clearTimeout(timeout);
@@ -464,7 +464,7 @@ export function throttle<T extends (...args: any[]) => any>(
 // Memory usage monitor
 export class MemoryMonitor {
   private static instance: MemoryMonitor;
-  private intervals: Set<NodeJS.Timeout> = new Set();
+  private intervals: Set<number> = new Set();
   
   static getInstance(): MemoryMonitor {
     if (!MemoryMonitor.instance) {
