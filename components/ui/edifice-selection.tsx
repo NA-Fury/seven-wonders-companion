@@ -1,16 +1,16 @@
 // components/ui/edifice-selection.tsx
 import React from 'react';
 import {
-  View,
-  Text,
   Pressable,
+  Text,
+  View,
 } from 'react-native';
-import { EdificeProjectCard } from './edifice-card';
-import { 
-  getProjectsByAge, 
+import {
+  EdificeProject,
   getProjectById,
-  EdificeProject 
+  getProjectsByAge
 } from '../../data/edificeDatabase';
+import { EdificeProjectCard } from './edifice-card';
 
 interface EdificeProjectSelectorProps {
   age: 1 | 2 | 3;

@@ -1,17 +1,17 @@
 // components/ui/edifice-card.tsx
 import React, { useEffect } from 'react';
 import {
-  View,
-  Text,
-  Pressable,
   Dimensions,
+  Pressable,
+  Text,
+  View,
 } from 'react-native';
 import Animated, {
-  useSharedValue,
+  interpolateColor,
   useAnimatedStyle,
+  useSharedValue,
   withSpring,
   withTiming,
-  interpolateColor,
 } from 'react-native-reanimated';
 import { EdificeProject, ResourceCost } from '../../data/edificeDatabase';
 

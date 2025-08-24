@@ -1,16 +1,16 @@
 // components/ui/wonder-assignment.tsx - Fixed UI layout issues
 import React, { useState } from 'react';
 import {
-  View,
-  Text,
   Pressable,
+  Text,
+  View,
 } from 'react-native';
 import Animated, {
-  useSharedValue,
   useAnimatedStyle,
+  useSharedValue,
   withSpring,
 } from 'react-native-reanimated';
-import { Wonder, SHIPYARDS_DATABASE } from '../../data/wondersDatabase';
+import { SHIPYARDS_DATABASE, Wonder } from '../../data/wondersDatabase';
 import { useSetupStore } from '../../store/setupStore';
 
 interface WonderAssignmentControlsProps {

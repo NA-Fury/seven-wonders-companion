@@ -1,18 +1,18 @@
 // components/ui/enhanced.tsx
 // Fixed and enhanced for React Native + TypeScript - REMOVED ALL GAP PROPERTIES
 
-import React, { useState, useRef } from 'react';
+import { Calendar, Clock, Star, Trash2, Trophy, User } from 'lucide-react-native';
+import React, { useRef, useState } from 'react';
+import type { StyleProp, TextStyle, ViewStyle } from 'react-native';
 import {
-  View,
-  Text,
-  Pressable,
-  Animated,
-  StyleSheet,
-  Alert,
   ActivityIndicator,
+  Alert,
+  Animated,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
 } from 'react-native';
-import type { StyleProp, ViewStyle, TextStyle } from 'react-native';
-import { Trash2, User, Trophy, Star, Clock, Calendar } from 'lucide-react-native';
 
 // ---------- Animated Button ----------
 

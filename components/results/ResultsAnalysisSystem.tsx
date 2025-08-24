@@ -1,21 +1,21 @@
 // components/results/ResultsAnalysisSystem.tsx - Enhanced for React Native
-import React, { useState } from 'react';
-import { View, Text, ScrollView, Pressable, Alert, Share } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { 
-  Trophy, 
-  BarChart3, 
-  Search, 
-  Download, 
-  RotateCcw, 
-  Plus,
-  Crown,
-  Shield,
+import {
+  BarChart3,
+  Beaker,
   Building,
   Coins,
-  Beaker,
-  Star
+  Crown,
+  Download,
+  Plus,
+  RotateCcw,
+  Search,
+  Shield,
+  Star,
+  Trophy
 } from 'lucide-react-native';
+import React, { useState } from 'react';
+import { Alert, Pressable, ScrollView, Share, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Enhanced7WondersScoringEngine } from '../../lib/scoring/enhancedScoringEngine';
 
 interface ResultsAnalysisProps {
