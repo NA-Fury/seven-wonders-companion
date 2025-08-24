@@ -18,7 +18,8 @@
     "build:android": "eas build --platform android",
     "build:ios": "eas build --platform ios",
     "test": "jest",
-    "test:watch": "jest --watch"
+    "test:watch": "jest --watch",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@expo/vector-icons": "^14.1.0",
@@ -58,6 +59,9 @@
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
+    "@babel/plugin-transform-modules-commonjs": "^7.27.1",
+    "@babel/preset-flow": "^7.27.1",
+    "@testing-library/jest-native": "^5.4.3",
     "@testing-library/react-native": "^12.7.2",
     "@types/jest": "^29.5.12",
     "@types/react": "~19.0.10",
@@ -77,29 +81,21 @@
       "<rootDir>/jest.setup.js"
     ],
     "testMatch": [
-      "**/__tests__/**/*.(ts|tsx|js)",
       "**/*.(test|spec).(ts|tsx|js)"
     ],
-    "collectCoverageFrom": [
-      "**/*.{ts,tsx}",
-      "!**/*.d.ts",
-      "!**/coverage/**",
-      "!**/node_modules/**",
-      "!**/babel.config.js",
-      "!**/expo-env.d.ts",
-      "!**/.expo/**"
+    "transformIgnorePatterns": [
+      "node_modules/(?!((jest-)?react-native|@react-native(-community)?)|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@unimodules/.*|unimodules|sentry-expo|native-base|react-native-svg|expo-modules-core)"
     ],
+    "testEnvironment": "jsdom",
     "moduleFileExtensions": [
       "ts",
       "tsx",
       "js",
       "jsx"
-    ],
-    "transform": {
-      "^.+\\.(js|ts|tsx)$": "babel-jest"
-    },
-    "testEnvironment": "jsdom"
+    ]
   },
   "private": true,
-  "engines": { "node": ">=20 <21" }
+  "engines": {
+    "node": ">=20 <21"
+  }
 }
