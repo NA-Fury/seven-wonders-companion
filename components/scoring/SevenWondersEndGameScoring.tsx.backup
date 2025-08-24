@@ -1,0 +1,1570 @@
+// components/scoring/SevenWondersEndGameScoring.tsx - FIXED with proper store connection
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { 
+  ChevronLeft, 
+  ChevronRight, 
+  Trophy, 
+  Calculator, 
+  Building, 
+  Coins, 
+  Beaker, 
+  Star,
+  AlertCircle,
+  TrendingUp,
+  Award,
+  Crown,
+  Shield,
+  Anchor
+} from 'lucide-react-native';
+import { View, Text, ScrollView, Pressable, Alert, Platform } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { router } from 'expo-router';
+
+// Import your actual store and data
+import { useSetupStore } from '../../store/setupStore';
+import { WONDERS_DATABASE } from '../../data/wondersDatabase';
+import { ARMADA_SHIPYARDS } from '../../data/armadaDatabase';
+import { getProjectById } from '../../data/edificeDatabase';
+import { useAdvancedScoring } from '../../lib/scoring/advancedScoringUtils';
+
+// Enhanced scoring types
+interface CategoryScore {
+  directPoints: number;
+  calculatedPoints: number;
+  hasDetails: boolean;
+  pendingCalculation: boolean;
+  details?: any;
+}
+
+interface PlayerScoreData {
+  [category: string]: CategoryScore;
+}
+
+interface ScoreInputProps {
+  value: number;
+  onChange: (value: number) => void;
+  min?: number;
+  max?: number;
+  disabled?: boolean;
+}
+
+const ScoreInput: React.FC<ScoreInputProps> = ({ 
+  value, 
+  onChange, 
+  min = -20, 
+  max = 200, 
+  disabled = false 
+}) => {
+  const increment = () => {
+    if (value < max && !disabled) {
+      onChange(value + 1);
+    }
+  };
+
+  const decrement = () => {
+    if (value > min && !disabled) {
+      onChange(value - 1);
+    }
+  };
+  
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+      <Pressable
+        onPress={decrement}
+        disabled={value <= min || disabled}
+        style={{
+          width: 32,
+          height: 32,
+          borderRadius: 6,
+          backgroundColor: value <= min || disabled ? '#E5E7EB' : '#FEF3C7',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <Text style={{ 
+          fontSize: 16, 
+          fontWeight: 'bold',
+          color: value <= min || disabled ? '#9CA3AF' : '#92400E'
+        }}>
+          -
+        </Text>
+      </Pressable>
+      
+      <View style={{
+        backgroundColor: 'rgba(196, 162, 76, 0.2)',
+        borderRadius: 6,
+        borderWidth: 1,
+        borderColor: 'rgba(196, 162, 76, 0.3)',
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        minWidth: 50,
+        alignItems: 'center',
+      }}>
+        <Text style={{ 
+          fontSize: 16, 
+          fontWeight: 'bold',
+          color: '#C4A24C'
+        }}>
+          {value}
+        </Text>
+      </View>
+      
+      <Pressable
+        onPress={increment}
+        disabled={value >= max || disabled}
+        style={{
+          width: 32,
+          height: 32,
+          borderRadius: 6,
+          backgroundColor: value >= max || disabled ? '#E5E7EB' : '#FEF3C7',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <Text style={{ 
+          fontSize: 16, 
+          fontWeight: 'bold',
+          color: value >= max || disabled ? '#9CA3AF' : '#92400E'
+        }}>
+          +
+        </Text>
+      </Pressable>
+    </View>
+  );
+};
+
+export default function SevenWondersDeepAnalysisScoring() {
+  // Use your actual store
+  const { 
+    players, 
+    seating, 
+    expansions, 
+    wonders, 
+    edificeProjects,
+    addGameToHistory 
+  } = useSetupStore();
+
+  const { calculateScience, calculateMilitary, generateSummary } = useAdvancedScoring();
+
+  const [currentPlayerIndex, setCurrentPlayerIndex] = useState(0);
+  const [playerScores, setPlayerScores] = useState<Record<string, PlayerScoreData>>({});
+  const [showDetails, setShowDetails] = useState<Record<string, boolean>>({});
+  
+  // Use refs to prevent infinite re-renders
+  const initializedRef = useRef(false);
+
+  // Get ordered players using your existing logic
+  const orderedPlayers = useMemo(() => {
+    if (seating.length === 0) return players;
+    return seating.map(seatId => players.find(p => p.id === seatId)).filter(Boolean) as typeof players;
+  }, [players, seating]);
+
+  const currentPlayer = orderedPlayers[currentPlayerIndex];
+
+  // Validation check using your actual data
+  if (!players || players.length === 0) {
+    return (
+      <SafeAreaView style={{ 
+        flex: 1, 
+        backgroundColor: Platform.OS === 'web' ? '#F3E7D3' : '#1C1A1A',
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 20
+      }}>
+        <View style={{ alignItems: 'center' }}>
+          <AlertCircle size={48} color="#EF4444" />
+          <Text style={{ 
+            color: '#EF4444', 
+            fontSize: 18, 
+            fontWeight: 'bold', 
+            marginTop: 16,
+            marginBottom: 8,
+            textAlign: 'center'
+          }}>
+            Setup Required
+          </Text>
+          <Text style={{ 
+            color: Platform.OS === 'web' ? 'rgba(28, 26, 26, 0.7)' : 'rgba(243, 231, 211, 0.7)', 
+            fontSize: 14, 
+            textAlign: 'center',
+            marginBottom: 24
+          }}>
+            No players found. Please complete game setup first.
+          </Text>
+          <Pressable
+            onPress={() => router.push('/setup/players')}
+            style={{
+              backgroundColor: '#C4A24C',
+              paddingHorizontal: 20,
+              paddingVertical: 12,
+              borderRadius: 8,
+            }}
+          >
+            <Text style={{ color: '#1C1A1A', fontWeight: 'bold' }}>Go to Setup</Text>
+          </Pressable>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (!currentPlayer) {
+    return (
+      <SafeAreaView style={{ 
+        flex: 1, 
+        backgroundColor: Platform.OS === 'web' ? '#F3E7D3' : '#1C1A1A',
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 20
+      }}>
+        <View style={{ alignItems: 'center' }}>
+          <AlertCircle size={48} color="#EF4444" />
+          <Text style={{ 
+            color: '#EF4444', 
+            fontSize: 18, 
+            fontWeight: 'bold', 
+            marginTop: 16,
+            textAlign: 'center'
+          }}>
+            Player Error - Invalid player index
+          </Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // Initialize player scores - Fixed to prevent infinite re-renders
+  useEffect(() => {
+    if (!initializedRef.current && orderedPlayers.length > 0) {
+      const initialScores: Record<string, PlayerScoreData> = {};
+      orderedPlayers.forEach(player => {
+        const defaultCategory = { directPoints: 0, calculatedPoints: 0, hasDetails: false, pendingCalculation: false };
+        initialScores[player.id] = {
+          wonder: { ...defaultCategory },
+          military: { ...defaultCategory },
+          civilian: { ...defaultCategory },
+          commercial: { ...defaultCategory },
+          science: { ...defaultCategory },
+          guilds: { ...defaultCategory },
+          ...(expansions.leaders && { leaders: { ...defaultCategory }}),
+          ...(expansions.cities && { cities: { ...defaultCategory }}),
+          ...(expansions.armada && { armada: { ...defaultCategory }}),
+          ...(expansions.edifice && { edifice: { ...defaultCategory }})
+        };
+      });
+      setPlayerScores(initialScores);
+      initializedRef.current = true;
+    }
+  }, [orderedPlayers, expansions]);
+
+  // Stable update function - Fixed to prevent re-renders
+  const updatePlayerScore = useCallback((playerId: string, category: string, updates: Partial<CategoryScore>) => {
+    setPlayerScores(prev => {
+      if (!prev[playerId] || !prev[playerId][category]) return prev;
+      
+      const currentCategory = prev[playerId][category];
+      const hasChanges = Object.keys(updates).some(key => 
+        currentCategory[key as keyof CategoryScore] !== updates[key as keyof CategoryScore]
+      );
+      
+      if (!hasChanges) return prev;
+      
+      return {
+        ...prev,
+        [playerId]: {
+          ...prev[playerId],
+          [category]: {
+            ...currentCategory,
+            ...updates
+          }
+        }
+      };
+    });
+  }, []);
+
+  const calculateTotal = useCallback((playerId: string): number => {
+    const scores = playerScores[playerId];
+    if (!scores) return 0;
+    
+    return Object.values(scores).reduce((sum, category) => {
+      return sum + (category.directPoints || category.calculatedPoints || 0);
+    }, 0);
+  }, [playerScores]);
+
+  const getTotalStatus = useCallback((playerId: string) => {
+    const scores = playerScores[playerId];
+    if (!scores) return { total: 0, status: 'empty' };
+    
+    const total = calculateTotal(playerId);
+    const hasPending = Object.values(scores).some(cat => cat.pendingCalculation);
+    const hasScores = Object.values(scores).some(cat => cat.directPoints > 0 || cat.calculatedPoints > 0);
+    
+    if (hasPending) return { total, status: 'pending' };
+    if (hasScores) return { total, status: 'partial' };
+    return { total: 0, status: 'empty' };
+  }, [calculateTotal, playerScores]);
+
+  const navigatePlayer = (direction: 'prev' | 'next') => {
+    if (direction === 'prev' && currentPlayerIndex > 0) {
+      setCurrentPlayerIndex(currentPlayerIndex - 1);
+    } else if (direction === 'next' && currentPlayerIndex < orderedPlayers.length - 1) {
+      setCurrentPlayerIndex(currentPlayerIndex + 1);
+    }
+  };
+
+  // Get wonder info using your actual data
+  const getWonderInfo = useCallback((playerId: string) => {
+    const wonderAssignment = wonders[playerId];
+    if (!wonderAssignment?.boardId) return null;
+    
+    const wonder = WONDERS_DATABASE.find(w => w.id === wonderAssignment.boardId);
+    if (!wonder) return null;
+    
+    const shipyardData = wonderAssignment.shipyardId ? 
+      ARMADA_SHIPYARDS.find(s => s.id === wonderAssignment.shipyardId) : null;
+    
+    const side = wonderAssignment.side || 'day';
+    const wonderSide = side === 'day' ? wonder.daySide : wonder.nightSide;
+    
+    return {
+      name: wonder.name,
+      side,
+      stages: wonderSide.stages?.length || 0,
+      points: wonderSide.stages?.map((stage: any) => stage.points || 0) || [],
+      resource: wonder.resource,
+      shipyard: shipyardData ? {
+        name: shipyardData.name,
+        track: shipyardData.wonderTrack
+      } : null
+    };
+  }, [wonders]);
+
+  const wonderInfo = getWonderInfo(currentPlayer.id);
+  const totalStatus = getTotalStatus(currentPlayer.id);
+  const canShowResults = orderedPlayers.every(p => getTotalStatus(p.id).status !== 'empty');
+
+  const handleSaveGame = () => {
+    try {
+      const gameScores = orderedPlayers.reduce((acc, player) => {
+        acc[player.id] = calculateTotal(player.id);
+        return acc;
+      }, {} as Record<string, number>);
+
+      const winner = orderedPlayers.reduce((prev, current) => {
+        const prevTotal = calculateTotal(prev.id);
+        const currentTotal = calculateTotal(current.id);
+        return currentTotal > prevTotal ? current : prev;
+      });
+
+      addGameToHistory({
+        date: new Date(),
+        players: orderedPlayers.map(p => p.name),
+        expansions,
+        winner: winner.name,
+        scores: gameScores,
+      });
+
+      Alert.alert(
+        'Game Saved!',
+        `Winner: ${winner.name} with ${calculateTotal(winner.id)} points`,
+        [
+          { text: 'New Game', onPress: () => router.push('/') },
+          { text: 'View Results', style: 'cancel' },
+        ]
+      );
+    } catch (error) {
+      Alert.alert('Error', 'Failed to save game. Please try again.');
+    }
+  };
+
+  const backgroundColor = Platform.OS === 'web' ? '#F3E7D3' : '#1C1A1A';
+  const cardBackground = Platform.OS === 'web' ? '#FFFFFF' : 'rgba(243, 231, 211, 0.1)';
+  const textColor = Platform.OS === 'web' ? '#1C1A1A' : '#F3E7D3';
+
+  return (
+    <SafeAreaView style={{ flex: 1, backgroundColor }}>
+      {/* Compact Header Navigation */}
+      <View style={{
+        backgroundColor: cardBackground,
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+        borderBottomWidth: 2,
+        borderBottomColor: '#C4A24C',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.1,
+        shadowRadius: 2,
+        elevation: 3,
+      }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+          {/* Previous Player */}
+          <Pressable
+            onPress={() => navigatePlayer('prev')}
+            disabled={currentPlayerIndex === 0}
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 4,
+              paddingHorizontal: 8,
+              paddingVertical: 4,
+              borderRadius: 6,
+              backgroundColor: currentPlayerIndex === 0 ? '#E5E7EB' : '#C4A24C',
+              opacity: currentPlayerIndex === 0 ? 0.5 : 1,
+            }}
+          >
+            <ChevronLeft size={16} color={currentPlayerIndex === 0 ? '#9CA3AF' : 'white'} />
+          </Pressable>
+
+          {/* Compact Player Info */}
+          <View style={{ alignItems: 'center', flex: 1, marginHorizontal: 12 }}>
+            <Text style={{ 
+              fontSize: 18, 
+              fontWeight: 'bold', 
+              color: textColor,
+              marginBottom: 2
+            }}>
+              {currentPlayer.name}
+            </Text>
+            <Text style={{ 
+              fontSize: 10, 
+              color: Platform.OS === 'web' ? 'rgba(28, 26, 26, 0.6)' : 'rgba(243, 231, 211, 0.6)',
+            }}>
+              {currentPlayerIndex + 1}/{orderedPlayers.length}
+            </Text>
+            
+            {/* Compact Wonder Info */}
+            {wonderInfo && (
+              <View style={{
+                backgroundColor: 'rgba(196, 162, 76, 0.2)',
+                borderRadius: 4,
+                paddingHorizontal: 6,
+                paddingVertical: 2,
+                marginTop: 2,
+              }}>
+                <Text style={{ 
+                  fontSize: 10, 
+                  fontWeight: 'bold', 
+                  color: '#C4A24C',
+                  textAlign: 'center'
+                }}>
+                  {wonderInfo.name} ({wonderInfo.side[0].toUpperCase()})
+                  {wonderInfo.shipyard && expansions.armada && ` • ⚓ ${wonderInfo.shipyard.track}`}
+                </Text>
+              </View>
+            )}
+          </View>
+
+          {/* Next Player */}
+          <Pressable
+            onPress={() => navigatePlayer('next')}
+            disabled={currentPlayerIndex === orderedPlayers.length - 1}
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 4,
+              paddingHorizontal: 8,
+              paddingVertical: 4,
+              borderRadius: 6,
+              backgroundColor: currentPlayerIndex === orderedPlayers.length - 1 ? '#E5E7EB' : '#C4A24C',
+              opacity: currentPlayerIndex === orderedPlayers.length - 1 ? 0.5 : 1,
+            }}
+          >
+            <ChevronRight size={16} color={currentPlayerIndex === orderedPlayers.length - 1 ? '#9CA3AF' : 'white'} />
+          </Pressable>
+        </View>
+      </View>
+
+      {/* Compact Motivational Banner */}
+      <View style={{
+        backgroundColor: '#8B5CF6',
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+      }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <TrendingUp size={16} color="#FEF3C7" />
+          <Text style={{ 
+            fontSize: 12, 
+            color: 'white',
+            flex: 1
+          }}>
+            More details = better analysis & insights!
+          </Text>
+        </View>
+      </View>
+
+      {/* Main Content */}
+      <ScrollView 
+        style={{ flex: 1 }} 
+        contentContainerStyle={{ 
+          padding: 12, 
+          paddingBottom: 70 // Space for compact bottom
+        }}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Core Scoring Categories */}
+        <WonderScoringSection 
+          player={currentPlayer}
+          wonderInfo={wonderInfo}
+          score={playerScores[currentPlayer.id]?.wonder}
+          onUpdate={(updates: Partial<CategoryScore>) => updatePlayerScore(currentPlayer.id, 'wonder', updates)}
+          showDetails={showDetails[`${currentPlayer.id}-wonder`]}
+          onToggleDetails={() => setShowDetails(prev => ({
+            ...prev,
+            [`${currentPlayer.id}-wonder`]: !prev[`${currentPlayer.id}-wonder`]
+          }))}
+          backgroundColor={cardBackground}
+          textColor={textColor}
+        />
+
+        <MilitaryScoringSection 
+          player={currentPlayer}
+          expansions={expansions}
+          score={playerScores[currentPlayer.id]?.military}
+          onUpdate={(updates: Partial<CategoryScore>) => updatePlayerScore(currentPlayer.id, 'military', updates)}
+          showDetails={showDetails[`${currentPlayer.id}-military`]}
+          onToggleDetails={() => setShowDetails(prev => ({
+            ...prev,
+            [`${currentPlayer.id}-military`]: !prev[`${currentPlayer.id}-military`]
+          }))}
+          backgroundColor={cardBackground}
+          textColor={textColor}
+        />
+
+        <CivilianScoringSection 
+          player={currentPlayer}
+          expansions={expansions}
+          score={playerScores[currentPlayer.id]?.civilian}
+          onUpdate={(updates: Partial<CategoryScore>) => updatePlayerScore(currentPlayer.id, 'civilian', updates)}
+          showDetails={showDetails[`${currentPlayer.id}-civilian`]}
+          onToggleDetails={() => setShowDetails(prev => ({
+            ...prev,
+            [`${currentPlayer.id}-civilian`]: !prev[`${currentPlayer.id}-civilian`]
+          }))}
+          backgroundColor={cardBackground}
+          textColor={textColor}
+        />
+
+        <CommercialScoringSection 
+          player={currentPlayer}
+          expansions={expansions}
+          score={playerScores[currentPlayer.id]?.commercial}
+          onUpdate={(updates: Partial<CategoryScore>) => updatePlayerScore(currentPlayer.id, 'commercial', updates)}
+          showDetails={showDetails[`${currentPlayer.id}-commercial`]}
+          onToggleDetails={() => setShowDetails(prev => ({
+            ...prev,
+            [`${currentPlayer.id}-commercial`]: !prev[`${currentPlayer.id}-commercial`]
+          }))}
+          backgroundColor={cardBackground}
+          textColor={textColor}
+        />
+
+        <ScienceScoringSection 
+          player={currentPlayer}
+          expansions={expansions}
+          score={playerScores[currentPlayer.id]?.science}
+          onUpdate={(updates: Partial<CategoryScore>) => updatePlayerScore(currentPlayer.id, 'science', updates)}
+          showDetails={showDetails[`${currentPlayer.id}-science`]}
+          onToggleDetails={() => setShowDetails(prev => ({
+            ...prev,
+            [`${currentPlayer.id}-science`]: !prev[`${currentPlayer.id}-science`]
+          }))}
+          backgroundColor={cardBackground}
+          textColor={textColor}
+          calculateScience={calculateScience}
+        />
+
+        <GuildsScoringSection 
+          player={currentPlayer}
+          score={playerScores[currentPlayer.id]?.guilds}
+          onUpdate={(updates: Partial<CategoryScore>) => updatePlayerScore(currentPlayer.id, 'guilds', updates)}
+          showDetails={showDetails[`${currentPlayer.id}-guilds`]}
+          onToggleDetails={() => setShowDetails(prev => ({
+            ...prev,
+            [`${currentPlayer.id}-guilds`]: !prev[`${currentPlayer.id}-guilds`]
+          }))}
+          backgroundColor={cardBackground}
+          textColor={textColor}
+        />
+
+        {/* Expansion Sections */}
+        {expansions.leaders && (
+          <ExpansionScoringSection 
+            title="Leaders"
+            icon={<Crown size={20} color="white" />}
+            color="#F59E0B"
+            player={currentPlayer}
+            score={playerScores[currentPlayer.id]?.leaders}
+            onUpdate={(updates: Partial<CategoryScore>) => updatePlayerScore(currentPlayer.id, 'leaders', updates)}
+            backgroundColor={cardBackground}
+            textColor={textColor}
+          />
+        )}
+
+        {expansions.cities && (
+          <ExpansionScoringSection 
+            title="Cities"
+            icon={<Building size={20} color="white" />}
+            color="#6B7280"
+            player={currentPlayer}
+            score={playerScores[currentPlayer.id]?.cities}
+            onUpdate={(updates: Partial<CategoryScore>) => updatePlayerScore(currentPlayer.id, 'cities', updates)}
+            backgroundColor={cardBackground}
+            textColor={textColor}
+          />
+        )}
+
+        {expansions.armada && (
+          <ExpansionScoringSection 
+            title="Armada"
+            icon={<Anchor size={20} color="white" />}
+            color="#3B82F6"
+            player={currentPlayer}
+            score={playerScores[currentPlayer.id]?.armada}
+            onUpdate={(updates: Partial<CategoryScore>) => updatePlayerScore(currentPlayer.id, 'armada', updates)}
+            backgroundColor={cardBackground}
+            textColor={textColor}
+          />
+        )}
+
+        {expansions.edifice && (
+          <EdificeScoringSection 
+            player={currentPlayer}
+            edificeProjects={edificeProjects}
+            score={playerScores[currentPlayer.id]?.edifice}
+            onUpdate={(updates: Partial<CategoryScore>) => updatePlayerScore(currentPlayer.id, 'edifice', updates)}
+            backgroundColor={cardBackground}
+            textColor={textColor}
+          />
+        )}
+      </ScrollView>
+
+      {/* Compact Bottom Total Display */}
+      <View style={{
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        backgroundColor: cardBackground,
+        borderTopWidth: 2,
+        borderTopColor: '#C4A24C',
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+      }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+          <Text style={{ 
+            color: textColor, 
+            fontSize: 16, 
+            fontWeight: 'bold'
+          }}>
+            Total Victory Points: {totalStatus.total}{totalStatus.status === 'pending' ? '+' : ''}
+          </Text>
+          
+          {canShowResults && (
+            <Pressable
+              onPress={handleSaveGame}
+              style={{
+                backgroundColor: '#10B981',
+                paddingHorizontal: 16,
+                paddingVertical: 6,
+                borderRadius: 6,
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 4,
+              }}
+            >
+              <Trophy size={16} color="white" />
+              <Text style={{ color: 'white', fontSize: 14, fontWeight: 'bold' }}>
+                Save & Finish
+              </Text>
+            </Pressable>
+          )}
+        </View>
+      </View>
+    </SafeAreaView>
+  );
+}
+
+// Individual Scoring Section Components - Compacted
+const WonderScoringSection: React.FC<any> = ({ 
+  player, 
+  wonderInfo, 
+  score, 
+  onUpdate, 
+  showDetails, 
+  onToggleDetails,
+  backgroundColor,
+  textColor
+}) => {
+  const [directPoints, setDirectPoints] = useState(score?.directPoints || 0);
+  const [selectedStages, setSelectedStages] = useState<number[]>(score?.details?.selectedStages || []);
+
+  // Fixed useEffect to prevent infinite re-renders
+  useEffect(() => {
+    const updates: Partial<CategoryScore> = showDetails ? {
+      directPoints: 0,
+      calculatedPoints: selectedStages.reduce((sum, stage) => sum + (wonderInfo?.points?.[stage] || 0), 0),
+      hasDetails: true,
+      details: { selectedStages }
+    } : {
+      directPoints,
+      calculatedPoints: 0,
+      hasDetails: false
+    };
+    
+    onUpdate(updates);
+  }, [directPoints, selectedStages, showDetails]); // Removed onUpdate from deps
+
+  const toggleStage = (stageIndex: number) => {
+    setSelectedStages(prev => 
+      prev.includes(stageIndex) 
+        ? prev.filter(s => s !== stageIndex)
+        : [...prev, stageIndex].sort()
+    );
+  };
+
+  return (
+    <View style={{
+      backgroundColor,
+      borderRadius: 12,
+      padding: 12,
+      marginBottom: 8,
+      borderLeftWidth: 3,
+      borderLeftColor: '#C4A24C',
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.1,
+      shadowRadius: 2,
+      elevation: 3,
+    }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <View style={{
+            width: 32,
+            height: 32,
+            backgroundColor: '#C4A24C',
+            borderRadius: 8,
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}>
+            <Building size={16} color="white" />
+          </View>
+          <Text style={{ fontSize: 16, fontWeight: 'bold', color: textColor }}>
+            Wonder Board
+          </Text>
+        </View>
+        
+        <Pressable
+          onPress={onToggleDetails}
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 4,
+            paddingHorizontal: 8,
+            paddingVertical: 4,
+            backgroundColor: 'rgba(196, 162, 76, 0.2)',
+            borderRadius: 6,
+          }}
+        >
+          <Calculator size={12} color="#C4A24C" />
+          <Text style={{ color: '#C4A24C', fontSize: 10, fontWeight: '600' }}>
+            {showDetails ? 'Direct' : 'Detail'}
+          </Text>
+        </Pressable>
+      </View>
+
+      {!showDetails ? (
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+          <Text style={{ color: textColor, fontSize: 14, fontWeight: '600' }}>Points:</Text>
+          <ScoreInput 
+            value={directPoints}
+            onChange={setDirectPoints}
+            min={0}
+            max={50}
+          />
+        </View>
+      ) : (
+        <View>
+          <Text style={{ fontSize: 14, fontWeight: '600', color: textColor, marginBottom: 8 }}>
+            Select stages:
+          </Text>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginBottom: 8 }}>
+            {wonderInfo?.points?.map((points: number, index: number) => (
+              <Pressable
+                key={index}
+                onPress={() => toggleStage(index)}
+                style={{
+                  paddingHorizontal: 8,
+                  paddingVertical: 4,
+                  borderRadius: 6,
+                  borderWidth: 1,
+                  borderColor: selectedStages.includes(index) ? '#C4A24C' : 'rgba(196, 162, 76, 0.3)',
+                  backgroundColor: selectedStages.includes(index) ? '#C4A24C' : 'transparent',
+                }}
+              >
+                <Text style={{ 
+                  color: selectedStages.includes(index) ? 'white' : '#C4A24C',
+                  fontSize: 12,
+                  fontWeight: 'bold'
+                }}>
+                  {index + 1} ({points}p)
+                </Text>
+              </Pressable>
+            )) || []}
+          </View>
+
+          <View style={{
+            backgroundColor: 'rgba(196, 162, 76, 0.2)',
+            borderRadius: 6,
+            padding: 8,
+          }}>
+            <Text style={{ fontSize: 14, fontWeight: 'bold', color: '#C4A24C', textAlign: 'center' }}>
+              Total: {selectedStages.reduce((sum, stage) => sum + (wonderInfo?.points?.[stage] || 0), 0)} points
+            </Text>
+          </View>
+        </View>
+      )}
+    </View>
+  );
+};
+
+const MilitaryScoringSection: React.FC<any> = ({ 
+  player, 
+  expansions, 
+  score, 
+  onUpdate, 
+  showDetails, 
+  onToggleDetails,
+  backgroundColor,
+  textColor
+}) => {
+  const [directPoints, setDirectPoints] = useState(score?.directPoints || 0);
+  const [totalStrength, setTotalStrength] = useState(score?.details?.totalStrength || 0);
+
+  useEffect(() => {
+    const updates: Partial<CategoryScore> = showDetails ? {
+      directPoints: 0,
+      calculatedPoints: 0,
+      hasDetails: true,
+      pendingCalculation: true,
+      details: { totalStrength }
+    } : {
+      directPoints,
+      calculatedPoints: 0,
+      hasDetails: false,
+      pendingCalculation: false
+    };
+    
+    onUpdate(updates);
+  }, [directPoints, totalStrength, showDetails]);
+
+  return (
+    <View style={{
+      backgroundColor,
+      borderRadius: 12,
+      padding: 12,
+      marginBottom: 8,
+      borderLeftWidth: 3,
+      borderLeftColor: '#EF4444',
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.1,
+      shadowRadius: 2,
+      elevation: 3,
+    }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <View style={{
+            width: 32,
+            height: 32,
+            backgroundColor: '#EF4444',
+            borderRadius: 8,
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}>
+            <Shield size={16} color="white" />
+          </View>
+          <Text style={{ fontSize: 16, fontWeight: 'bold', color: textColor }}>
+            Military
+          </Text>
+        </View>
+        
+        <Pressable
+          onPress={onToggleDetails}
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 4,
+            paddingHorizontal: 8,
+            paddingVertical: 4,
+            backgroundColor: 'rgba(239, 68, 68, 0.2)',
+            borderRadius: 6,
+          }}
+        >
+          <Calculator size={12} color="#EF4444" />
+          <Text style={{ color: '#EF4444', fontSize: 10, fontWeight: '600' }}>
+            {showDetails ? 'Direct' : 'Detail'}
+          </Text>
+        </Pressable>
+      </View>
+
+      {!showDetails ? (
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+          <Text style={{ color: textColor, fontSize: 14, fontWeight: '600' }}>Points:</Text>
+          <ScoreInput 
+            value={directPoints}
+            onChange={setDirectPoints}
+            min={-6}
+            max={60}
+          />
+        </View>
+      ) : (
+        <View>
+          <View style={{
+            backgroundColor: 'rgba(251, 191, 36, 0.2)',
+            borderRadius: 6,
+            padding: 8,
+            marginBottom: 8,
+            borderWidth: 1,
+            borderColor: 'rgba(251, 191, 36, 0.3)',
+          }}>
+            <Text style={{ color: '#92400E', fontSize: 12, textAlign: 'center' }}>
+              Calculated after all players enter strength
+            </Text>
+          </View>
+          
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+            <Text style={{ color: textColor, fontSize: 14, fontWeight: '600' }}>Strength:</Text>
+            <ScoreInput 
+              value={totalStrength}
+              onChange={setTotalStrength}
+              min={0}
+              max={100}
+            />
+          </View>
+        </View>
+      )}
+    </View>
+  );
+};
+
+const CivilianScoringSection: React.FC<any> = ({ 
+  player, 
+  expansions, 
+  score, 
+  onUpdate, 
+  showDetails, 
+  onToggleDetails,
+  backgroundColor,
+  textColor
+}) => {
+  const [directPoints, setDirectPoints] = useState(score?.directPoints || 0);
+  const [totalBlueCards, setTotalBlueCards] = useState(score?.details?.totalBlueCards || 0);
+
+  useEffect(() => {
+    const updates: Partial<CategoryScore> = showDetails ? {
+      directPoints: 0,
+      calculatedPoints: directPoints,
+      hasDetails: true,
+      details: { totalBlueCards }
+    } : {
+      directPoints,
+      calculatedPoints: 0,
+      hasDetails: false
+    };
+    
+    onUpdate(updates);
+  }, [directPoints, totalBlueCards, showDetails]);
+
+  return (
+    <View style={{
+      backgroundColor,
+      borderRadius: 12,
+      padding: 12,
+      marginBottom: 8,
+      borderLeftWidth: 3,
+      borderLeftColor: '#3B82F6',
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.1,
+      shadowRadius: 2,
+      elevation: 3,
+    }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <View style={{
+            width: 32,
+            height: 32,
+            backgroundColor: '#3B82F6',
+            borderRadius: 8,
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}>
+            <Building size={16} color="white" />
+          </View>
+          <Text style={{ fontSize: 16, fontWeight: 'bold', color: textColor }}>
+            Civilian (Blue)
+          </Text>
+        </View>
+        
+        <Pressable
+          onPress={onToggleDetails}
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 4,
+            paddingHorizontal: 8,
+            paddingVertical: 4,
+            backgroundColor: 'rgba(59, 130, 246, 0.2)',
+            borderRadius: 6,
+          }}
+        >
+          <Calculator size={12} color="#3B82F6" />
+          <Text style={{ color: '#3B82F6', fontSize: 10, fontWeight: '600' }}>
+            {showDetails ? 'Direct' : 'Detail'}
+          </Text>
+        </Pressable>
+      </View>
+
+      {!showDetails ? (
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+          <Text style={{ color: textColor, fontSize: 14, fontWeight: '600' }}>Points:</Text>
+          <ScoreInput 
+            value={directPoints}
+            onChange={setDirectPoints}
+            min={0}
+            max={100}
+          />
+        </View>
+      ) : (
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+          <Text style={{ color: textColor, fontSize: 14, fontWeight: '600' }}>Blue Cards:</Text>
+          <ScoreInput 
+            value={totalBlueCards}
+            onChange={setTotalBlueCards}
+            min={0}
+            max={20}
+          />
+        </View>
+      )}
+    </View>
+  );
+};
+
+const CommercialScoringSection: React.FC<any> = ({ 
+  player, 
+  expansions, 
+  score, 
+  onUpdate, 
+  showDetails, 
+  onToggleDetails,
+  backgroundColor,
+  textColor
+}) => {
+  const [directPoints, setDirectPoints] = useState(score?.directPoints || 0);
+  const [coins, setCoins] = useState(score?.details?.coins || 0);
+
+  useEffect(() => {
+    const calculatedPoints = Math.floor(coins / 3);
+    const updates: Partial<CategoryScore> = showDetails ? {
+      directPoints: 0,
+      calculatedPoints: calculatedPoints,
+      hasDetails: true,
+      details: { coins }
+    } : {
+      directPoints,
+      calculatedPoints: 0,
+      hasDetails: false
+    };
+    
+    onUpdate(updates);
+  }, [directPoints, coins, showDetails]);
+
+  return (
+    <View style={{
+      backgroundColor,
+      borderRadius: 12,
+      padding: 12,
+      marginBottom: 8,
+      borderLeftWidth: 3,
+      borderLeftColor: '#F59E0B',
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.1,
+      shadowRadius: 2,
+      elevation: 3,
+    }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <View style={{
+            width: 32,
+            height: 32,
+            backgroundColor: '#F59E0B',
+            borderRadius: 8,
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}>
+            <Coins size={16} color="white" />
+          </View>
+          <Text style={{ fontSize: 16, fontWeight: 'bold', color: textColor }}>
+            Commercial (Yellow)
+          </Text>
+        </View>
+        
+        <Pressable
+          onPress={onToggleDetails}
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 4,
+            paddingHorizontal: 8,
+            paddingVertical: 4,
+            backgroundColor: 'rgba(245, 158, 11, 0.2)',
+            borderRadius: 6,
+          }}
+        >
+          <Calculator size={12} color="#F59E0B" />
+          <Text style={{ color: '#F59E0B', fontSize: 10, fontWeight: '600' }}>
+            {showDetails ? 'Direct' : 'Detail'}
+          </Text>
+        </Pressable>
+      </View>
+
+      {!showDetails ? (
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+          <Text style={{ color: textColor, fontSize: 14, fontWeight: '600' }}>Points:</Text>
+          <ScoreInput 
+            value={directPoints}
+            onChange={setDirectPoints}
+            min={0}
+            max={100}
+          />
+        </View>
+      ) : (
+        <View>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 8 }}>
+            <Text style={{ color: textColor, fontSize: 14, fontWeight: '600' }}>Coins:</Text>
+            <ScoreInput 
+              value={coins}
+              onChange={setCoins}
+              min={0}
+              max={200}
+            />
+          </View>
+          
+          <View style={{
+            backgroundColor: 'rgba(245, 158, 11, 0.2)',
+            borderRadius: 6,
+            padding: 8,
+          }}>
+            <Text style={{ fontSize: 14, fontWeight: 'bold', color: '#F59E0B', textAlign: 'center' }}>
+              Coins/3 = {Math.floor(coins / 3)} points
+            </Text>
+          </View>
+        </View>
+      )}
+    </View>
+  );
+};
+
+const ScienceScoringSection: React.FC<any> = ({ 
+  player, 
+  expansions, 
+  score, 
+  onUpdate, 
+  showDetails, 
+  onToggleDetails,
+  backgroundColor,
+  textColor,
+  calculateScience
+}) => {
+  const [directPoints, setDirectPoints] = useState(score?.directPoints || 0);
+  const [compass, setCompass] = useState(score?.details?.compass || 0);
+  const [tablet, setTablet] = useState(score?.details?.tablet || 0);
+  const [gear, setGear] = useState(score?.details?.gear || 0);
+  const [wildScience, setWildScience] = useState(score?.details?.wildScience || 0);
+
+  const calculateSciencePoints = useCallback(() => {
+    if (calculateScience) {
+      return calculateScience(compass, tablet, gear, wildScience);
+    }
+    
+    // Fallback calculation
+    const sets = Math.min(compass, tablet, gear);
+    const total = (compass * compass) + (tablet * tablet) + (gear * gear) + (sets * 7);
+    return { total, sets };
+  }, [compass, tablet, gear, wildScience, calculateScience]);
+
+  useEffect(() => {
+    const calculation = calculateSciencePoints();
+    const updates: Partial<CategoryScore> = showDetails ? {
+      directPoints: 0,
+      calculatedPoints: calculation.total,
+      hasDetails: true,
+      details: { compass, tablet, gear, wildScience, calculation }
+    } : {
+      directPoints,
+      calculatedPoints: 0,
+      hasDetails: false
+    };
+    
+    onUpdate(updates);
+  }, [directPoints, compass, tablet, gear, wildScience, showDetails]);
+
+  const calculation = calculateSciencePoints();
+
+  return (
+    <View style={{
+      backgroundColor,
+      borderRadius: 12,
+      padding: 12,
+      marginBottom: 8,
+      borderLeftWidth: 3,
+      borderLeftColor: '#10B981',
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.1,
+      shadowRadius: 2,
+      elevation: 3,
+    }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <View style={{
+            width: 32,
+            height: 32,
+            backgroundColor: '#10B981',
+            borderRadius: 8,
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}>
+            <Beaker size={16} color="white" />
+          </View>
+          <Text style={{ fontSize: 16, fontWeight: 'bold', color: textColor }}>
+            Science (Green)
+          </Text>
+        </View>
+        
+        <Pressable
+          onPress={onToggleDetails}
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 4,
+            paddingHorizontal: 8,
+            paddingVertical: 4,
+            backgroundColor: 'rgba(16, 185, 129, 0.2)',
+            borderRadius: 6,
+          }}
+        >
+          <Calculator size={12} color="#10B981" />
+          <Text style={{ color: '#10B981', fontSize: 10, fontWeight: '600' }}>
+            {showDetails ? 'Direct' : 'Detail'}
+          </Text>
+        </Pressable>
+      </View>
+
+      {!showDetails ? (
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+          <Text style={{ color: textColor, fontSize: 14, fontWeight: '600' }}>Points:</Text>
+          <ScoreInput 
+            value={directPoints}
+            onChange={setDirectPoints}
+            min={0}
+            max={150}
+          />
+        </View>
+      ) : (
+        <View>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 8 }}>
+            <View style={{ alignItems: 'center', minWidth: 60 }}>
+              <Text style={{ fontSize: 12, fontWeight: '600', color: textColor, marginBottom: 4 }}>
+                🧭
+              </Text>
+              <ScoreInput 
+                value={compass}
+                onChange={setCompass}
+                min={0}
+                max={15}
+              />
+            </View>
+            <View style={{ alignItems: 'center', minWidth: 60 }}>
+              <Text style={{ fontSize: 12, fontWeight: '600', color: textColor, marginBottom: 4 }}>
+                📜
+              </Text>
+              <ScoreInput 
+                value={tablet}
+                onChange={setTablet}
+                min={0}
+                max={15}
+              />
+            </View>
+            <View style={{ alignItems: 'center', minWidth: 60 }}>
+              <Text style={{ fontSize: 12, fontWeight: '600', color: textColor, marginBottom: 4 }}>
+                ⚙️
+              </Text>
+              <ScoreInput 
+                value={gear}
+                onChange={setGear}
+                min={0}
+                max={15}
+              />
+            </View>
+            <View style={{ alignItems: 'center', minWidth: 60 }}>
+              <Text style={{ fontSize: 12, fontWeight: '600', color: textColor, marginBottom: 4 }}>
+                🔬
+              </Text>
+              <ScoreInput 
+                value={wildScience}
+                onChange={setWildScience}
+                min={0}
+                max={10}
+              />
+            </View>
+          </View>
+          
+          <View style={{
+            backgroundColor: 'rgba(16, 185, 129, 0.2)',
+            borderRadius: 6,
+            padding: 8,
+          }}>
+            <Text style={{ fontSize: 12, color: '#065F46', textAlign: 'center', marginBottom: 4 }}>
+              {compass}² + {tablet}² + {gear}² + {calculation.sets || 0}×7
+            </Text>
+            <Text style={{ fontSize: 14, fontWeight: 'bold', color: '#10B981', textAlign: 'center' }}>
+              Total: {calculation.total} points
+            </Text>
+          </View>
+        </View>
+      )}
+    </View>
+  );
+};
+
+const GuildsScoringSection: React.FC<any> = ({ 
+  player, 
+  score, 
+  onUpdate, 
+  showDetails, 
+  onToggleDetails,
+  backgroundColor,
+  textColor
+}) => {
+  const [directPoints, setDirectPoints] = useState(score?.directPoints || 0);
+
+  useEffect(() => {
+    const updates: Partial<CategoryScore> = showDetails ? {
+      directPoints: 0,
+      calculatedPoints: 0,
+      hasDetails: true,
+      pendingCalculation: true,
+      details: {}
+    } : {
+      directPoints,
+      calculatedPoints: 0,
+      hasDetails: false,
+      pendingCalculation: false
+    };
+    
+    onUpdate(updates);
+  }, [directPoints, showDetails]);
+
+  return (
+    <View style={{
+      backgroundColor,
+      borderRadius: 12,
+      padding: 12,
+      marginBottom: 8,
+      borderLeftWidth: 3,
+      borderLeftColor: '#8B5CF6',
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.1,
+      shadowRadius: 2,
+      elevation: 3,
+    }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <View style={{
+            width: 32,
+            height: 32,
+            backgroundColor: '#8B5CF6',
+            borderRadius: 8,
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}>
+            <Award size={16} color="white" />
+          </View>
+          <Text style={{ fontSize: 16, fontWeight: 'bold', color: textColor }}>
+            Guilds (Purple)
+          </Text>
+        </View>
+        
+        <Pressable
+          onPress={onToggleDetails}
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 4,
+            paddingHorizontal: 8,
+            paddingVertical: 4,
+            backgroundColor: 'rgba(139, 92, 246, 0.2)',
+            borderRadius: 6,
+          }}
+        >
+          <Calculator size={12} color="#8B5CF6" />
+          <Text style={{ color: '#8B5CF6', fontSize: 10, fontWeight: '600' }}>
+            {showDetails ? 'Direct' : 'Detail'}
+          </Text>
+        </Pressable>
+      </View>
+
+      {!showDetails ? (
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+          <Text style={{ color: textColor, fontSize: 14, fontWeight: '600' }}>Points:</Text>
+          <ScoreInput 
+            value={directPoints}
+            onChange={setDirectPoints}
+            min={0}
+            max={100}
+          />
+        </View>
+      ) : (
+        <View style={{
+          backgroundColor: 'rgba(251, 191, 36, 0.2)',
+          borderRadius: 6,
+          padding: 8,
+          borderWidth: 1,
+          borderColor: 'rgba(251, 191, 36, 0.3)',
+        }}>
+          <Text style={{ color: '#92400E', fontSize: 12, textAlign: 'center' }}>
+            Calculated based on neighbors' structures
+          </Text>
+        </View>
+      )}
+    </View>
+  );
+};
+
+const ExpansionScoringSection: React.FC<any> = ({ 
+  title, 
+  icon, 
+  color, 
+  player, 
+  score, 
+  onUpdate,
+  backgroundColor,
+  textColor
+}) => {
+  const [directPoints, setDirectPoints] = useState(score?.directPoints || 0);
+
+  useEffect(() => {
+    onUpdate({
+      directPoints,
+      calculatedPoints: 0,
+      hasDetails: false
+    });
+  }, [directPoints]);
+
+  return (
+    <View style={{
+      backgroundColor,
+      borderRadius: 12,
+      padding: 12,
+      marginBottom: 8,
+      borderLeftWidth: 3,
+      borderLeftColor: color,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.1,
+      shadowRadius: 2,
+      elevation: 3,
+    }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+        <View style={{
+          width: 32,
+          height: 32,
+          backgroundColor: color,
+          borderRadius: 8,
+          alignItems: 'center',
+          justifyContent: 'center',
+          marginRight: 8,
+        }}>
+          {icon}
+        </View>
+        <Text style={{ fontSize: 16, fontWeight: 'bold', color: textColor }}>
+          {title}
+        </Text>
+      </View>
+
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+        <Text style={{ color: textColor, fontSize: 14, fontWeight: '600' }}>Points:</Text>
+        <ScoreInput 
+          value={directPoints}
+          onChange={setDirectPoints}
+          min={-10}
+          max={100}
+        />
+      </View>
+    </View>
+  );
+};
+
+const EdificeScoringSection: React.FC<any> = ({ 
+  player, 
+  edificeProjects, 
+  score, 
+  onUpdate,
+  backgroundColor,
+  textColor
+}) => {
+  const [directPoints, setDirectPoints] = useState(score?.directPoints || 0);
+
+  useEffect(() => {
+    onUpdate({
+      directPoints,
+      calculatedPoints: 0,
+      hasDetails: false
+    });
+  }, [directPoints]);
+
+  return (
+    <View style={{
+      backgroundColor,
+      borderRadius: 12,
+      padding: 12,
+      marginBottom: 8,
+      borderLeftWidth: 3,
+      borderLeftColor: '#8B5CF6',
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.1,
+      shadowRadius: 2,
+      elevation: 3,
+    }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+        <View style={{
+          width: 32,
+          height: 32,
+          backgroundColor: '#8B5CF6',
+          borderRadius: 8,
+          alignItems: 'center',
+          justifyContent: 'center',
+          marginRight: 8,
+        }}>
+          <Star size={16} color="white" />
+        </View>
+        <Text style={{ fontSize: 16, fontWeight: 'bold', color: textColor }}>
+          Edifice Projects
+        </Text>
+      </View>
+
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+        <Text style={{ color: textColor, fontSize: 14, fontWeight: '600' }}>Points:</Text>
+        <ScoreInput 
+          value={directPoints}
+          onChange={setDirectPoints}
+          min={0}
+          max={50}
+        />
+      </View>
+    </View>
+  );
+};
