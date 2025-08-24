@@ -437,11 +437,17 @@ export function debounce<T extends (...args: any[]) => any>(
   func: T,
   wait: number
 ): (...args: Parameters<T>) => void {
-  let timeout: any;
+  // Use ReturnType<typeof setTimeout> for cross-env timer type
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
   
   return (...args: Parameters<T>) => {
-    clearTimeout(timeout);
-    timeout = setTimeout(() => func(...args), wait);
+    if (timeoutId !== undefined) {
+      // Use a safe any-cast for clearTimeout to satisfy differing lib types in CI
+      clearTimeout(timeoutId as unknown as any);
+      timeoutId = undefined;
+    }
+    
+    timeoutId = setTimeout(() => func(...args), wait);
   };
 }
 
@@ -464,7 +470,8 @@ export function throttle<T extends (...args: any[]) => any>(
 // Memory usage monitor
 export class MemoryMonitor {
   private static instance: MemoryMonitor;
-  private intervals: Set<number> = new Set();
+  // store intervals using ReturnType<typeof setInterval> for cross-env correctness
+  private intervals: Set<ReturnType<typeof setInterval>> = new Set();
   
   static getInstance(): MemoryMonitor {
     if (!MemoryMonitor.instance) {
@@ -478,7 +485,6 @@ export class MemoryMonitor {
     
     const interval = setInterval(() => {
       if (global.gc && typeof global.gc === 'function') {
-        // Force garbage collection if available (requires --expose-gc)
         global.gc();
       }
       
@@ -508,7 +514,7 @@ export class MemoryMonitor {
   }
   
   stopMonitoring(): void {
-    this.intervals.forEach(interval => clearInterval(interval));
+    this.intervals.forEach(interval => clearInterval(interval as unknown as any));
     this.intervals.clear();
   }
 }
