@@ -6,7 +6,8 @@ import {
   Text,
   View,
 } from 'react-native';
-import Animated, {
+import Animated,
+{
   interpolate,
   runOnJS,
   useAnimatedStyle,
@@ -27,12 +28,12 @@ interface WonderCardProps {
   onSelect?: () => void;
 }
 
-export function WonderCard({ 
-  wonder, 
-  selectedSide, 
-  onSideChange, 
+export function WonderCard({
+  wonder,
+  selectedSide,
+  onSideChange,
   isSelected = false,
-  onSelect 
+  onSelect
 }: WonderCardProps) {
   const [isFlipping, setIsFlipping] = useState(false);
   const [currentSide, setCurrentSide] = useState(selectedSide);
@@ -51,15 +52,15 @@ export function WonderCard({
 
   const handleFlip = () => {
     if (isFlipping) return;
-    
+
     setIsFlipping(true);
     const newSide = currentSide === 'day' ? 'night' : 'day';
     const targetRotation = newSide === 'night' ? 180 : 0;
-    
+
     flipRotation.value = withTiming(targetRotation, { duration: 600 }, () => {
       runOnJS(setIsFlipping)(false);
     });
-    
+
     // Update internal state and notify parent immediately
     setCurrentSide(newSide);
     onSideChange(newSide);
@@ -68,7 +69,7 @@ export function WonderCard({
   const frontAnimatedStyle = useAnimatedStyle(() => {
     const rotateY = interpolate(flipRotation.value, [0, 180], [0, 180]);
     const opacity = interpolate(flipRotation.value, [0, 90, 180], [1, 0, 0]);
-    
+
     return {
       transform: [
         { perspective: 1000 },
@@ -82,7 +83,7 @@ export function WonderCard({
   const backAnimatedStyle = useAnimatedStyle(() => {
     const rotateY = interpolate(flipRotation.value, [0, 180], [180, 360]);
     const opacity = interpolate(flipRotation.value, [0, 90, 180], [0, 0, 1]);
-    
+
     return {
       transform: [
         { perspective: 1000 },
@@ -108,8 +109,8 @@ export function WonderCard({
   };
 
   return (
-    <View style={{ 
-      width: CARD_WIDTH, 
+    <View style={{
+      width: CARD_WIDTH,
       height: CARD_HEIGHT + 80,
       alignItems: 'center',
       marginBottom: 20,
@@ -183,9 +184,9 @@ export function WonderCard({
             justifyContent: 'center',
           }}
         >
-          <Text style={{ 
-            color: '#1C1A1A', 
-            fontWeight: 'bold', 
+          <Text style={{
+            color: '#1C1A1A',
+            fontWeight: 'bold',
             fontSize: 14,
             marginRight: 8,
           }}>
@@ -229,7 +230,7 @@ interface WonderCardSideProps {
 
 function WonderCardSide({ wonder, side, sideType, isSelected }: WonderCardSideProps) {
   const isDayMode = sideType === 'day';
-  
+
   return (
     <View style={{
       width: '100%',
@@ -254,28 +255,28 @@ function WonderCardSide({ wonder, side, sideType, isSelected }: WonderCardSidePr
           paddingVertical: 3,
           marginBottom: 6,
         }}>
-          <Text style={{ 
-            color: 'white', 
-            fontSize: 10, 
-            fontWeight: 'bold' 
+          <Text style={{
+            color: 'white',
+            fontSize: 10,
+            fontWeight: 'bold'
           }}>
             {isDayMode ? '☀️ DAY SIDE' : '🌙 NIGHT SIDE'}
           </Text>
         </View>
-        
-        <Text style={{ 
-          fontSize: 16, 
-          fontWeight: 'bold', 
+
+        <Text style={{
+          fontSize: 16,
+          fontWeight: 'bold',
           color: isDayMode ? '#8B4513' : '#E6E6FA',
           textAlign: 'center',
           marginBottom: 3,
         }}>
           {wonder.name}
         </Text>
-        
-        <Text style={{ 
-          fontSize: 12, 
-          fontWeight: 'bold', 
+
+        <Text style={{
+          fontSize: 12,
+          fontWeight: 'bold',
           color: isDayMode ? '#DAA520' : '#9370DB',
           textAlign: 'center',
         }}>
@@ -284,8 +285,8 @@ function WonderCardSide({ wonder, side, sideType, isSelected }: WonderCardSidePr
       </View>
 
       {/* Resource & Difficulty */}
-      <View style={{ 
-        flexDirection: 'row', 
+      <View style={{
+        flexDirection: 'row',
         justifyContent: 'space-between',
         marginBottom: 12,
       }}>
@@ -297,22 +298,22 @@ function WonderCardSide({ wonder, side, sideType, isSelected }: WonderCardSidePr
           marginRight: 4,
           alignItems: 'center',
         }}>
-          <Text style={{ 
-            fontSize: 9, 
+          <Text style={{
+            fontSize: 9,
             color: isDayMode ? '#8B4513' : '#E6E6FA',
             marginBottom: 1,
           }}>
             Resource
           </Text>
-          <Text style={{ 
-            fontSize: 11, 
-            fontWeight: 'bold', 
+          <Text style={{
+            fontSize: 11,
+            fontWeight: 'bold',
             color: isDayMode ? '#DAA520' : '#9370DB',
           }}>
             {wonder.resource}
           </Text>
         </View>
-        
+
         <View style={{
           backgroundColor: isDayMode ? 'rgba(139, 69, 19, 0.2)' : 'rgba(99, 102, 241, 0.2)',
           borderRadius: 6,
@@ -321,16 +322,16 @@ function WonderCardSide({ wonder, side, sideType, isSelected }: WonderCardSidePr
           marginLeft: 4,
           alignItems: 'center',
         }}>
-          <Text style={{ 
-            fontSize: 9, 
+          <Text style={{
+            fontSize: 9,
             color: isDayMode ? '#8B4513' : '#E6E6FA',
             marginBottom: 1,
           }}>
             Difficulty
           </Text>
-          <Text style={{ 
-            fontSize: 11, 
-            fontWeight: 'bold', 
+          <Text style={{
+            fontSize: 11,
+            fontWeight: 'bold',
             color: isDayMode ? '#DAA520' : '#9370DB',
           }}>
             {wonder.difficulty}
@@ -340,15 +341,15 @@ function WonderCardSide({ wonder, side, sideType, isSelected }: WonderCardSidePr
 
       {/* Wonder Stages */}
       <View style={{ flex: 1 }}>
-        <Text style={{ 
-          fontSize: 12, 
-          fontWeight: 'bold', 
+        <Text style={{
+          fontSize: 12,
+          fontWeight: 'bold',
           color: isDayMode ? '#8B4513' : '#E6E6FA',
           marginBottom: 6,
         }}>
           Wonder Stages ({side.stages.length})
         </Text>
-        
+
         {side.stages.map((stage, index) => (
           <WonderStageItem
             key={index}
@@ -367,16 +368,16 @@ function WonderCardSide({ wonder, side, sideType, isSelected }: WonderCardSidePr
           padding: 6,
           marginTop: 6,
         }}>
-          <Text style={{ 
-            fontSize: 9, 
+          <Text style={{
+            fontSize: 9,
             color: isDayMode ? '#8B4513' : '#E6E6FA',
             marginBottom: 1,
           }}>
             Special Ability
           </Text>
-          <Text style={{ 
-            fontSize: 10, 
-            fontWeight: 'bold', 
+          <Text style={{
+            fontSize: 10,
+            fontWeight: 'bold',
             color: isDayMode ? '#DAA520' : '#9370DB',
           }}>
             {side.specialAbility}
@@ -416,16 +417,16 @@ function WonderStageItem({ stage, stageNumber, isDayMode }: WonderStageItemProps
           {stageNumber}
         </Text>
       </View>
-      
+
       <View style={{ flex: 1 }}>
-        <Text style={{ 
-          fontSize: 9, 
+        <Text style={{
+          fontSize: 9,
           color: isDayMode ? '#8B4513' : '#E6E6FA',
         }}>
           Cost: {stage.cost.map(c => `${c.amount} ${c.resource}`).join(', ')}
         </Text>
-        <Text style={{ 
-          fontSize: 8, 
+        <Text style={{
+          fontSize: 8,
           color: isDayMode ? '#DAA520' : '#9370DB',
           fontWeight: 'bold',
         }}>

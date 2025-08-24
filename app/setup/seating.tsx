@@ -64,18 +64,13 @@ export default function SeatingScreen() {
   };
 
   const handleContinue = () => {
-    if (selectedSeating.length < 3) {
-      Alert.alert('Not Enough Players', 'You need at least 3 players for 7 Wonders.');
-      return;
-    }
-    if (selectedSeating.length > 7) {
-      Alert.alert('Too Many Players', '7 Wonders supports a maximum of 7 players.');
-      return;
-    }
-
     setSeating(selectedSeating);
-    router.push('./setup/wonders');
+    router.push('/setup/wonders');
   };
+
+  const handleBack = () => {
+    router.back();
+  };  
 
   const getPlayerName = (playerId: string) => {
     return players.find(p => p.id === playerId)?.name || 'Unknown';

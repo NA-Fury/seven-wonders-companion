@@ -27,15 +27,12 @@ export default function GameSummaryScreen() {
 
   // FIXED: Single navigation handler
   const handleProceedToScoring = () => {
-    // Validate setup before proceeding
-    const issues = validateGameSetup();
-    if (issues.length > 0) {
-      console.warn('Setup issues found:', issues);
-      return;
-    }
-    
-    router.push('./scoring');
+    router.push('/scoring');
   };
+
+  const handleBack = () => {
+    router.back();
+  };  
 
   const handleBackToSetup = () => {
     router.back();

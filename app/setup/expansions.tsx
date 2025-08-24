@@ -1,4 +1,3 @@
-
 // app/setup/expansions.tsx - FIXED: Navigate to players first
 import { router } from 'expo-router';
 import React, { useState } from 'react';
@@ -11,8 +10,8 @@ export default function ExpansionsScreen() {
   const { expansions, toggleExpansion } = useSetupStore();
 
   const handleContinue = () => {
-    // FIXED: Go to players first, not seating
-    router.push('./setup/players');
+    // Use absolute path
+    router.push('/setup/players');
   };
 
   const handleBack = () => {

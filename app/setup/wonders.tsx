@@ -1,7 +1,7 @@
 // app/setup/wonders.tsx - Fixed version with proper Armada integration and expansion filtering
 import { router } from 'expo-router';
-import React, { useState } from 'react';
-import { Alert, Platform, ScrollView, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, Alert, Platform, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button, Card, H1, H2, P } from '../../components/ui';
 import { ProperArmadaShipyardSelector } from '../../components/ui/proper-armada-shipyard';
@@ -17,6 +17,31 @@ export default function WonderAssignmentScreen() {
   const [selectedSide, setSelectedSide] = useState<'day' | 'night'>('day');
   const [assigningToPlayer, setAssigningToPlayer] = useState<string | null>(null);
   const [showShipyards, setShowShipyards] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Add useEffect to restore selection state
+  useEffect(() => {
+    if (assigningToPlayer && !wonders[assigningToPlayer]?.boardId) {
+      setAssigningToPlayer(null);
+      setSelectedWonder(null);
+    }
+  }, [wonders, assigningToPlayer]);
+
+  useEffect(() => {
+    // Simulate loading to prevent UI flash
+    const timer = setTimeout(() => setIsLoading(false), 100);
+    return () => clearTimeout(timer);
+  }, []);
+
+  // Add this useEffect for cleanup
+  useEffect(() => {
+    return () => {
+      // Cleanup selection state when component unmounts
+      setSelectedWonder(null);
+      setAssigningToPlayer(null);
+      setSelectedSide('day');
+    };
+  }, []);
 
   const getOrderedPlayers = () => {
     if (seating.length === 0) return players;
@@ -76,10 +101,31 @@ export default function WonderAssignmentScreen() {
   };
 
   const handleWonderSelect = (wonder: Wonder) => {
+    // If user taps the already-selected wonder, toggle the side (day <-> night)
+    if (selectedWonder?.id === wonder.id) {
+      const nextSide: 'day' | 'night' = selectedSide === 'day' ? 'night' : 'day';
+      console.log(`Toggling side for ${wonder.name} -> ${nextSide}`);
+      setSelectedSide(nextSide);
+      return;
+    }
+
+    console.log('Selected wonder:', wonder.name);
     setSelectedWonder(wonder);
+    setSelectedSide('day');
+
+    // If there's only one unassigned player, open the assignment panel for convenience
+    const unassignedPlayers = orderedPlayers.filter(p => !wonders[p.id]?.boardId);
+    if (unassignedPlayers.length === 1) {
+      setAssigningToPlayer(unassignedPlayers[0].id);
+    } else {
+      // keep assigningToPlayer unchanged so user can choose who to assign to
+      setAssigningToPlayer(null);
+    }
   };
 
   const handleAssignWonder = (playerId: string) => {
+    console.log('Assigning wonder:', selectedWonder?.name, 'to player:', playerId, 'side:', selectedSide);
+
     if (!selectedWonder) {
       Alert.alert('No Wonder Selected', 'Please select a wonder first.');
       return;
@@ -90,8 +136,10 @@ export default function WonderAssignmentScreen() {
       side: selectedSide,
     });
 
+    // Reset selection state after assignment so UI is ready for next selection
     setSelectedWonder(null);
     setAssigningToPlayer(null);
+    setSelectedSide('day');
   };
 
   const handleRandomAssignment = () => {
@@ -160,24 +208,28 @@ export default function WonderAssignmentScreen() {
       return;
     }
 
-    // Check if Armada expansion requires shipyard assignment
+    // Fix navigation paths to be absolute
     if (expansions.armada) {
-      const unassignedShipyards = orderedPlayers.filter(player => !wonders[player.id]?.shipyardId);
-      if (unassignedShipyards.length > 0) {
-        setShowShipyards(true);
-        return;
-      }
-    }
-
-    // Check if Edifice expansion is enabled
-    if (expansions.edifice) {
-      router.push('./setup/edifice');
+      setShowShipyards(true);
       return;
     }
 
-    // Otherwise go to game summary
-    router.push('./setup/game-summary');
+    if (expansions.edifice) {
+      router.push('/setup/edifice');
+      return;
+    }
+
+    router.push('/setup/scoring-mode');
   };
+
+  const handleBack = () => {
+    // Clear assignments if needed
+    if (Object.keys(wonders).length === 0) {
+      router.push('/setup/seating');
+    } else {
+      router.back();
+    }
+  };  
 
   const assignedWonders = getAssignedWonders();
   const availableWonders = getAvailableWonders();
@@ -190,6 +242,17 @@ export default function WonderAssignmentScreen() {
       .map(([name]) => name.charAt(0).toUpperCase() + name.slice(1));
     return active.length > 0 ? `Base + ${active.join(' + ')}` : 'Base Game Only';
   };
+
+  // Add loading indicator in render
+  if (isLoading) {
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: '#1C1A1A' }}>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <ActivityIndicator color="#C4A24C" />
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#1C1A1A' }}>
@@ -249,78 +312,86 @@ export default function WonderAssignmentScreen() {
           />
 
           {/* Manual Assignment Mode */}
-          {assignmentMode === 'manual' && assigningToPlayer && (
-            <Card>
-              <H2>Assign Wonder to {orderedPlayers.find(p => p.id === assigningToPlayer)?.name}</H2>
-              <P className="mb-4 text-parchment/70 text-sm">
-                Select a wonder and side, then confirm assignment.
-              </P>
-              
-              {selectedWonder && (
-                <View style={{ alignItems: 'center', marginBottom: 20 }}>
-                  <WonderCard
-                    wonder={selectedWonder}
-                    selectedSide={selectedSide}
-                    onSideChange={setSelectedSide}
-                    isSelected={true}
-                  />
-                </View>
-              )}
+          {assignmentMode === 'manual' && (
+            <>
+              {assigningToPlayer ? (
+                <Card>
+                  <H2>Assign Wonder to {orderedPlayers.find(p => p.id === assigningToPlayer)?.name}</H2>
+                  <P className="mb-4 text-parchment/70 text-sm">
+                    Select a wonder and side, then confirm assignment.
+                  </P>
+                  
+                  {selectedWonder && (
+                    <View style={{ alignItems: 'center', marginBottom: 20 }}>
+                      <WonderCard
+                        wonder={selectedWonder}
+                        selectedSide={selectedSide}
+                        onSideChange={setSelectedSide}
+                        isSelected={true}
+                        onSelect={() => {}} // Empty handler since it's already selected
+                      />
+                    </View>
+                  )}
 
-              <View style={{ flexDirection: 'row', gap: 12, marginBottom: 16 }}>
-                <Button
-                  title="Cancel"
-                  variant="ghost"
-                  onPress={() => {
-                    setAssigningToPlayer(null);
-                    setSelectedWonder(null);
-                  }}
-                  className="flex-1"
-                />
-                <Button
-                  title="Assign Wonder"
-                  onPress={() => handleAssignWonder(assigningToPlayer)}
-                  className="flex-1"
-                  disabled={!selectedWonder}
-                />
-              </View>
-            </Card>
-          )}
-
-          {/* Available Wonders */}
-          {(assignmentMode === 'manual' && !assigningToPlayer) && (
-            <Card>
-              <H2>Available Wonders ({availableWonders.length})</H2>
-              <P className="mb-4 text-parchment/70 text-sm">
-                Tap a wonder to preview, then select a player to assign it to.
-              </P>
-              
-              {availableWonders.length === 0 ? (
-                <P className="text-center text-parchment/60 py-8">
-                  All available wonders have been assigned!
-                </P>
-              ) : (
-                <ScrollView 
-                  horizontal 
-                  showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={{ 
-                    paddingHorizontal: 10,
-                    gap: 20 
-                  }}
-                >
-                  {availableWonders.map((wonder) => (
-                    <WonderCard
-                      key={wonder.id}
-                      wonder={wonder}
-                      selectedSide="day"
-                      onSideChange={() => {}}
-                      isSelected={selectedWonder?.id === wonder.id}
-                      onSelect={() => handleWonderSelect(wonder)}
+                  <View style={{ flexDirection: 'row', gap: 12, marginBottom: 16 }}>
+                    <Button
+                      title="Cancel"
+                      variant="ghost"
+                      onPress={() => {
+                        setAssigningToPlayer(null);
+                        setSelectedWonder(null);
+                      }}
+                      className="flex-1"
                     />
-                  ))}
-                </ScrollView>
+                    <Button
+                      title="Assign Wonder"
+                      onPress={() => handleAssignWonder(assigningToPlayer)}
+                      className="flex-1"
+                      disabled={!selectedWonder}
+                    />
+                  </View>
+                </Card>
+              ) : (
+                <Card>
+                  <H2>Available Wonders ({availableWonders.length})</H2>
+                  <P className="mb-4 text-parchment/70 text-sm">
+                    Tap a wonder to preview, then select a player to assign it to.
+                  </P>
+                  
+                  {availableWonders.length === 0 ? (
+                    <P className="text-center text-parchment/60 py-8">
+                      All available wonders have been assigned!
+                    </P>
+                  ) : (
+                    <ScrollView 
+                      horizontal 
+                      showsHorizontalScrollIndicator={false}
+                      contentContainerStyle={{ 
+                        paddingHorizontal: 10,
+                        gap: 20 
+                      }}
+                    >
+                      {availableWonders.map((wonder) => (
+                        <WonderCard
+                          key={wonder.id}
+                          wonder={wonder}
+                          selectedSide={selectedWonder?.id === wonder.id ? selectedSide : 'day'}
+                          onSideChange={(side) => {
+                            // Keep side in sync if user explicitly flips inside the card
+                            if (selectedWonder?.id === wonder.id) {
+                              setSelectedSide(side);
+                            }
+                          }}
+                          isSelected={selectedWonder?.id === wonder.id}
+                          // onSelect now uses the improved selector which toggles side if re-tapping same card
+                          onSelect={() => handleWonderSelect(wonder)}
+                        />
+                      ))}
+                    </ScrollView>
+                  )}
+                </Card>
               )}
-            </Card>
+            </>
           )}
 
           {/* Quick Assignment for Manual Mode */}
@@ -352,9 +423,9 @@ export default function WonderAssignmentScreen() {
               onComplete={() => {
                 setShowShipyards(false);
                 if (expansions.edifice) {
-                  router.push('./setup/edifice');
+                  router.push('/setup/edifice');
                 } else {
-                  router.push('./setup/game-summary');
+                  router.push('/setup/scoring-mode');
                 }
               }}
               onBack={() => setShowShipyards(false)}
@@ -387,12 +458,15 @@ export default function WonderAssignmentScreen() {
             />
             <Button
               title={
-                expansions.armada && !allShipyardsAssigned ? "Continue to Shipyards" : 
-                expansions.edifice ? "Continue to Edifice" : "Continue to Summary"
+                expansions.armada && !allShipyardsAssigned 
+                  ? "Continue to Shipyards" 
+                  : expansions.edifice 
+                    ? "Continue to Edifice" 
+                    : "Continue to Scoring"
               }
               onPress={handleContinue}
               className="flex-1"
-              disabled={!allAssigned}
+              disabled={!allAssigned || (expansions.armada && !allShipyardsAssigned)}
             />
           </View>
         </View>

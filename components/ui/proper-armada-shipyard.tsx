@@ -220,7 +220,7 @@ export function ProperArmadaShipyardSelector({ players, onComplete, onBack }: Pr
         </Pressable>
         
         <Pressable
-          onPress={onComplete}
+          onPress={onComplete}  // This will trigger the navigation logic from the parent
           disabled={!allAssigned}
           style={{
             flex: 1,

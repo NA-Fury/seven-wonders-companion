@@ -1,6 +1,6 @@
 // app/setup/edifice.tsx
 import { router } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Alert, ScrollView, View } from 'react-native';
 import { Button, Card, H1, H2, P, Screen } from '../../components/ui';
 import { EdificeProjectDetail } from '../../components/ui/edifice-card';
@@ -12,11 +12,19 @@ import {
 import { useSetupStore } from '../../store/setupStore';
 
 export default function EdificeSelectionScreen() {
-  const { players, edificeProjects, setEdificeProjects } = useSetupStore();
+  const { players, edificeProjects, setEdificeProjects, expansions } = useSetupStore();
   const [selectedProjects, setSelectedProjects] = useState(edificeProjects);
   const [selectionMode, setSelectionMode] = useState<'manual' | 'random'>('manual');
   const [detailProject, setDetailProject] = useState<EdificeProject | null>(null);
   const [currentAge, setCurrentAge] = useState<1 | 2 | 3>(1);
+
+  // Add navigation guard at the start
+  useEffect(() => {
+    // Redirect if Edifice expansion isn't enabled
+    if (!expansions.edifice) {
+      router.replace('/setup/scoring-mode');
+    }
+  }, [expansions.edifice]);
 
   const handleProjectSelect = (age: 1 | 2 | 3, projectId: string) => {
     setSelectedProjects(prev => ({
@@ -60,20 +68,20 @@ export default function EdificeSelectionScreen() {
   };
 
   const handleContinue = () => {
-    const { age1, age2, age3 } = selectedProjects;
-    
-    if (!age1 || !age2 || !age3) {
-      Alert.alert(
-        'Incomplete Selection',
-        'Please select one project from each age before continuing.',
-        [{ text: 'OK' }]
-      );
-      return;
-    }
-
+    // Save edifice selections first
     setEdificeProjects(selectedProjects);
-    router.push('./setup/game-summary');
+    router.push('/setup/scoring-mode');
   };
+
+  // Update the back navigation to be more robust
+  const handleBack = () => {
+    if (expansions.armada) {
+      // Go back to wonder selection to show shipyards
+      router.push('/setup/wonders');
+    } else {
+      router.back();
+    }
+  };  
 
   const isComplete = selectedProjects.age1 && selectedProjects.age2 && selectedProjects.age3;
 

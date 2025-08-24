@@ -42,8 +42,12 @@ export default function PlayersScreen() {
       Alert.alert('Too Many Players', '7 Wonders supports a maximum of 7 players.');
       return;
     }
-    router.push('./setup/seating');
+    router.push('/setup/seating');
   };
+
+  const handleBack = () => {
+     router.back();
+  }; 
 
   const getExpansionText = () => {
     const active = Object.entries(expansions)

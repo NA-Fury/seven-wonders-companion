@@ -5,9 +5,17 @@ import { Button, H1, P, Screen } from '../../components/Themed';
 import { useSetupStore } from '../../lib/store';
 
 export default function ScoringMode() {
-  const r = useRouter();
+  const router = useRouter();
   const mode = useSetupStore((s) => s.setup.scoringMode);
   const setMode = useSetupStore((s) => s.setScoringMode);
+
+  const handleContinue = () => {
+    router.push('/setup/game-summary');
+  };
+
+  const handleBack = () => {
+    router.back();
+  };  
 
   return (
     <Screen>
@@ -22,7 +30,7 @@ export default function ScoringMode() {
           <RNText className={mode === 'FinalOnly' ? 'text-obsidian' : 'text-parchment'}>Final Only (Quick)</RNText>
         </Pressable>
       </View>
-      <Button title="Finish Setup" onPress={() => r.replace('/')} />
+      <Button title="Finish Setup" onPress={handleContinue} />
     </Screen>
   );
 }
