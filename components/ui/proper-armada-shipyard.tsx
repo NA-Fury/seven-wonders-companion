@@ -16,7 +16,7 @@ import { ArmadaShipyard, NavalTrack, NavalSpace, ARMADA_SHIPYARDS, getShipyardDi
 import { useSetupStore } from '../../store/setupStore';
 
 interface ProperArmadaShipyardSelectorProps {
-  players: Array<{ id: string; name: string }>;
+  players: { id: string; name: string }[];
   onComplete: () => void;
   onBack: () => void;
 }
@@ -247,7 +247,7 @@ interface ShipyardPreviewCardProps {
   shipyard: ArmadaShipyard;
   onPress: () => void;
   onSelect: (playerId: string) => void;
-  availablePlayers: Array<{ id: string; name: string }>;
+  availablePlayers: { id: string; name: string }[];
 }
 
 function ShipyardPreviewCard({ shipyard, onPress, onSelect, availablePlayers }: ShipyardPreviewCardProps) {
@@ -510,7 +510,7 @@ interface DetailedShipyardViewProps {
   shipyard: ArmadaShipyard;
   onClose: () => void;
   onSelectForPlayer: (playerId: string) => void;
-  availablePlayers: Array<{ id: string; name: string }>;
+  availablePlayers: { id: string; name: string }[];
 }
 
 function DetailedShipyardView({ shipyard, onClose, onSelectForPlayer, availablePlayers }: DetailedShipyardViewProps) {

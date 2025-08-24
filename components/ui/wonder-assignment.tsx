@@ -4,14 +4,13 @@ import {
   View,
   Text,
   Pressable,
-  Alert,
 } from 'react-native';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withSpring,
 } from 'react-native-reanimated';
-import { Wonder, Shipyard, SHIPYARDS_DATABASE } from '../../data/wondersDatabase';
+import { Wonder, SHIPYARDS_DATABASE } from '../../data/wondersDatabase';
 import { useSetupStore } from '../../store/setupStore';
 
 interface WonderAssignmentControlsProps {
@@ -313,7 +312,7 @@ export function PlayerWonderDisplay({
 }
 
 interface ShipyardSelectorProps {
-  players: Array<{ id: string; name: string }>;
+  players: { id: string; name: string }[];
   onComplete: () => void;
   onBack: () => void;
 }

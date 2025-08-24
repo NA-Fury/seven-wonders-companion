@@ -1,8 +1,8 @@
 // components/scoring/AdvancedScoringInput.tsx - Milestone 6 Expansion Scoring
 import React, { useState } from 'react';
 import { View, Text, ScrollView, Alert } from 'react-native';
-import { H1, H2, P, Card, Button } from '../ui';
-import { NumericInput, ToggleButtonGroup, ScoreCategory, ToggleRow } from '../ui/scoring';
+import { H1, P, Card, Button } from '../ui';
+import { NumericInput, ScoreCategory, ToggleRow } from '../ui/scoring';
 import { Enhanced7WondersScoringEngine, GuildCard, EdificeProject } from '../../lib/scoring/enhancedScoringEngine';
 
 interface AdvancedScoringInputProps {

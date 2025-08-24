@@ -1,20 +1,19 @@
 // components/scoring/EndOfGameScoring.tsx - Complete End of Game Scoring System
-import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, Pressable, Alert, Dimensions } from 'react-native';
+import React, { useCallback, useEffect, useState } from 'react';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { H1, H2, P, Card, Button } from '../ui';
-import { NumericInput, ToggleRow, ScoreCategory } from '../ui/scoring';
-import { useSetupStore } from '../../store/setupStore';
-import { WONDERS_DATABASE } from '../../data/wondersDatabase';
 import { ARMADA_SHIPYARDS } from '../../data/armadaDatabase';
-
-const { width } = Dimensions.get('window');
+import { WONDERS_DATABASE } from '../../data/wondersDatabase';
+import { useSetupStore } from '../../store/setupStore';
+import { Button, H1, P } from '../ui';
+import { NumericInput, ScoreCategory, ToggleRow } from '../ui/scoring';
 
 interface EndOfGameScoringProps {
   onComplete: (allPlayerScores: PlayerEndGameScore[]) => void;
   onBack: () => void;
 }
 
+// Update the scoring types in PlayerEndGameScore interface
 interface PlayerEndGameScore {
   playerId: string;
   playerName: string;
@@ -31,11 +30,11 @@ interface PlayerEndGameScore {
     wonderTrack: string;
   };
   scoring: {
-    wonder: WonderScoring;
-    military: MilitaryScoring;
-    civilian: CivilianScoring;
-    commercial: CommercialScoring;
-    science: ScienceScoring;
+    wonder: Partial<WonderScoring>;
+    military: Partial<MilitaryScoring>;
+    civilian: Partial<CivilianScoring>;
+    commercial: Partial<CommercialScoring>;
+    science: Partial<ScienceScoring>;
     total: number;
     isComplete: boolean;
   };
@@ -43,49 +42,46 @@ interface PlayerEndGameScore {
 
 interface WonderScoring {
   directPoints?: number;
-  stagesBuilt?: boolean[];
-  edificeStageBuilt?: {
-    age: 1 | 2 | 3;
-    edificeProject: string;
-  };
   calculatedPoints?: number;
+  stagesBuilt?: boolean[];
+  edificeStageBuilt?: { age: 1 | 2 | 3; edificeProject: string };
 }
 
 interface MilitaryScoring {
   directPoints?: number;
+  calculatedPoints?: number;
   totalStrength?: number;
   doveTokensUsed?: boolean[];
   boardingTokensApplied?: number;
   boardingTokensReceived?: number;
-  calculatedPoints?: number;
 }
 
 interface CivilianScoring {
   directPoints?: number;
+  calculatedPoints?: number;
   blueShipPosition?: number;
   chainLinksUsed?: number;
   armadaShipCards?: number;
   totalBlueCards?: number;
-  calculatedPoints?: number;
 }
 
 interface CommercialScoring {
   directPoints?: number;
+  calculatedPoints?: number;
   yellowShipPosition?: number;
   chainLinksUsed?: number;
   totalYellowCards?: number;
   pointGivingYellowCards?: number;
   expansionYellowCards?: number;
-  calculatedPoints?: number;
 }
 
 interface ScienceScoring {
   directPoints?: number;
+  calculatedPoints?: number;
   compass?: number;
   tablet?: number;
   gear?: number;
   nonGreenSymbols?: number;
-  calculatedPoints?: number;
 }
 
 export function EndOfGameScoring({ onComplete, onBack }: EndOfGameScoringProps) {
@@ -102,23 +98,14 @@ export function EndOfGameScoring({ onComplete, onBack }: EndOfGameScoringProps) 
   const orderedPlayers = getOrderedPlayers();
   const currentPlayer = orderedPlayers[currentPlayerIndex];
 
-  // Initialize player scores
-  useEffect(() => {
-    if (orderedPlayers.length > 0 && playerScores.length === 0) {
-      const initialScores = orderedPlayers.map((player, index) => 
-        createInitialPlayerScore(player, index)
-      );
-      setPlayerScores(initialScores);
-    }
-  }, [orderedPlayers]);
+  // Stable initializer so it's safe to include in effect deps
+  const createInitialPlayerScore = React.useCallback((player: any, position: number): PlayerEndGameScore => {
+    const wonderAssignment = wonders?.[player.id];
+    const wonder = wonderAssignment?.boardId ? WONDERS_DATABASE.find(w => w.id === wonderAssignment.boardId) : null;
 
-  const createInitialPlayerScore = (player: any, position: number): PlayerEndGameScore => {
-    const wonderAssignment = wonders[player.id];
-    const wonder = wonderAssignment?.boardId ? 
-      WONDERS_DATABASE.find(w => w.id === wonderAssignment.boardId) : null;
-    
-    const shipyard = wonderAssignment?.shipyardId && expansions.armada ? 
-      ARMADA_SHIPYARDS.find(s => s.id === wonderAssignment.shipyardId) : null;
+    const shipyard = wonderAssignment?.shipyardId && expansions?.armada
+      ? ARMADA_SHIPYARDS.find(s => s.id === wonderAssignment.shipyardId)
+      : undefined;
 
     return {
       playerId: player.id,
@@ -126,9 +113,9 @@ export function EndOfGameScoring({ onComplete, onBack }: EndOfGameScoringProps) 
       position,
       wonderData: wonder ? {
         wonderId: wonder.name,
-        side: wonderAssignment.side || 'day',
+        side: (wonderAssignment?.side as 'day' | 'night') || 'day',
         maxStages: wonder.stages?.length || 0,
-        stagePoints: wonder.stages?.map((s: { points: any; }) => s.points || 0) || [],
+        stagePoints: wonder.stages?.map((s: any) => s.points || 0) || [],
       } : {
         wonderId: 'Unknown',
         side: 'day',
@@ -150,15 +137,25 @@ export function EndOfGameScoring({ onComplete, onBack }: EndOfGameScoringProps) 
         isComplete: false,
       },
     };
-  };
+  }, [wonders, expansions]);
+
+  // Initialize player scores once orderedPlayers are available
+  useEffect(() => {
+    if (orderedPlayers.length > 0 && playerScores.length === 0) {
+      const initialScores = orderedPlayers.map((player, index) =>
+        createInitialPlayerScore(player, index)
+      );
+      setPlayerScores(initialScores);
+    }
+  }, [orderedPlayers, playerScores.length, createInitialPlayerScore]);
 
   const updatePlayerScore = (playerId: string, updates: Partial<PlayerEndGameScore['scoring']>) => {
-    setPlayerScores(prev => prev.map(score => 
-      score.playerId === playerId 
-        ? { 
-            ...score, 
-            scoring: { 
-              ...score.scoring, 
+    setPlayerScores(prev => prev.map(score =>
+      score.playerId === playerId
+        ? {
+            ...score,
+            scoring: {
+              ...score.scoring,
               ...updates,
               total: calculatePlayerTotal({ ...score.scoring, ...updates }),
               isComplete: checkPlayerComplete({ ...score.scoring, ...updates }),
@@ -170,27 +167,23 @@ export function EndOfGameScoring({ onComplete, onBack }: EndOfGameScoringProps) 
 
   const calculatePlayerTotal = (scoring: PlayerEndGameScore['scoring']): number => {
     let total = 0;
-    
-    // Add direct points or calculated points for each category
-    total += scoring.wonder.directPoints || scoring.wonder.calculatedPoints || 0;
-    total += scoring.military.directPoints || scoring.military.calculatedPoints || 0;
-    total += scoring.civilian.directPoints || scoring.civilian.calculatedPoints || 0;
-    total += scoring.commercial.directPoints || scoring.commercial.calculatedPoints || 0;
-    total += scoring.science.directPoints || scoring.science.calculatedPoints || 0;
-    
+    total += (scoring.wonder?.directPoints ?? scoring.wonder?.calculatedPoints ?? 0);
+    total += (scoring.military?.directPoints ?? scoring.military?.calculatedPoints ?? 0);
+    total += (scoring.civilian?.directPoints ?? scoring.civilian?.calculatedPoints ?? 0);
+    total += (scoring.commercial?.directPoints ?? scoring.commercial?.calculatedPoints ?? 0);
+    total += (scoring.science?.directPoints ?? scoring.science?.calculatedPoints ?? 0);
     return total;
   };
 
   const checkPlayerComplete = (scoring: PlayerEndGameScore['scoring']): boolean => {
-    // Check if player has either direct points or enough detail data for each category
-    const wonderComplete = scoring.wonder.directPoints !== undefined || scoring.wonder.stagesBuilt !== undefined;
-    const militaryComplete = scoring.military.directPoints !== undefined || scoring.military.totalStrength !== undefined;
-    const civilianComplete = scoring.civilian.directPoints !== undefined || scoring.civilian.totalBlueCards !== undefined;
-    const commercialComplete = scoring.commercial.directPoints !== undefined || scoring.commercial.totalYellowCards !== undefined;
-    const scienceComplete = scoring.science.directPoints !== undefined || 
-      (scoring.science.compass !== undefined && scoring.science.tablet !== undefined && scoring.science.gear !== undefined);
-    
-    return wonderComplete && militaryComplete && civilianComplete && commercialComplete && scienceComplete;
+    const wonderComplete = scoring.wonder?.directPoints !== undefined || scoring.wonder?.stagesBuilt !== undefined;
+    const militaryComplete = scoring.military?.directPoints !== undefined || scoring.military?.totalStrength !== undefined;
+    const civilianComplete = scoring.civilian?.directPoints !== undefined || scoring.civilian?.totalBlueCards !== undefined;
+    const commercialComplete = scoring.commercial?.directPoints !== undefined || scoring.commercial?.totalYellowCards !== undefined;
+    const scienceComplete = scoring.science?.directPoints !== undefined ||
+      (scoring.science?.compass !== undefined && scoring.science?.tablet !== undefined && scoring.science?.gear !== undefined);
+
+    return !!(wonderComplete && militaryComplete && civilianComplete && commercialComplete && scienceComplete);
   };
 
   const navigateToPlayer = (index: number) => {
@@ -199,7 +192,7 @@ export function EndOfGameScoring({ onComplete, onBack }: EndOfGameScoringProps) 
     }
   };
 
-  const allPlayersComplete = playerScores.every(score => score.scoring.isComplete);
+  const allPlayersComplete = playerScores.length > 0 && playerScores.every(score => score.scoring.isComplete);
   const currentPlayerScore = playerScores.find(score => score.playerId === currentPlayer?.id);
 
   if (!currentPlayer || !currentPlayerScore) {
@@ -227,8 +220,8 @@ export function EndOfGameScoring({ onComplete, onBack }: EndOfGameScoringProps) 
         />
 
         {/* Scrollable Content */}
-        <ScrollView 
-          style={{ flex: 1 }} 
+        <ScrollView
+          style={{ flex: 1 }}
           contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 120 }}
           showsVerticalScrollIndicator={false}
         >
@@ -256,12 +249,12 @@ export function EndOfGameScoring({ onComplete, onBack }: EndOfGameScoringProps) 
 }
 
 // Player Header Component
-function PlayerHeader({ 
-  playerScore, 
-  currentIndex, 
-  totalPlayers, 
-  onNavigate, 
-  gameDate 
+function PlayerHeader({
+  playerScore,
+  currentIndex,
+  totalPlayers,
+  onNavigate,
+  gameDate
 }: {
   playerScore: PlayerEndGameScore;
   currentIndex: number;
@@ -341,7 +334,7 @@ function PlayerHeader({
             {playerScore.wonderData.side.charAt(0).toUpperCase() + playerScore.wonderData.side.slice(1)} Side
           </Text>
         </View>
-        
+
         {playerScore.shipyardData && (
           <View style={{ alignItems: 'flex-end' }}>
             <Text style={{ color: '#6366F1', fontSize: 14, fontWeight: 'bold' }}>
@@ -358,11 +351,11 @@ function PlayerHeader({
 }
 
 // Main Scoring Interface
-function PlayerScoringInterface({ 
-  playerScore, 
-  expansions, 
+function PlayerScoringInterface({
+  playerScore,
+  expansions,
   edificeProjects,
-  onUpdateScore 
+  onUpdateScore
 }: {
   playerScore: PlayerEndGameScore;
   expansions: any;
@@ -371,10 +364,10 @@ function PlayerScoringInterface({
 }) {
   return (
     <View>
-      <Text style={{ 
-        color: '#F3E7D3', 
-        fontSize: 16, 
-        textAlign: 'center', 
+      <Text style={{
+        color: '#F3E7D3',
+        fontSize: 16,
+        textAlign: 'center',
         marginVertical: 16,
         fontStyle: 'italic',
       }}>
@@ -420,10 +413,10 @@ function PlayerScoringInterface({
 }
 
 // Wonder Scoring Section
-function WonderScoringSection({ 
-  playerScore, 
-  edificeProjects, 
-  onUpdate 
+function WonderScoringSection({
+  playerScore,
+  edificeProjects,
+  onUpdate
 }: {
   playerScore: PlayerEndGameScore;
   edificeProjects: any;
@@ -432,14 +425,14 @@ function WonderScoringSection({
   const [showDetails, setShowDetails] = useState(false);
   const [directPoints, setDirectPoints] = useState(playerScore.scoring.wonder.directPoints || 0);
   const [stagesBuilt, setStagesBuilt] = useState<boolean[]>(
-    playerScore.scoring.wonder.stagesBuilt || 
+    playerScore.scoring.wonder.stagesBuilt ||
     new Array(playerScore.wonderData.maxStages).fill(false)
   );
   const [edificeStage, setEdificeStage] = useState<{ age: 1 | 2 | 3; edificeProject: string } | undefined>(
     playerScore.scoring.wonder.edificeStageBuilt
   );
 
-  const calculateWonderPoints = () => {
+  const calculateWonderPoints = useCallback(() => {
     let total = 0;
     stagesBuilt.forEach((built, index) => {
       if (built && playerScore.wonderData.stagePoints[index]) {
@@ -447,9 +440,10 @@ function WonderScoringSection({
       }
     });
     return total;
-  };
+  }, [stagesBuilt, playerScore.wonderData.stagePoints]);
 
-  const handleUpdate = () => {
+  // Inside WonderScoringSection component
+  const handleUpdate = useCallback(() => {
     const calculatedPoints = showDetails ? calculateWonderPoints() : undefined;
     onUpdate({
       directPoints: showDetails ? undefined : directPoints,
@@ -457,11 +451,11 @@ function WonderScoringSection({
       edificeStageBuilt: showDetails ? edificeStage : undefined,
       calculatedPoints,
     });
-  };
+  }, [showDetails, calculateWonderPoints, directPoints, stagesBuilt, edificeStage, onUpdate]);
 
   useEffect(() => {
     handleUpdate();
-  }, [directPoints, stagesBuilt, edificeStage, showDetails]);
+  }, [handleUpdate]);
 
   return (
     <ScoreCategory
@@ -491,7 +485,7 @@ function WonderScoringSection({
           <Text style={{ color: '#F3E7D3', fontSize: 14, marginBottom: 8 }}>
             Select wonder stages built:
           </Text>
-          
+
           {playerScore.wonderData.stagePoints.map((points, index) => (
             <View key={index} style={{
               flexDirection: 'row',
@@ -533,7 +527,7 @@ function WonderScoringSection({
             <Text style={{ color: '#F3E7D3', fontSize: 14, marginBottom: 8 }}>
               Did you complete any wonder stage using an Edifice?
             </Text>
-            
+
             <View style={{ flexDirection: 'row', gap: 8, marginBottom: 8 }}>
               {[1, 2, 3].map(age => (
                 <Pressable
@@ -567,10 +561,10 @@ function WonderScoringSection({
 }
 
 // Military Scoring Section
-function MilitaryScoringSection({ 
-  playerScore, 
-  expansions, 
-  onUpdate 
+function MilitaryScoringSection({
+  playerScore,
+  expansions,
+  onUpdate
 }: {
   playerScore: PlayerEndGameScore;
   expansions: any;
@@ -585,7 +579,8 @@ function MilitaryScoringSection({
   const [boardingApplied, setBoardingApplied] = useState(playerScore.scoring.military.boardingTokensApplied || 0);
   const [boardingReceived, setBoardingReceived] = useState(playerScore.scoring.military.boardingTokensReceived || 0);
 
-  const handleUpdate = () => {
+  // Inside MilitaryScoringSection component
+  const handleUpdate = useCallback(() => {
     onUpdate({
       directPoints: showDetails ? undefined : directPoints,
       totalStrength: showDetails ? totalStrength : undefined,
@@ -593,11 +588,11 @@ function MilitaryScoringSection({
       boardingTokensApplied: showDetails ? boardingApplied : undefined,
       boardingTokensReceived: showDetails ? boardingReceived : undefined,
     });
-  };
+  }, [showDetails, directPoints, totalStrength, doveTokensUsed, boardingApplied, boardingReceived, onUpdate]);
 
   useEffect(() => {
     handleUpdate();
-  }, [directPoints, totalStrength, doveTokensUsed, boardingApplied, boardingReceived, showDetails]);
+  }, [handleUpdate]);
 
   return (
     <ScoreCategory
@@ -640,7 +635,7 @@ function MilitaryScoringSection({
               <Text style={{ color: '#F3E7D3', fontSize: 14, marginBottom: 8 }}>
                 🕊️ Red Dove Tokens Used (Skip Military):
               </Text>
-              
+
               <View style={{ gap: 8 }}>
                 {['Age I', 'Age II', 'Age III'].map((age, index) => (
                   <ToggleRow
@@ -704,10 +699,10 @@ function MilitaryScoringSection({
 }
 
 // Civilian (Blue) Scoring Section
-function CivilianScoringSection({ 
-  playerScore, 
-  expansions, 
-  onUpdate 
+function CivilianScoringSection({
+  playerScore,
+  expansions,
+  onUpdate
 }: {
   playerScore: PlayerEndGameScore;
   expansions: any;
@@ -720,7 +715,8 @@ function CivilianScoringSection({
   const [armadaShipCards, setArmadaShipCards] = useState(playerScore.scoring.civilian.armadaShipCards || 0);
   const [totalBlueCards, setTotalBlueCards] = useState(playerScore.scoring.civilian.totalBlueCards || 0);
 
-  const handleUpdate = () => {
+  // Inside CivilianScoringSection component
+  const handleUpdate = useCallback(() => {
     onUpdate({
       directPoints: showDetails ? undefined : directPoints,
       blueShipPosition: showDetails ? blueShipPosition : undefined,
@@ -728,11 +724,11 @@ function CivilianScoringSection({
       armadaShipCards: showDetails ? armadaShipCards : undefined,
       totalBlueCards: showDetails ? totalBlueCards : undefined,
     });
-  };
+  }, [showDetails, directPoints, blueShipPosition, chainLinksUsed, armadaShipCards, totalBlueCards, onUpdate]);
 
   useEffect(() => {
     handleUpdate();
-  }, [directPoints, blueShipPosition, chainLinksUsed, armadaShipCards, totalBlueCards, showDetails]);
+  }, [handleUpdate]);
 
   return (
     <ScoreCategory
@@ -827,10 +823,10 @@ function CivilianScoringSection({
 }
 
 // Commercial (Yellow) Scoring Section
-function CommercialScoringSection({ 
-  playerScore, 
-  expansions, 
-  onUpdate 
+function CommercialScoringSection({
+  playerScore,
+  expansions,
+  onUpdate
 }: {
   playerScore: PlayerEndGameScore;
   expansions: any;
@@ -844,7 +840,8 @@ function CommercialScoringSection({
   const [pointGivingCards, setPointGivingCards] = useState(playerScore.scoring.commercial.pointGivingYellowCards || 0);
   const [expansionCards, setExpansionCards] = useState(playerScore.scoring.commercial.expansionYellowCards || 0);
 
-  const handleUpdate = () => {
+  // Inside CommercialScoringSection component
+  const handleUpdate = useCallback(() => {
     onUpdate({
       directPoints: showDetails ? undefined : directPoints,
       yellowShipPosition: showDetails ? yellowShipPosition : undefined,
@@ -853,11 +850,11 @@ function CommercialScoringSection({
       pointGivingYellowCards: showDetails ? pointGivingCards : undefined,
       expansionYellowCards: showDetails ? expansionCards : undefined,
     });
-  };
+  }, [showDetails, directPoints, yellowShipPosition, chainLinksUsed, totalYellowCards, pointGivingCards, expansionCards, onUpdate]);
 
   useEffect(() => {
     handleUpdate();
-  }, [directPoints, yellowShipPosition, chainLinksUsed, totalYellowCards, pointGivingCards, expansionCards, showDetails]);
+  }, [handleUpdate]);
 
   return (
     <ScoreCategory
@@ -963,10 +960,10 @@ function CommercialScoringSection({
 }
 
 // Science (Green) Scoring Section
-function ScienceScoringSection({ 
-  playerScore, 
-  expansions, 
-  onUpdate 
+function ScienceScoringSection({
+  playerScore,
+  expansions,
+  onUpdate
 }: {
   playerScore: PlayerEndGameScore;
   expansions: any;
@@ -979,13 +976,14 @@ function ScienceScoringSection({
   const [gear, setGear] = useState(playerScore.scoring.science.gear || 0);
   const [nonGreenSymbols, setNonGreenSymbols] = useState(playerScore.scoring.science.nonGreenSymbols || 0);
 
-  const calculateSciencePoints = () => {
+  // Inside ScienceScoringSection component
+  const calculateSciencePoints = useCallback(() => {
     const sets = Math.min(compass, tablet, gear);
     const squares = (compass * compass) + (tablet * tablet) + (gear * gear);
     return (sets * 7) + squares;
-  };
+  }, [compass, tablet, gear]);
 
-  const handleUpdate = () => {
+  const handleUpdate = useCallback(() => {
     const calculatedPoints = showDetails ? calculateSciencePoints() : undefined;
     onUpdate({
       directPoints: showDetails ? undefined : directPoints,
@@ -995,11 +993,11 @@ function ScienceScoringSection({
       nonGreenSymbols: showDetails ? nonGreenSymbols : undefined,
       calculatedPoints,
     });
-  };
+  }, [showDetails, calculateSciencePoints, directPoints, compass, tablet, gear, nonGreenSymbols, onUpdate]);
 
   useEffect(() => {
     handleUpdate();
-  }, [directPoints, compass, tablet, gear, nonGreenSymbols, showDetails]);
+  }, [handleUpdate]);
 
   return (
     <ScoreCategory
@@ -1082,15 +1080,15 @@ function ScienceScoringSection({
             <Text style={{ color: '#6366F1', fontSize: 14, fontWeight: 'bold', marginBottom: 8 }}>
               🧮 Science Calculation
             </Text>
-            
+
             <Text style={{ color: '#F3E7D3', fontSize: 12, marginBottom: 2 }}>
               Sets of 3 different: {Math.min(compass, tablet, gear)} × 7 = {Math.min(compass, tablet, gear) * 7} points
             </Text>
-            
+
             <Text style={{ color: '#F3E7D3', fontSize: 12, marginBottom: 2 }}>
               Symbol squares: {compass}² + {tablet}² + {gear}² = {(compass * compass) + (tablet * tablet) + (gear * gear)} points
             </Text>
-            
+
             <View style={{
               backgroundColor: 'rgba(99, 102, 241, 0.2)',
               borderRadius: 6,
@@ -1116,14 +1114,14 @@ function ScienceScoringSection({
 }
 
 // Fixed Bottom Section
-function FixedBottomSection({ 
-  playerScore, 
-  allPlayersComplete, 
-  currentIndex, 
-  totalPlayers, 
-  onNavigate, 
-  onComplete, 
-  onBack 
+function FixedBottomSection({
+  playerScore,
+  allPlayersComplete,
+  currentIndex,
+  totalPlayers,
+  onNavigate,
+  onComplete,
+  onBack
 }: {
   playerScore: PlayerEndGameScore;
   allPlayersComplete: boolean;

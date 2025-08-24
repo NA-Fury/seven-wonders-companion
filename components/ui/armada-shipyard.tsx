@@ -16,7 +16,7 @@ import { Shipyard, ShipyardTrack, SHIPYARDS_DATABASE } from '../../data/wondersD
 import { useSetupStore } from '../../store/setupStore';
 
 interface ArmadaShipyardSelectorProps {
-  players: Array<{ id: string; name: string }>;
+  players: { id: string; name: string }[];
   onComplete: () => void;
   onBack: () => void;
 }
@@ -208,7 +208,7 @@ interface ShipyardPreviewCardProps {
   shipyard: Shipyard;
   onPress: () => void;
   onSelect: (playerId: string) => void;
-  availablePlayers: Array<{ id: string; name: string }>;
+  availablePlayers: { id: string; name: string }[];
 }
 
 function ShipyardPreviewCard({ shipyard, onPress, onSelect, availablePlayers }: ShipyardPreviewCardProps) {

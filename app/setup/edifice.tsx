@@ -12,7 +12,7 @@ import {
 import { useSetupStore } from '../../store/setupStore';
 
 export default function EdificeSelectionScreen() {
-  const { players, expansions, edificeProjects, setEdificeProjects } = useSetupStore();
+  const { players, edificeProjects, setEdificeProjects } = useSetupStore();
   const [selectedProjects, setSelectedProjects] = useState(edificeProjects);
   const [selectionMode, setSelectionMode] = useState<'manual' | 'random'>('manual');
   const [detailProject, setDetailProject] = useState<EdificeProject | null>(null);

@@ -1,7 +1,7 @@
 // app/setup/wonders.tsx - Fixed version with proper Armada integration and expansion filtering
 import { router } from 'expo-router';
 import React, { useState } from 'react';
-import { Alert, Dimensions, Platform, ScrollView, View } from 'react-native';
+import { Alert, Platform, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button, Card, H1, H2, P } from '../../components/ui';
 import { ProperArmadaShipyardSelector } from '../../components/ui/proper-armada-shipyard';
@@ -9,8 +9,6 @@ import { PlayerWonderDisplay, WonderAssignmentControls } from '../../components/
 import { WonderCard } from '../../components/ui/wonder-card';
 import { WONDERS_DATABASE, Wonder } from '../../data/wondersDatabase';
 import { useSetupStore } from '../../store/setupStore';
-
-const { width } = Dimensions.get('window');
 
 export default function WonderAssignmentScreen() {
   const { players, seating, expansions, assignWonder, wonders } = useSetupStore();

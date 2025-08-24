@@ -1,9 +1,9 @@
 // components/scoring/CoreScoringInput.tsx - Milestone 5 Core Scoring Components
 import React, { useState } from 'react';
-import { View, Text, ScrollView, Alert } from 'react-native';
-import { H1, H2, P, Card, Button } from '../ui';
-import { NumericInput, ToggleButtonGroup, ScoreCategory } from '../ui/scoring';
+import { Alert, ScrollView, Text, View } from 'react-native';
 import { Enhanced7WondersScoringEngine, ScoringInput } from '../../lib/scoring/enhancedScoringEngine';
+import { Button, Card, H1, P } from '../ui';
+import { NumericInput, ScoreCategory, ToggleButtonGroup } from '../ui/scoring';
 
 interface CoreScoringInputProps {
   playerId: string;
@@ -40,8 +40,8 @@ export function CoreScoringInput({
   // Card points
   const [civilianPoints, setCivilianPoints] = useState(0);
   const [commercialPoints, setCommercialPoints] = useState(0);
-  const [militaryStrength, setMilitaryStrength] = useState(0);
-  
+  const [militaryStrength] = useState(0); // Removed unused setter
+
   // Science symbols
   const [compass, setCompass] = useState(0);
   const [tablet, setTablet] = useState(0);

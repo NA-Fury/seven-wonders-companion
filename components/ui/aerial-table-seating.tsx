@@ -1,29 +1,29 @@
 // components/ui/aerial-table-seating.tsx - Enhanced with modes and fixed centering
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
-  View,
-  Text,
-  Pressable,
   Dimensions,
   Modal,
-  ScrollView,
   Platform,
-  type TextProps, 
-  type TextStyle 
+  Pressable,
+  ScrollView,
+  Text,
+  View,
+  type TextProps,
+  type TextStyle
 } from 'react-native';
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withSpring,
-  withTiming,
-  interpolateColor,
-  runOnJS,
-} from 'react-native-reanimated';
 import {
   Gesture,
   GestureDetector,
   GestureHandlerRootView,
 } from 'react-native-gesture-handler';
+import Animated, {
+  interpolateColor,
+  runOnJS,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  withTiming,
+} from 'react-native-reanimated';
 
 const { width } = Dimensions.get('window');
 const TABLE_SIZE = Math.min(width - 80, 320);
@@ -464,7 +464,6 @@ function DirectionalArrows({ playerCount, mode, config, tableSize }: Directional
             const toPos = getArrowPosition(toIndex, playerCount, arrowRadius);
             
             const angle = Math.atan2(toPos.y - fromPos.y, toPos.x - fromPos.x) * 180 / Math.PI;
-            const distance = Math.sqrt(Math.pow(toPos.x - fromPos.x, 2) + Math.pow(toPos.y - fromPos.y, 2));
             
             return (
               <View
@@ -534,10 +533,10 @@ function PlayerSeat({
     ),
   }));
 
-  React.useEffect(() => {
+  useEffect(() => {
     glowIntensity.value = withTiming(isSelected ? 1 : 0, { duration: 250 });
     scale.value = withSpring(isSelected ? 1.1 : 1);
-  }, [isSelected]);
+  }, [isSelected, glowIntensity, scale]);
 
   return (
     <View
@@ -1040,9 +1039,17 @@ function DragDropPlayerItem({
 
   const ITEM_HEIGHT = 80;
 
+  useEffect(() => {
+    // Your animation logic
+  }, [scale]);
+
+  useEffect(() => {
+    // Your spacer logic
+  }, [spacerHeight]);
+
   React.useEffect(() => {
     spacerHeight.value = withSpring(isHovering ? ITEM_HEIGHT : 0);
-  }, [isHovering]);
+  }, [isHovering, spacerHeight, ITEM_HEIGHT]);
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [

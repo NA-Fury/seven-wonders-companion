@@ -1,41 +1,22 @@
 // components/scoring/connected_scoring_system.tsx - Fixed and fully integrated
-import React, { useState, useEffect } from 'react';
-import { 
-  ChevronLeft, 
-  ChevronRight, 
-  Trophy, 
-  Calculator, 
-  Eye, 
-  RotateCcw, 
-  Zap, 
-  Crown, 
-  Shield, 
-  Building, 
-  Coins, 
-  Beaker, 
-  Star,
-  AlertCircle
+import {
+  AlertCircle,
+  ChevronLeft,
+  ChevronRight,
+  Trophy,
+  Zap
 } from 'lucide-react-native';
-import { View, Text, ScrollView, Pressable, TextInput, Alert, StyleSheet } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 // Store and database imports
-import { useSetupStore, type SetupPlayer, type Expansions } from '../../store/setupStore';
-import { WONDERS_DATABASE } from '../../data/wondersDatabase';
 import { ARMADA_SHIPYARDS, type ArmadaShipyard } from '../../data/armadaDatabase';
-import { ALL_EDIFICE_PROJECTS } from '../../data/edificeDatabase';
+import { WONDERS_DATABASE } from '../../data/wondersDatabase';
+import { useSetupStore, type SetupPlayer } from '../../store/setupStore';
 
 // Enhanced scoring utilities
-import { 
-  ScienceCalculator, 
-  MilitaryCalculator, 
-  ScoringSummaryGenerator,
-  useAdvancedScoring,
-  type ScienceCalculation,
-  type MilitaryCalculation 
-} from '../../lib/scoring/advancedScoringUtils';
-
-import { AnimatedButton, LoadingState, EmptyState } from '../ui/enhanced';
+import { EmptyState, LoadingState } from '../ui/enhanced';
 
 // Type definitions for scoring
 interface WonderData {
@@ -109,62 +90,74 @@ interface NeighborData {
   rightIndex: number;
 }
 
-const EMPTY_CONFLICTS: NonNullable<ScoreCategory['conflicts']> = {
-  age1: { left: 'tie', right: 'tie' },
-  age2: { left: 'tie', right: 'tie' },
-  age3: { left: 'tie', right: 'tie' },
-};
-
 export default function SevenWondersEndGameScoring() {
+  // keep only the values we actually use from the store
   const { 
-    players, 
-    seating, 
-    expansions, 
-    wonders, 
+    players,
+    expansions,
+    wonders,
     edificeProjects,
     getOrderedPlayers,
-    getPlayerNeighbors 
   } = useSetupStore();
   
   const [currentPlayerIndex, setCurrentPlayerIndex] = useState<number>(0);
   const [playerScores, setPlayerScores] = useState<PlayerScores>({});
   const [allPlayersComplete, setAllPlayersComplete] = useState<boolean>(false);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isLoading] = useState<boolean>(false); // Removed unused setter
 
   const orderedPlayers = getOrderedPlayers();
   const currentPlayer = orderedPlayers[currentPlayerIndex];
 
-  // Validation check
-  if (!players || players.length === 0) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <EmptyState
-          title="Setup Required"
-          subtitle="No players found. Please complete game setup first."
-          action={{
-            title: "Go to Setup",
-            onPress: () => {
-              // Navigate to setup - implement navigation logic
-              Alert.alert('Navigation', 'Please complete game setup first');
-            }
-          }}
-          icon={<AlertCircle size={48} color="#EF4444" />}
-        />
-      </SafeAreaView>
-    );
-  }
+  // NOTE: we render validation UI after hooks (below) to keep hooks order stable.
+  // Keep hook usage unconditional: compute "all players complete" whenever playerScores or orderedPlayers change.
+  React.useEffect(() => {
+    const complete = orderedPlayers.length > 0 && orderedPlayers.every(player => {
+      const scores = playerScores[player.id];
+      if (!scores) return false;
+      const requiredCategories = ['wonder', 'military', 'civilian', 'commercial', 'science'];
+      const completedCategories = requiredCategories.filter(cat =>
+        scores[cat] && (
+          (scores[cat].directPoints && scores[cat].directPoints > 0) ||
+          (scores[cat].calculatedPoints && scores[cat].calculatedPoints > 0)
+        )
+      );
+      return completedCategories.length >= 5;
+    });
+    setAllPlayersComplete(complete);
+  }, [playerScores, orderedPlayers]);
 
-  if (!currentPlayer) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <EmptyState
-          title="Player Error"
-          subtitle="Invalid player index. Please restart scoring."
-          icon={<AlertCircle size={48} color="#EF4444" />}
-        />
-      </SafeAreaView>
-    );
-  }
+  const calculateFinalScores = () => {
+    const finalScores = orderedPlayers.map(player => {
+      const scores = playerScores[player.id] || {};
+      const total = calculatePlayerTotal(player);
+      
+      return {
+        player,
+        scores,
+        total,
+        ranking: 0 // Will be calculated after sorting
+      };
+    });
+
+    // Sort by total score and assign rankings
+    finalScores.sort((a, b) => b.total - a.total);
+    finalScores.forEach((score, index) => {
+      score.ranking = index + 1;
+    });
+
+    return finalScores;
+  };
+
+  const handleContinue = () => {
+    if (allPlayersComplete) {
+      const finalScores = calculateFinalScores();
+      console.log('Final Scores:', finalScores);
+      Alert.alert('Complete!', 'All players complete! Proceeding to results and podium!');
+      // Here you would navigate to results screen
+    } else if (currentPlayerIndex < orderedPlayers.length - 1) {
+      navigateToPlayer('next');
+    }
+  };
 
   const getPlayerWonderData = (player: SetupPlayer): WonderData | null => {
     if (!player || !wonders) return null;
@@ -267,50 +260,6 @@ export default function SevenWondersEndGameScoring() {
     }
   };
 
-  const checkAllPlayersComplete = () => {
-    const complete = orderedPlayers.every(player => 
-      getScoreStatus(player).isComplete
-    );
-    setAllPlayersComplete(complete);
-  };
-
-  useEffect(() => {
-    checkAllPlayersComplete();
-  }, [playerScores, orderedPlayers]);
-
-  const calculateFinalScores = () => {
-    const finalScores = orderedPlayers.map(player => {
-      const scores = playerScores[player.id] || {};
-      const total = calculatePlayerTotal(player);
-      
-      return {
-        player,
-        scores,
-        total,
-        ranking: 0 // Will be calculated after sorting
-      };
-    });
-
-    // Sort by total score and assign rankings
-    finalScores.sort((a, b) => b.total - a.total);
-    finalScores.forEach((score, index) => {
-      score.ranking = index + 1;
-    });
-
-    return finalScores;
-  };
-
-  const handleContinue = () => {
-    if (allPlayersComplete) {
-      const finalScores = calculateFinalScores();
-      console.log('Final Scores:', finalScores);
-      Alert.alert('Complete!', 'All players complete! Proceeding to results and podium!');
-      // Here you would navigate to results screen
-    } else if (currentPlayerIndex < orderedPlayers.length - 1) {
-      navigateToPlayer('next');
-    }
-  };
-
   const wonderData = getPlayerWonderData(currentPlayer);
   const scoreStatus = getScoreStatus(currentPlayer);
   const totalPoints = calculatePlayerTotal(currentPlayer);
@@ -326,6 +275,39 @@ export default function SevenWondersEndGameScoring() {
     return (
       <SafeAreaView style={styles.container}>
         <LoadingState message="Calculating scores..." />
+      </SafeAreaView>
+    );
+  }
+
+  // Validation UI (rendered after hooks)
+  if (!players || players.length === 0) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <EmptyState
+          title="Setup Required"
+          subtitle="No players found. Please complete game setup first."
+          action={{
+            title: "Go to Setup",
+            onPress: () => {
+              // Navigate to setup - implement navigation logic
+               
+              Alert.alert('Navigation', 'Please complete game setup first');
+            }
+          }}
+          icon={<AlertCircle size={48} color="#EF4444" />}
+        />
+      </SafeAreaView>
+    );
+  }
+
+  if (!currentPlayer) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <EmptyState
+          title="Player Error"
+          subtitle="Invalid player index. Please restart scoring."
+          icon={<AlertCircle size={48} color="#EF4444" />}
+        />
       </SafeAreaView>
     );
   }
@@ -346,13 +328,13 @@ export default function SevenWondersEndGameScoring() {
                 ]}
               >
                 <ChevronLeft size={20} color={currentPlayerIndex === 0 ? '#9CA3AF' : 'white'} />
-                <Text style={[
-                  styles.navButtonText,
-                  currentPlayerIndex === 0 && styles.navButtonTextDisabled
-                ]}>
-                  Previous
-                </Text>
-              </Pressable>
+                  <Text style={[
+                    styles.navButtonText,
+                    currentPlayerIndex === 0 && styles.navButtonTextDisabled
+                  ]}>
+                    Previous
+                  </Text>
+                </Pressable>
 
               <View style={styles.playerInfo}>
                 <Text style={styles.playerName}>{currentPlayer.name}</Text>

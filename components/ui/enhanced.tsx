@@ -38,10 +38,8 @@ export function AnimatedButton({
   style,
 }: AnimatedButtonProps) {
   const scaleAnim = useRef(new Animated.Value(1)).current;
-  const [isPressed, setIsPressed] = useState(false);
 
   const handlePressIn = () => {
-    setIsPressed(true);
     Animated.spring(scaleAnim, {
       toValue: 0.95,
       useNativeDriver: true,
@@ -51,7 +49,6 @@ export function AnimatedButton({
   };
 
   const handlePressOut = () => {
-    setIsPressed(false);
     Animated.spring(scaleAnim, {
       toValue: 1,
       useNativeDriver: true,

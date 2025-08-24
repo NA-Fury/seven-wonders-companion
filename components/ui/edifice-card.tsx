@@ -1,5 +1,5 @@
 // components/ui/edifice-card.tsx
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
   View,
   Text,
@@ -44,10 +44,10 @@ export function EdificeProjectCard({
     ),
   }));
 
-  React.useEffect(() => {
+  useEffect(() => {
     backgroundColor.value = withTiming(isSelected ? 1 : 0, { duration: 200 });
     scale.value = withSpring(isSelected ? 1.05 : 1);
-  }, [isSelected]);
+  }, [isSelected, backgroundColor, scale]);
 
   const handlePress = () => {
     if (onSelect) {

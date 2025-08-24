@@ -1,6 +1,6 @@
 // components/results/ResultsAnalysisSystem.tsx - Enhanced for React Native
 import React, { useState } from 'react';
-import { View, Text, ScrollView, Pressable, Dimensions, Alert, Share } from 'react-native';
+import { View, Text, ScrollView, Pressable, Alert, Share } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { 
   Trophy, 
@@ -17,8 +17,6 @@ import {
   Star
 } from 'lucide-react-native';
 import { Enhanced7WondersScoringEngine } from '../../lib/scoring/enhancedScoringEngine';
-
-const { width } = Dimensions.get('window');
 
 interface ResultsAnalysisProps {
   playerScores: any[];
@@ -565,12 +563,6 @@ function ExportOptions({ rankedScores, gameSetup, onExport }: any) {
 
   const handleShare = async () => {
     try {
-      const gameData = {
-        results: rankedScores,
-        setup: gameSetup,
-        timestamp: new Date().toISOString(),
-      };
-      
       await Share.share({
         message: `7 Wonders Game Results\nWinner: ${rankedScores[0].playerName} with ${rankedScores[0].total} points!`,
         title: '7 Wonders Results',
@@ -824,13 +816,13 @@ function DetailedScoreBreakdown({ player }: any) {
       borderWidth: 1,
       borderColor: 'rgba(243, 231, 211, 0.1)',
     }}>
-      <Text style={{ 
-        fontSize: 18, 
-        fontWeight: 'bold', 
-        color: '#F3E7D3', 
+      <Text style={{
+        fontSize: 18,
+        fontWeight: 'bold',
+        color: '#F3E7D3',
         marginBottom: 16
       }}>
-        {player.playerName}'s Score Breakdown
+        {`${player.playerName}'s Score Breakdown`}
       </Text>
       
       <View style={{ gap: 12 }}>

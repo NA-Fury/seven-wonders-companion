@@ -3,6 +3,9 @@ import React, { useState } from 'react';
 import { View, Text, Pressable, TextInput } from 'react-native';
 import { Card } from './index';
 
+// Import the scoring engine for the results component
+import { Enhanced7WondersScoringEngine } from '../../lib/scoring/enhancedScoringEngine';
+
 // Numeric Input Component
 interface NumericInputProps {
   label: string;
@@ -513,6 +516,3 @@ export function ScoringResults({ playerScores, gameSetup, onStartNewGame, onReca
     </View>
   );
 }
-
-// Import the scoring engine for the results component
-import { Enhanced7WondersScoringEngine } from '../../lib/scoring/enhancedScoringEngine';

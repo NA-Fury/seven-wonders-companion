@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-const cx = (...a: Array<string | undefined | null | false>) => a.filter(Boolean).join(' ');
+const cx = (...a: (string | undefined | null | false)[]) => a.filter(Boolean).join(' ');
 
 export function Screen({ children, className, ...rest }: ViewProps & { className?: string }) {
   return (

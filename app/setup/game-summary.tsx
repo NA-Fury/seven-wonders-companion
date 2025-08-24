@@ -402,7 +402,7 @@ function EdificeProjectsSummary() {
             }}
           >
             <Text style={{ color: '#EF4444', fontSize: 13 }}>
-              Error: Project "{projectId}" not found
+              {`Error: "${projectId}" not found`}
             </Text>
           </View>
         );

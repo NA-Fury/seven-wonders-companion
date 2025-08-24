@@ -3,7 +3,6 @@ import React from 'react';
 import {
   View,
   Text,
-  ScrollView,
   Pressable,
 } from 'react-native';
 import { EdificeProjectCard } from './edifice-card';

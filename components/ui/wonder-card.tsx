@@ -1,17 +1,17 @@
 // components/ui/wonder-card.tsx - Fixed flipping and side state management
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
-  View,
-  Text,
-  Pressable,
   Dimensions,
+  Pressable,
+  Text,
+  View,
 } from 'react-native';
 import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withTiming,
   interpolate,
   runOnJS,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
 } from 'react-native-reanimated';
 import { Wonder, WonderSide, WonderStage } from '../../data/wondersDatabase';
 
@@ -43,7 +43,11 @@ export function WonderCard({
   useEffect(() => {
     setCurrentSide(selectedSide);
     flipRotation.value = selectedSide === 'night' ? 180 : 0;
-  }, [selectedSide]);
+  }, [selectedSide, flipRotation]); // Added flipRotation to dependencies
+
+  useEffect(() => {
+    // Your flip animation logic
+  }, [flipRotation]);
 
   const handleFlip = () => {
     if (isFlipping) return;
