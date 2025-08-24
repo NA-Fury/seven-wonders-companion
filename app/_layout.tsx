@@ -20,6 +20,9 @@ export default function RootLayout() {
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
       <Stack>
+        {/* Make app/index.tsx the default/home route */}
+        <Stack.Screen name="index" options={{ headerShown: false }} />
+        {/* keep the tabs group available if you still need it */}
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="+not-found" />
       </Stack>
