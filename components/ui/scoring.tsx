@@ -5,7 +5,7 @@ import { Card } from './index';
 
 // Import the scoring engine for the results component
 import { Enhanced7WondersScoringEngine } from '../../lib/scoring/enhancedScoringEngine';
-import type { PlayerScore } from '../../types/game';
+import type { PlayerScore } from '../../lib/scoring/enhancedScoringEngine';
 
 // Numeric Input Component
 interface NumericInputProps {
@@ -412,7 +412,7 @@ function ScoreBreakdownRow({ icon, label, value }: { icon: string; label: string
 
 // Results Screen Component
 interface ScoringResultsProps {
-  playerScores: any[];
+  playerScores: PlayerScore[];
   gameSetup: any;
   onStartNewGame: () => void;
   onRecalculate: () => void;
