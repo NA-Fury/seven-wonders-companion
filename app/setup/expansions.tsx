@@ -5,7 +5,7 @@ import { Platform, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button, Card, H1, H2, P, ToggleRow } from '../../components/ui';
 import { useSetupStore } from '../../store/setupStore';
-import { getWonderBoardSummary } from './getWonderBoardSummary';
+import { getWonderBoardSummary } from '../../utils/getWonderBoardSummary';
 
 export default function ExpansionsScreen() {
   const { expansions, toggleExpansion } = useSetupStore();
