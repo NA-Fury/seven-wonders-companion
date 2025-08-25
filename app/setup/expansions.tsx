@@ -5,6 +5,7 @@ import { Platform, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button, Card, H1, H2, P, ToggleRow } from '../../components/ui';
 import { useSetupStore } from '../../store/setupStore';
+import { getWonderBoardSummary } from './getWonderBoardSummary';
 
 export default function ExpansionsScreen() {
   const { expansions, toggleExpansion } = useSetupStore();
@@ -90,10 +91,7 @@ export default function ExpansionsScreen() {
                `Base Game + ${getSelectedCount()} Expansion${getSelectedCount() > 1 ? 's' : ''}`}
             </P>
             <P className="text-parchment/60 text-sm">
-              {getSelectedCount() === 0 ? 
-                '7 original wonder boards available' :
-                `${7 + getSelectedCount() * 2} wonder boards available (7 base + ${getSelectedCount() * 2} expansion)`
-              }
+              {getWonderBoardSummary(getSelectedCount())}
             </P>
             
             {getSelectedCount() > 0 && (
