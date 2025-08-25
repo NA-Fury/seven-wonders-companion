@@ -1,5 +1,5 @@
 // components/scoring/ComprehensiveEndGameScoring.tsx
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { startTransition, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
   InteractionManager,
@@ -207,7 +207,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(28,26,26,0.98)',
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(196, 162, 76, 0.2)',
-    paddingVertical: 12,
+    paddingVertical: 8,
     paddingHorizontal: 16,
   },
   headerContent: {
@@ -216,9 +216,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   navButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: '#C4A24C',
     alignItems: 'center',
     justifyContent: 'center',
@@ -227,7 +227,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(107, 114, 128, 0.3)',
   },
   navButtonText: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: 'bold',
     color: '#1C1A1A',
   },
@@ -240,7 +240,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
   },
   playerName: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: 'bold',
     color: '#C4A24C',
     marginBottom: 2,
@@ -256,7 +256,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: 16,
-    paddingBottom: 160,
+    paddingBottom: 120,
   },
   motivationalMessage: {
     backgroundColor: 'rgba(196, 162, 76, 0.15)',
@@ -477,31 +477,31 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(17, 24, 39, 0.98)',
     borderTopWidth: 1,
     borderTopColor: 'rgba(196, 162, 76, 0.2)',
-    padding: 14,
-    paddingBottom: Platform.OS === 'ios' ? 28 : 14,
+    padding: 8,
+    paddingBottom: Platform.OS === 'ios' ? 20 : 8,
   },
   totalDisplay: {
     alignItems: 'center',
-    marginBottom: 10,
+    marginBottom: 6,
   },
   totalValue: {
-    fontSize: 32,
+    fontSize: 24,
     fontWeight: '900',
     color: '#C4A24C',
     marginBottom: 2,
   },
   totalDescription: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '600',
     textAlign: 'center',
   },
   footerButtons: {
     flexDirection: 'row',
-    gap: 10,
+    gap: 8,
   },
   footerButton: {
     flex: 1,
-    paddingVertical: 10,
+    paddingVertical: 8,
     borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
@@ -756,7 +756,6 @@ export default function ComprehensiveEndGameScoring() {
   const [isInitialized, setIsInitialized] = useState(false);
 
   const calculationCache = useRef<Map<string, number>>(new Map());
-  const updateTimeout = useRef<NodeJS.Timeout | null>(null);
 
   // Initialize scores for all players
   useEffect(() => {
@@ -807,17 +806,15 @@ export default function ComprehensiveEndGameScoring() {
     if (!currentPlayer) return;
     const playerId = currentPlayer.id;
 
-    if (updateTimeout.current) {
-      clearTimeout(updateTimeout.current);
-    }
-
-    setPlayerScores(prev => ({
-      ...prev,
-      [playerId]: {
-        ...prev[playerId],
-        [field]: value
-      }
-    }));
+    startTransition(() => {
+      setPlayerScores(prev => ({
+        ...prev,
+        [playerId]: {
+          ...prev[playerId],
+          [field]: value
+        }
+      }));
+    });
 
     calculationCache.current.delete(`${playerId}-wonder`);
     calculationCache.current.delete(`${playerId}-treasure`);
