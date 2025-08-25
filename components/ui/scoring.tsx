@@ -5,6 +5,7 @@ import { Card } from './index';
 
 // Import the scoring engine for the results component
 import { Enhanced7WondersScoringEngine } from '../../lib/scoring/enhancedScoringEngine';
+import type { PlayerScore } from '../../types/game';
 
 // Numeric Input Component
 interface NumericInputProps {
@@ -441,7 +442,7 @@ export function ScoringResults({ playerScores, gameSetup, onStartNewGame, onReca
         7 Wonders Game Complete
       </Text>
 
-      {rankedScores.map((score, index) => (
+      {rankedScores.map((score: PlayerScore, index: number) => (
         <ScoreSummary
           key={score.playerId}
           playerScore={score}
