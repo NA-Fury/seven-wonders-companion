@@ -2,6 +2,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
+import { shuffleArray } from '../utils/shuffle';
 
 export type GameHistoryEntry = {
   id: string;
@@ -241,10 +242,8 @@ export const useSetupStore = create<SetupState & SetupActions>()(
 
       randomizeSeating: () => {
         const state = get();
-        const shuffled = [...state.players]
-          .sort(() => Math.random() - 0.5)
-          .map(p => p.id);
-        
+        const shuffled = shuffleArray(state.players).map(p => p.id);
+
         set({ seating: shuffled });
       },
 
@@ -263,7 +262,7 @@ export const useSetupStore = create<SetupState & SetupActions>()(
       randomizeWonders: () => {
         const state = get();
         const availableWonders = get().getAvailableWonders();
-        const shuffledWonders = [...availableWonders].sort(() => Math.random() - 0.5);
+        const shuffledWonders = shuffleArray(availableWonders);
         
         const newWonders: Record<string, WonderAssignment> = {};
         state.players.forEach((player, index) => {
