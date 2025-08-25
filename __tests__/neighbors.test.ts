@@ -1,8 +1,12 @@
 import { neighbors } from '../lib/neighbors';
 
 describe('neighbors', () => {
-  it('returns correct neighbors for first seat', () => {
+  it('returns correct neighbors for seat 0 in a 3-player game', () => {
     expect(neighbors(0, 3)).toEqual({ left: 2, right: 1 });
+  });
+
+  it('returns correct neighbors for seat 2 in a 5-player game', () => {
+    expect(neighbors(2, 5)).toEqual({ left: 1, right: 3 });
   });
 
   it('returns correct neighbors for last seat', () => {
