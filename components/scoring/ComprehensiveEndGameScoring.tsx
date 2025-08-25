@@ -1175,12 +1175,13 @@ export default function ComprehensiveEndGameScoring() {
                 };
                 
                 return (
-                  <ToggleButton
-                    label={`Stage ${index + 1} (${stage.points || stage.effect?.value || 0} pts)`}
-                    value={currentScore.wonderStagesBuilt?.[index] || false}
-                    onToggle={handleToggle}
-                    icon="🏗️"
-                    description={stage.effect?.description || ''}
+                    <ToggleButton
+                      key={`stage-${index}`}
+                      label={`Stage ${index + 1} (${stage.points || stage.effect?.value || 0} pts)`}
+                      value={currentScore.wonderStagesBuilt?.[index] || false}
+                      onToggle={handleToggle}
+                      icon="🏗️"
+                      description={stage.effect?.description || ''}
                   />
                 );
               })}
@@ -1349,13 +1350,14 @@ export default function ComprehensiveEndGameScoring() {
                   <Text style={[styles.cardDescription, { marginBottom: 8 }]}>
                     Which ages did you play the dove?
                   </Text>
-                  {[1, 2, 3].map((age) => (
-                    <ToggleButton
-                      label={`Age ${age}`}
-                      value={currentScore.militaryDoveAges?.[age - 1] || false}
-                      onToggle={(value) => {
-                        const newAges = [...(currentScore.militaryDoveAges || [false, false, false])];
-                        newAges[age - 1] = value;
+                    {[1, 2, 3].map((age) => (
+                      <ToggleButton
+                        key={`dove-age-${age}`}
+                        label={`Age ${age}`}
+                        value={currentScore.militaryDoveAges?.[age - 1] || false}
+                        onToggle={(value) => {
+                          const newAges = [...(currentScore.militaryDoveAges || [false, false, false])];
+                          newAges[age - 1] = value;
                         updatePlayerScore('militaryDoveAges', newAges);
                       }}
                       icon="🏛️"
@@ -1806,13 +1808,14 @@ export default function ComprehensiveEndGameScoring() {
                     <Text style={[styles.cardDescription, { marginBottom: 8 }]}>
                       Which ages did you play the blue dove?
                     </Text>
-                    {[1, 2, 3].map((age) => (
-                      <ToggleButton
-                        label={`Age ${age}`}
-                        value={currentScore.navyDoveAges?.[age - 1] || false}
-                        onToggle={(value) => {
-                          const newAges = [...(currentScore.navyDoveAges || [false, false, false])];
-                          newAges[age - 1] = value;
+                      {[1, 2, 3].map((age) => (
+                        <ToggleButton
+                          key={`navy-dove-age-${age}`}
+                          label={`Age ${age}`}
+                          value={currentScore.navyDoveAges?.[age - 1] || false}
+                          onToggle={(value) => {
+                            const newAges = [...(currentScore.navyDoveAges || [false, false, false])];
+                            newAges[age - 1] = value;
                           updatePlayerScore('navyDoveAges', newAges);
                         }}
                         icon="🏛️"
@@ -1905,14 +1908,15 @@ export default function ComprehensiveEndGameScoring() {
                   const project = getProjectById(projectId);
                   if (!project) return null;
                   
-                  return (
-                    <ToggleButton
-                      label={`Age ${ageKey.slice(-1)}: ${project.name}`}
-                      value={currentScore.edificeProjectsContributed?.includes(projectId) || false}
-                      onToggle={(value) => {
-                        const contributed = currentScore.edificeProjectsContributed || [];
-                        if (value && !contributed.includes(projectId)) {
-                          updatePlayerScore('edificeProjectsContributed', [...contributed, projectId]);
+                    return (
+                      <ToggleButton
+                        key={ageKey}
+                        label={`Age ${ageKey.slice(-1)}: ${project.name}`}
+                        value={currentScore.edificeProjectsContributed?.includes(projectId) || false}
+                        onToggle={(value) => {
+                          const contributed = currentScore.edificeProjectsContributed || [];
+                          if (value && !contributed.includes(projectId)) {
+                            updatePlayerScore('edificeProjectsContributed', [...contributed, projectId]);
                         } else if (!value) {
                           updatePlayerScore('edificeProjectsContributed', contributed.filter(id => id !== projectId));
                         }
