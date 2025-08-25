@@ -63,18 +63,14 @@ export default function SeatingScreen() {
     );
   };
 
-  const handleContinue = () => {
-    setSeating(selectedSeating);
-    router.push('/setup/wonders');
-  };
+    const handleContinue = () => {
+      setSeating(selectedSeating);
+      router.push('/setup/wonders');
+    };
 
-  const handleBack = () => {
-    router.back();
-  };  
-
-  const getPlayerName = (playerId: string) => {
-    return players.find(p => p.id === playerId)?.name || 'Unknown';
-  };
+    const getPlayerName = (playerId: string) => {
+      return players.find(p => p.id === playerId)?.name || 'Unknown';
+    };
 
   const getNeighbors = (playerId: string) => {
     const index = selectedSeating.indexOf(playerId);

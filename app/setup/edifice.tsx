@@ -74,17 +74,8 @@ export default function EdificeSelectionScreen() {
     router.push('/setup/game-summary');
   };
 
-  // Update the back navigation to be more robust
-  const handleBack = () => {
-    if (expansions.armada) {
-      // Go back to wonder selection to show shipyards
-      router.push('/setup/wonders');
-    } else {
-      router.back();
-    }
-  };  
-
-  const isComplete = selectedProjects.age1 && selectedProjects.age2 && selectedProjects.age3;
+  const isComplete =
+    selectedProjects.age1 && selectedProjects.age2 && selectedProjects.age3;
 
   return (
     <Screen>
