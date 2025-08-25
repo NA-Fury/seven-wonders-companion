@@ -1,4 +1,4 @@
-import { getWonderBoardSummary } from '../app/setup/getWonderBoardSummary';
+import { getWonderBoardSummary } from '../utils/getWonderBoardSummary';
 
 describe('getWonderBoardSummary', () => {
   it('returns base message when no expansions selected', () => {
