@@ -28,23 +28,23 @@ export class Enhanced7WondersScoringEngine {
    * Calculates the total score for a player by summing all supported categories.
    */
   static calculateTotalScore(player: PlayerScore): number {
-    const categories: Array<number | undefined> = [
-      player.military?.total,
-      player.treasury,
-      player.wonder?.total,
-      player.civilian,
-      player.commercial,
-      player.science?.total,
-      player.guilds?.total,
-      player.leaders,
-      player.cities?.total,
-      player.armada?.total,
-      player.edifice?.total,
-      player.navy?.total,
-      player.islands?.total,
+    const categories: number[] = [
+      player.military?.total ?? 0,
+      player.treasury ?? 0,
+      player.wonder?.total ?? 0,
+      player.civilian ?? 0,
+      player.commercial ?? 0,
+      player.science?.total ?? 0,
+      player.guilds?.total ?? 0,
+      player.leaders ?? 0,
+      player.cities?.total ?? 0,
+      player.armada?.total ?? 0,
+      player.edifice?.total ?? 0,
+      player.navy?.total ?? 0,
+      player.islands?.total ?? 0,
     ];
 
-    return categories.reduce((sum, value) => sum + (value ?? 0), 0);
+    return categories.reduce((sum, value) => sum + value, 0);
   }
 
   /**
