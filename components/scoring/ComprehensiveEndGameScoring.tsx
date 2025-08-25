@@ -1,5 +1,5 @@
 // components/scoring/ComprehensiveEndGameScoring.tsx
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
     Alert,
     Dimensions,
@@ -8,7 +8,8 @@ import {
     StyleSheet,
     Text,
     TouchableOpacity,
-    View
+    View,
+    InteractionManager,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ARMADA_SHIPYARDS } from '../../data/armadaDatabase';
@@ -120,6 +121,81 @@ interface PlayerScoreData {
   citiesDirectPoints: number;
   armadaDirectPoints: number;
 }
+
+const createDefaultScore = (maxStages: number = 0): PlayerScoreData => ({
+  wonderDirectPoints: 0,
+  wonderShowDetails: false,
+  wonderStagesBuilt: new Array(maxStages).fill(false),
+  wonderEdificeStage: { completed: false },
+  treasureDirectPoints: 0,
+  treasureShowDetails: false,
+  treasureTotalCoins: 0,
+  treasurePermanentDebt: 0,
+  treasureCardDebt: 0,
+  treasureTaxDebt: 0,
+  treasurePiracyDebt: 0,
+  treasureCommercialDebt: 0,
+  militaryDirectPoints: 0,
+  militaryShowDetails: false,
+  militaryTotalStrength: 0,
+  militaryStrengthPerAge: [0, 0, 0],
+  militaryPlayedDove: false,
+  militaryDoveAges: [false, false, false],
+  militaryBoardingApplied: 0,
+  militaryBoardingReceived: 0,
+  militaryChainLinks: 0,
+  scienceDirectPoints: 0,
+  scienceShowDetails: false,
+  scienceCompass: 0,
+  scienceTablet: 0,
+  scienceGear: 0,
+  scienceNonCardCompass: 0,
+  scienceNonCardTablet: 0,
+  scienceNonCardGear: 0,
+  civilianDirectPoints: 0,
+  civilianShowDetails: false,
+  civilianShipPosition: 0,
+  civilianChainLinks: 0,
+  civilianTotalCards: 0,
+  commercialDirectPoints: 0,
+  commercialShowDetails: false,
+  commercialShipPosition: 0,
+  commercialChainLinks: 0,
+  commercialTotalCards: 0,
+  commercialPointCards: 0,
+  greenShipPosition: 0,
+  guildsDirectPoints: 0,
+  guildsShowDetails: false,
+  guildsCardsPlayed: [],
+  blackDirectPoints: 0,
+  blackShowDetails: false,
+  blackTotalCards: 0,
+  blackPointCards: 0,
+  blackNeighborPositive: 0,
+  blackNeighborNegative: 0,
+  blackPeaceDoves: 0,
+  leadersDirectPoints: 0,
+  leadersShowDetails: false,
+  leadersPlayed: [],
+  navyDirectPoints: 0,
+  navyShowDetails: false,
+  navyTotalStrength: 0,
+  navyPlayedBlueDove: false,
+  navyDoveAges: [false, false, false],
+  islandDirectPoints: 0,
+  islandShowDetails: false,
+  islandCards: [],
+  edificeDirectPoints: 0,
+  edificeShowDetails: false,
+  edificeRewards: 0,
+  edificePenalties: 0,
+  edificeProjectsContributed: [],
+  resourcesDirectPoints: 0,
+  resourcesBrownCards: 0,
+  resourcesGreyCards: 0,
+  citiesDirectPoints: 0,
+  armadaDirectPoints: 0,
+});
 
 const { width } = Dimensions.get('window');
 const isSmallScreen = width < 375;
@@ -470,19 +546,33 @@ interface NumericInputProps {
   icon?: string;
 }
 
-const NumericInput = React.memo(({ 
-  label, 
-  value, 
-  onChangeValue, 
-  min = 0, 
-  max = 100, 
-  step = 1, 
-  suffix = '', 
+const NumericInput = React.memo(({
+  label,
+  value,
+  onChangeValue,
+  min = 0,
+  max = 100,
+  step = 1,
+  suffix = '',
   helperText = '',
   icon = ''
 }: NumericInputProps) => {
   const canDecrement = value > min;
   const canIncrement = value < max;
+
+  const handleDecrement = useCallback(() => {
+    if (canDecrement) {
+      const newValue = Math.max(min, value - step);
+      requestAnimationFrame(() => onChangeValue(newValue));
+    }
+  }, [canDecrement, min, value, step, onChangeValue]);
+
+  const handleIncrement = useCallback(() => {
+    if (canIncrement) {
+      const newValue = Math.min(max, value + step);
+      requestAnimationFrame(() => onChangeValue(newValue));
+    }
+  }, [canIncrement, max, value, step, onChangeValue]);
 
   return (
     <View style={styles.numericInput}>
@@ -492,7 +582,7 @@ const NumericInput = React.memo(({
       </View>
       <View style={styles.numericInputControls}>
         <TouchableOpacity
-          onPress={() => canDecrement && onChangeValue(Math.max(min, value - step))}
+          onPress={handleDecrement}
           disabled={!canDecrement}
           style={[
             styles.numericInputButton,
@@ -506,14 +596,14 @@ const NumericInput = React.memo(({
             −
           </Text>
         </TouchableOpacity>
-        
+
         <View style={styles.numericInputValue}>
           <Text style={styles.numericInputValueText}>{value}</Text>
           {suffix ? <Text style={styles.numericInputSuffix}>{suffix}</Text> : null}
         </View>
-        
+
         <TouchableOpacity
-          onPress={() => canIncrement && onChangeValue(Math.min(max, value + step))}
+          onPress={handleIncrement}
           disabled={!canIncrement}
           style={[
             styles.numericInputButton,
@@ -546,43 +636,49 @@ interface ToggleButtonProps {
 }
 
 const ToggleButton = React.memo(({ 
-  label, 
-  value, 
+  label,
+  value,
   onToggle,
   description = '',
   icon = ''
-}: ToggleButtonProps) => (
-  <View style={styles.toggleButton}>
-    <TouchableOpacity 
-      onPress={() => onToggle(!value)} 
-      style={[
-        styles.toggleButtonContainer,
-        value ? styles.toggleButtonActive : styles.toggleButtonInactive
-      ]}
-    >
-      {icon ? <Text style={styles.toggleButtonIcon}>{icon}</Text> : null}
-      <View style={styles.toggleButtonContent}>
-        <Text style={[
-          styles.toggleButtonLabel,
-          value ? styles.toggleButtonLabelActive : styles.toggleButtonLabelInactive
-        ]}>
-          {label}
-        </Text>
-        {description ? (
-          <Text style={styles.toggleButtonDescription}>
-            {description}
+}: ToggleButtonProps) => {
+  const handlePress = useCallback(() => {
+    requestAnimationFrame(() => onToggle(!value));
+  }, [value, onToggle]);
+
+  return (
+    <View style={styles.toggleButton}>
+      <TouchableOpacity
+        onPress={handlePress}
+        style={[
+          styles.toggleButtonContainer,
+          value ? styles.toggleButtonActive : styles.toggleButtonInactive
+        ]}
+      >
+        {icon ? <Text style={styles.toggleButtonIcon}>{icon}</Text> : null}
+        <View style={styles.toggleButtonContent}>
+          <Text style={[
+            styles.toggleButtonLabel,
+            value ? styles.toggleButtonLabelActive : styles.toggleButtonLabelInactive
+          ]}>
+            {label}
           </Text>
-        ) : null}
-      </View>
-      <View style={[
-        styles.toggleButtonCheck,
-        value ? styles.toggleButtonCheckActive : styles.toggleButtonCheckInactive
-      ]}>
-        {value && <Text style={styles.toggleButtonCheckText}>✓</Text>}
-      </View>
-    </TouchableOpacity>
-  </View>
-));
+          {description ? (
+            <Text style={styles.toggleButtonDescription}>
+              {description}
+            </Text>
+          ) : null}
+        </View>
+        <View style={[
+          styles.toggleButtonCheck,
+          value ? styles.toggleButtonCheckActive : styles.toggleButtonCheckInactive
+        ]}>
+          {value && <Text style={styles.toggleButtonCheckText}>✓</Text>}
+        </View>
+      </TouchableOpacity>
+    </View>
+  );
+});
 
 interface CategorySectionProps {
   title: string;
@@ -656,132 +752,36 @@ export default function ComprehensiveEndGameScoring() {
   const [playerScores, setPlayerScores] = useState<{ [key: string]: PlayerScoreData }>({});
   const [isInitialized, setIsInitialized] = useState(false);
 
+  const calculationCache = useRef<Map<string, number>>(new Map());
+  const updateTimeout = useRef<NodeJS.Timeout | null>(null);
+
   // Initialize scores for all players
   useEffect(() => {
-    if (orderedPlayers.length === 0) return;
-    
-    const initialScores: { [key: string]: PlayerScoreData } = {};
-    orderedPlayers.forEach(player => {
-      if (!player) return;
-      
-      const wonderAssignment = wonders[player.id];
-      const wonderData = wonderAssignment?.boardId 
-        ? WONDERS_DATABASE.find(w => w.id === wonderAssignment.boardId)
-        : null;
-      
-      const side = wonderAssignment?.side || 'day';
-      const maxStages = side === 'day' 
-        ? wonderData?.daySide?.stages?.length || 0 
-        : wonderData?.nightSide?.stages?.length || 0;
-      
-      initialScores[player.id] = {
-        // Wonder
-        wonderDirectPoints: 0,
-        wonderShowDetails: false,
-        wonderStagesBuilt: new Array(maxStages).fill(false),
-        wonderEdificeStage: { completed: false },
-        
-        // Treasure
-        treasureDirectPoints: 0,
-        treasureShowDetails: false,
-        treasureTotalCoins: 0,
-        treasurePermanentDebt: 0,
-        treasureCardDebt: 0,
-        treasureTaxDebt: 0,
-        treasurePiracyDebt: 0,
-        treasureCommercialDebt: 0,
-        
-        // Military
-        militaryDirectPoints: 0,
-        militaryShowDetails: false,
-        militaryTotalStrength: 0,
-        militaryStrengthPerAge: [0, 0, 0],
-        militaryPlayedDove: false,
-        militaryDoveAges: [false, false, false],
-        militaryBoardingApplied: 0,
-        militaryBoardingReceived: 0,
-        militaryChainLinks: 0,
-        
-        // Science
-        scienceDirectPoints: 0,
-        scienceShowDetails: false,
-        scienceCompass: 0,
-        scienceTablet: 0,
-        scienceGear: 0,
-        scienceNonCardCompass: 0,
-        scienceNonCardTablet: 0,
-        scienceNonCardGear: 0,
-        
-        // Blue Cards
-        civilianDirectPoints: 0,
-        civilianShowDetails: false,
-        civilianShipPosition: 0,
-        civilianChainLinks: 0,
-        civilianTotalCards: 0,
-        
-        // Yellow Cards
-        commercialDirectPoints: 0,
-        commercialShowDetails: false,
-        commercialShipPosition: 0,
-        commercialChainLinks: 0,
-        commercialTotalCards: 0,
-        commercialPointCards: 0,
-        
-        // Green ship position
-        greenShipPosition: 0,
-        
-        // Purple Cards
-        guildsDirectPoints: 0,
-        guildsShowDetails: false,
-        guildsCardsPlayed: [],
-        
-        // Black Cards
-        blackDirectPoints: 0,
-        blackShowDetails: false,
-        blackTotalCards: 0,
-        blackPointCards: 0,
-        blackNeighborPositive: 0,
-        blackNeighborNegative: 0,
-        blackPeaceDoves: 0,
-        
-        // Leaders
-        leadersDirectPoints: 0,
-        leadersShowDetails: false,
-        leadersPlayed: [],
-        
-        // Navy
-        navyDirectPoints: 0,
-        navyShowDetails: false,
-        navyTotalStrength: 0,
-        navyPlayedBlueDove: false,
-        navyDoveAges: [false, false, false],
-        
-        // Islands
-        islandDirectPoints: 0,
-        islandShowDetails: false,
-        islandCards: [],
-        
-        // Edifice
-        edificeDirectPoints: 0,
-        edificeShowDetails: false,
-        edificeRewards: 0,
-        edificePenalties: 0,
-        edificeProjectsContributed: [],
-        
-        // Resources
-        resourcesDirectPoints: 0,
-        resourcesBrownCards: 0,
-        resourcesGreyCards: 0,
-        
-        // Cities/Armada specific
-        citiesDirectPoints: 0,
-        armadaDirectPoints: 0,
-      };
+    if (orderedPlayers.length === 0 || isInitialized) return;
+
+    InteractionManager.runAfterInteractions(() => {
+      const initialScores: { [key: string]: PlayerScoreData } = {};
+
+      orderedPlayers.forEach(player => {
+        if (!player) return;
+
+        const wonderAssignment = wonders[player.id];
+        const wonderData = wonderAssignment?.boardId
+          ? WONDERS_DATABASE.find(w => w.id === wonderAssignment.boardId)
+          : null;
+
+        const side = wonderAssignment?.side || 'day';
+        const maxStages = side === 'day'
+          ? wonderData?.daySide?.stages?.length || 0
+          : wonderData?.nightSide?.stages?.length || 0;
+
+        initialScores[player.id] = createDefaultScore(maxStages);
+      });
+
+      setPlayerScores(initialScores);
+      setIsInitialized(true);
     });
-    
-    setPlayerScores(initialScores);
-    setIsInitialized(true);
-  }, [orderedPlayers, wonders]);
+  }, [orderedPlayers, wonders, isInitialized]);
 
   const currentPlayer = orderedPlayers[currentPlayerIndex];
   const currentWonderAssignment = currentPlayer ? wonders[currentPlayer.id] : null;
@@ -793,178 +793,169 @@ export default function ComprehensiveEndGameScoring() {
     : null;
   
   // Safe access to current score with fallback
-  const currentScore = (currentPlayer && playerScores[currentPlayer.id]) ? playerScores[currentPlayer.id] : {
-    wonderDirectPoints: 0,
-    wonderShowDetails: false,
-    wonderStagesBuilt: [],
-    treasureDirectPoints: 0,
-    treasureShowDetails: false,
-    treasureTotalCoins: 0,
-    treasurePermanentDebt: 0,
-    treasureCardDebt: 0,
-    treasureTaxDebt: 0,
-    treasurePiracyDebt: 0,
-    treasureCommercialDebt: 0,
-    militaryDirectPoints: 0,
-    militaryShowDetails: false,
-    militaryTotalStrength: 0,
-    militaryStrengthPerAge: [0, 0, 0] as [number, number, number],
-    militaryPlayedDove: false,
-    militaryDoveAges: [false, false, false] as [boolean, boolean, boolean],
-    militaryBoardingApplied: 0,
-    militaryBoardingReceived: 0,
-    militaryChainLinks: 0,
-    scienceDirectPoints: 0,
-    scienceShowDetails: false,
-    scienceCompass: 0,
-    scienceTablet: 0,
-    scienceGear: 0,
-    scienceNonCardCompass: 0,
-    scienceNonCardTablet: 0,
-    scienceNonCardGear: 0,
-    civilianDirectPoints: 0,
-    civilianShowDetails: false,
-    civilianShipPosition: 0,
-    civilianChainLinks: 0,
-    civilianTotalCards: 0,
-    commercialDirectPoints: 0,
-    commercialShowDetails: false,
-    commercialShipPosition: 0,
-    commercialChainLinks: 0,
-    commercialTotalCards: 0,
-    commercialPointCards: 0,
-    greenShipPosition: 0,
-    guildsDirectPoints: 0,
-    guildsShowDetails: false,
-    guildsCardsPlayed: [],
-    blackDirectPoints: 0,
-    blackShowDetails: false,
-    blackTotalCards: 0,
-    blackPointCards: 0,
-    blackNeighborPositive: 0,
-    blackNeighborNegative: 0,
-    blackPeaceDoves: 0,
-    leadersDirectPoints: 0,
-    leadersShowDetails: false,
-    leadersPlayed: [],
-    navyDirectPoints: 0,
-    navyShowDetails: false,
-    navyTotalStrength: 0,
-    navyPlayedBlueDove: false,
-    navyDoveAges: [false, false, false] as [boolean, boolean, boolean],
-    islandDirectPoints: 0,
-    islandShowDetails: false,
-    islandCards: [],
-    edificeDirectPoints: 0,
-    edificeShowDetails: false,
-    edificeRewards: 0,
-    edificePenalties: 0,
-    edificeProjectsContributed: [],
-    resourcesDirectPoints: 0,
-    resourcesBrownCards: 0,
-    resourcesGreyCards: 0,
-    citiesDirectPoints: 0,
-    armadaDirectPoints: 0,
-    wonderEdificeStage: { completed: false },
-  } as PlayerScoreData;
+  const currentScore = useMemo(() => {
+    if (!currentPlayer || !playerScores[currentPlayer.id]) {
+      return createDefaultScore(0);
+    }
+    return playerScores[currentPlayer.id];
+  }, [currentPlayer, playerScores]);
 
   const updatePlayerScore = useCallback((field: string, value: any) => {
     if (!currentPlayer) return;
+    const playerId = currentPlayer.id;
+
+    if (updateTimeout.current) {
+      clearTimeout(updateTimeout.current);
+    }
+
     setPlayerScores(prev => ({
       ...prev,
-      [currentPlayer.id]: {
-        ...prev[currentPlayer.id],
+      [playerId]: {
+        ...prev[playerId],
         [field]: value
       }
     }));
+
+    calculationCache.current.delete(`${playerId}-wonder`);
+    calculationCache.current.delete(`${playerId}-treasure`);
+    calculationCache.current.delete(`${playerId}-science`);
+    calculationCache.current.delete(`${playerId}-total`);
   }, [currentPlayer]);
 
   // Calculation functions with safe access
-  const calculateWonderPoints = useCallback(() => {
-    if (!currentScore || !currentScore.wonderShowDetails) {
-      return currentScore?.wonderDirectPoints || 0;
+  const calculateWonderPoints = useCallback((score = currentScore) => {
+    if (!currentPlayer) return 0;
+
+    const cacheKey = `${currentPlayer.id}-wonder`;
+    const cached = calculationCache.current.get(cacheKey);
+    if (cached !== undefined && !score.wonderShowDetails) {
+      return cached;
     }
-    const stages = currentScore.wonderStagesBuilt || [];
+
+    if (!score.wonderShowDetails) {
+      const result = score.wonderDirectPoints || 0;
+      calculationCache.current.set(cacheKey, result);
+      return result;
+    }
+
+    const stages = score.wonderStagesBuilt || [];
     const side = currentWonderAssignment?.side || 'day';
     const stageData = side === 'day' ? currentWonder?.daySide?.stages : currentWonder?.nightSide?.stages;
-    
-    return stages.reduce((sum, built, index) => {
+
+    const result = stages.reduce((sum, built, index) => {
       if (!built || !stageData?.[index]) return sum;
       return sum + (stageData[index].points || stageData[index].effect?.value || 0);
     }, 0);
-  }, [currentScore, currentWonder, currentWonderAssignment]);
 
-  const calculateTreasurePoints = useCallback(() => {
-    if (!currentScore || !currentScore.treasureShowDetails) {
-      return currentScore?.treasureDirectPoints || 0;
-    }
-    
-    const totalDebts = (currentScore.treasurePermanentDebt || 0) +
-                       (currentScore.treasureCardDebt || 0) +
-                       (currentScore.treasureTaxDebt || 0) +
-                       (currentScore.treasurePiracyDebt || 0) +
-                       (currentScore.treasureCommercialDebt || 0);
-    
-    const netCoins = (currentScore.treasureTotalCoins || 0) - totalDebts;
-    return Math.floor(netCoins / 3);
-  }, [currentScore]);
+    calculationCache.current.set(cacheKey, result);
+    return result;
+  }, [currentScore, currentPlayer, currentWonder, currentWonderAssignment]);
 
-  const calculateSciencePoints = useCallback(() => {
-    if (!currentScore || !currentScore.scienceShowDetails) {
-      return currentScore?.scienceDirectPoints || 0;
+  const calculateTreasurePoints = useCallback((score = currentScore) => {
+    if (!currentPlayer) return 0;
+
+    const cacheKey = `${currentPlayer.id}-treasure`;
+    const cached = calculationCache.current.get(cacheKey);
+    if (cached !== undefined && !score.treasureShowDetails) {
+      return cached;
     }
-    
-    const totalCompass = (currentScore.scienceCompass || 0) + (currentScore.scienceNonCardCompass || 0);
-    const totalTablet = (currentScore.scienceTablet || 0) + (currentScore.scienceNonCardTablet || 0);
-    const totalGear = (currentScore.scienceGear || 0) + (currentScore.scienceNonCardGear || 0);
-    
+
+    if (!score.treasureShowDetails) {
+      const result = score.treasureDirectPoints || 0;
+      calculationCache.current.set(cacheKey, result);
+      return result;
+    }
+
+    const totalDebts = (score.treasurePermanentDebt || 0) +
+                       (score.treasureCardDebt || 0) +
+                       (score.treasureTaxDebt || 0) +
+                       (score.treasurePiracyDebt || 0) +
+                       (score.treasureCommercialDebt || 0);
+
+    const netCoins = (score.treasureTotalCoins || 0) - totalDebts;
+    const result = Math.floor(netCoins / 3);
+    calculationCache.current.set(cacheKey, result);
+    return result;
+  }, [currentScore, currentPlayer]);
+
+  const calculateSciencePoints = useCallback((score = currentScore) => {
+    if (!currentPlayer) return 0;
+
+    const cacheKey = `${currentPlayer.id}-science`;
+    const cached = calculationCache.current.get(cacheKey);
+    if (cached !== undefined && !score.scienceShowDetails) {
+      return cached;
+    }
+
+    if (!score.scienceShowDetails) {
+      const result = score.scienceDirectPoints || 0;
+      calculationCache.current.set(cacheKey, result);
+      return result;
+    }
+
+    const totalCompass = (score.scienceCompass || 0) + (score.scienceNonCardCompass || 0);
+    const totalTablet = (score.scienceTablet || 0) + (score.scienceNonCardTablet || 0);
+    const totalGear = (score.scienceGear || 0) + (score.scienceNonCardGear || 0);
+
     const sets = Math.min(totalCompass, totalTablet, totalGear);
     const squares = (totalCompass * totalCompass) + (totalTablet * totalTablet) + (totalGear * totalGear);
-    
-    return (sets * 7) + squares;
-  }, [currentScore]);
 
-  const calculateTotal = useCallback(() => {
-    if (!currentScore) return 0;
-    
-    const wonder = calculateWonderPoints();
-    const treasure = calculateTreasurePoints();
-    const science = calculateSciencePoints();
-    const civilian = currentScore.civilianDirectPoints || 0;
-    const commercial = currentScore.commercialDirectPoints || 0;
-    const guilds = currentScore.guildsDirectPoints || 0;
-    const military = currentScore.militaryDirectPoints || 0;
-    
+    const result = (sets * 7) + squares;
+    calculationCache.current.set(cacheKey, result);
+    return result;
+  }, [currentScore, currentPlayer]);
+
+  const calculateTotal = useCallback((score = currentScore) => {
+    if (!score || !currentPlayer) return 0;
+
+    const cacheKey = `${currentPlayer.id}-total`;
+    const cached = calculationCache.current.get(cacheKey);
+    if (cached !== undefined) {
+      return cached;
+    }
+
+    const wonder = calculateWonderPoints(score);
+    const treasure = calculateTreasurePoints(score);
+    const science = calculateSciencePoints(score);
+    const civilian = score.civilianDirectPoints || 0;
+    const commercial = score.commercialDirectPoints || 0;
+    const guilds = score.guildsDirectPoints || 0;
+    const military = score.militaryDirectPoints || 0;
+
     let total = wonder + treasure + science + civilian + commercial + guilds + military;
-    
+
     if (expansions?.cities) {
-      total += currentScore.blackDirectPoints || 0;
-      total += currentScore.citiesDirectPoints || 0;
+      total += score.blackDirectPoints || 0;
+      total += score.citiesDirectPoints || 0;
     }
-    
+
     if (expansions?.leaders) {
-      total += currentScore.leadersDirectPoints || 0;
+      total += score.leadersDirectPoints || 0;
     }
-    
+
     if (expansions?.armada) {
-      total += currentScore.navyDirectPoints || 0;
-      total += currentScore.islandDirectPoints || 0;
-      total += currentScore.armadaDirectPoints || 0;
+      total += score.navyDirectPoints || 0;
+      total += score.islandDirectPoints || 0;
+      total += score.armadaDirectPoints || 0;
     }
-    
+
     if (expansions?.edifice) {
-      total += currentScore.edificeDirectPoints || 0;
+      total += score.edificeDirectPoints || 0;
     }
-    
+
+    calculationCache.current.set(cacheKey, total);
     return total;
-  }, [currentScore, calculateWonderPoints, calculateTreasurePoints, calculateSciencePoints, expansions]);
+  }, [currentScore, currentPlayer, calculateWonderPoints, calculateTreasurePoints, calculateSciencePoints, expansions]);
 
   const navigateToPlayer = useCallback((direction: 'prev' | 'next') => {
-    if (direction === 'prev' && currentPlayerIndex > 0) {
-      setCurrentPlayerIndex(currentPlayerIndex - 1);
-    } else if (direction === 'next' && currentPlayerIndex < orderedPlayers.length - 1) {
-      setCurrentPlayerIndex(currentPlayerIndex + 1);
-    }
+    requestAnimationFrame(() => {
+      if (direction === 'prev' && currentPlayerIndex > 0) {
+        setCurrentPlayerIndex(currentPlayerIndex - 1);
+      } else if (direction === 'next' && currentPlayerIndex < orderedPlayers.length - 1) {
+        setCurrentPlayerIndex(currentPlayerIndex + 1);
+      }
+      calculationCache.current.clear();
+    });
   }, [currentPlayerIndex, orderedPlayers.length]);
 
   const allPlayersHaveScores = useCallback(() => {
@@ -1145,7 +1136,7 @@ export default function ComprehensiveEndGameScoring() {
           title="Wonder Board Points"
           icon="🏛️"
           description={`${currentWonder?.name || 'Wonder'} - ${currentWonderAssignment?.side || 'day'} side`}
-          calculatedPoints={currentScore.wonderShowDetails ? calculateWonderPoints() : currentScore.wonderDirectPoints}
+          calculatedPoints={calculateWonderPoints()}
         >
           <ToggleButton
             label="Enter detailed stage information"
@@ -1211,7 +1202,7 @@ export default function ComprehensiveEndGameScoring() {
           title="Treasure (Coins)"
           icon="💰"
           description="3 coins = 1 point, minus all debts"
-          calculatedPoints={currentScore.treasureShowDetails ? calculateTreasurePoints() : currentScore.treasureDirectPoints}
+          calculatedPoints={calculateTreasurePoints()}
         >
           <ToggleButton
             label="Enter detailed coin breakdown"
@@ -1540,7 +1531,7 @@ export default function ComprehensiveEndGameScoring() {
           title="Science Structures"
           icon="🔬"
           description="Green cards with science symbols"
-          calculatedPoints={currentScore.scienceShowDetails ? calculateSciencePoints() : currentScore.scienceDirectPoints}
+          calculatedPoints={calculateSciencePoints()}
         >
           <ToggleButton
             label="Enter science symbol breakdown"
