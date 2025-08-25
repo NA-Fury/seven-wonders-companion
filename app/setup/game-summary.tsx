@@ -1,7 +1,7 @@
 // app/setup/game-summary.tsx - FIXED navigation and validation
 import { router } from 'expo-router';
-import React from 'react';
-import { Alert, ScrollView, Text, View } from 'react-native';
+import React, { useState } from 'react';
+import { Alert, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { Button, Card, H1, H2, P, Screen } from '../../components/ui';
 import { ARMADA_SHIPYARDS } from '../../data/armadaDatabase';
 import { getProjectById } from '../../data/edificeDatabase';
@@ -10,6 +10,7 @@ import { useSetupStore } from '../../store/setupStore';
 
 export default function GameSummaryScreen() {
   const { players, seating, expansions, wonders, edificeProjects } = useSetupStore();
+  const [isNavigating, setIsNavigating] = useState(false);
 
   const getOrderedPlayers = () => {
     if (!players || players.length === 0) return [];
@@ -91,18 +92,41 @@ export default function GameSummaryScreen() {
       return;
     }
 
-    // Navigation to scoring
-    try {
-      console.log('[GameSummary] Navigating to /scoring');
-      router.push('/scoring');
-    } catch (error) {
-      console.error('[GameSummary] Navigation error:', error);
-      Alert.alert(
-        'Navigation Error', 
-        'Unable to navigate to scoring. Please try again.',
-        [{ text: 'OK' }]
-      );
-    }
+    // Enhanced navigation with confirmation
+    Alert.alert(
+      '🎯 Ready for Scoring!',
+      `Your 7 Wonders game with ${orderedPlayers.length} players is fully configured. Proceed to the scoring calculator?`,
+      [
+        {
+          text: 'Review Setup',
+          style: 'cancel',
+          onPress: () => console.log('[GameSummary] User chose to review setup')
+        },
+        {
+          text: 'Start Scoring',
+          style: 'default',
+          onPress: () => {
+            setIsNavigating(true);
+            
+            // Small delay to show loading state
+            setTimeout(() => {
+              try {
+                console.log('[GameSummary] Navigating to /scoring');
+                router.push('/scoring');
+              } catch (error) {
+                console.error('[GameSummary] Navigation error:', error);
+                setIsNavigating(false);
+                Alert.alert(
+                  'Navigation Error', 
+                  'Unable to navigate to scoring. Please try again.',
+                  [{ text: 'OK' }]
+                );
+              }
+            }, 100);
+          }
+        }
+      ]
+    );
   };
 
   const handleBackToSetup = () => {
@@ -334,68 +358,154 @@ export default function GameSummaryScreen() {
 
         {/* Enhanced Action Section */}
         <Card>
-          <H2>Ready for Scoring Calculator</H2>
+          <H2>🎯 Ready for Scoring Calculator</H2>
           <P className="mb-4 text-parchment/70 text-sm">
-            Your 7 Wonders game is configured. Proceed to the scoring calculator to input your final scores.
+            Your 7 Wonders game is configured and ready. Access the comprehensive scoring calculator to input your final scores with detailed breakdowns.
           </P>
 
           <View style={{
-            padding: 16,
+            padding: 20,
             backgroundColor: isReadyToPlay ? 'rgba(34, 197, 94, 0.1)' : 'rgba(245, 158, 11, 0.1)',
-            borderRadius: 12,
-            borderWidth: 1,
+            borderRadius: 16,
+            borderWidth: 2,
             borderColor: isReadyToPlay ? 'rgba(34, 197, 94, 0.3)' : 'rgba(245, 158, 11, 0.3)',
-            marginBottom: 16,
+            marginBottom: 20,
           }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+              <Text style={{ fontSize: 24, marginRight: 12 }}>
+                {isReadyToPlay ? '🎯' : '⚠️'}
+              </Text>
+              <Text style={{ 
+                color: isReadyToPlay ? '#22C55E' : '#F59E0B', 
+                fontSize: 18, 
+                fontWeight: 'bold',
+                flex: 1
+              }}>
+                {isReadyToPlay ? 'Scoring Calculator Ready' : 'Setup Issues Found'}
+              </Text>
+            </View>
+            
             <Text style={{ 
-              color: isReadyToPlay ? '#22C55E' : '#F59E0B', 
-              fontSize: 16, 
-              fontWeight: 'bold', 
-              marginBottom: 8 
-            }}>
-              📊 {isReadyToPlay ? 'Scoring Calculator' : 'Setup Issues Found'}
-            </Text>
-            <Text style={{ 
-              color: 'rgba(243, 231, 211, 0.8)', 
-              fontSize: 13, 
-              marginBottom: 12,
-              lineHeight: 18
+              color: 'rgba(243, 231, 211, 0.9)', 
+              fontSize: 14, 
+              marginBottom: 16,
+              lineHeight: 20
             }}>
               {isReadyToPlay 
-                ? 'Enter your final scores from your completed 7 Wonders game for comprehensive analysis.'
+                ? `Your ${orderedPlayers.length}-player game is fully configured with ${Object.values(expansions).filter(Boolean).length} expansions. The scoring calculator supports detailed point tracking for all categories including wonder stages, treasure calculations, science formulas, and expansion-specific scoring.`
                 : `Please resolve the ${setupIssues.length} setup issue${setupIssues.length > 1 ? 's' : ''} above before proceeding to scoring.`
               }
             </Text>
             
-            {/* Enhanced Button with Better Touch Target */}
-            <Button
-              title={isReadyToPlay ? 'Open Scoring Calculator →' : 'View Setup Issues ↑'}
+            {/* Feature Highlights for Ready State */}
+            {isReadyToPlay && (
+              <View style={{
+                backgroundColor: 'rgba(196, 162, 76, 0.1)',
+                borderRadius: 12,
+                padding: 12,
+                marginBottom: 16,
+              }}>
+                <Text style={{ color: '#C4A24C', fontSize: 12, fontWeight: 'bold', marginBottom: 6 }}>
+                  ✨ Calculator Features:
+                </Text>
+                <Text style={{ color: 'rgba(243, 231, 211, 0.8)', fontSize: 11, lineHeight: 16 }}>
+                  • Automatic calculations for science sets and coin conversions{'\n'}
+                  • Detailed wonder stage tracking with point breakdowns{'\n'}
+                  • Expansion-specific scoring (Cities, Leaders, Armada, Edifice){'\n'}
+                  • Player-by-player navigation with progress tracking{'\n'}
+                  • Comprehensive final results and analysis
+                </Text>
+              </View>
+            )}
+            
+            {/* Enhanced Button with Loading State */}
+            <TouchableOpacity
               onPress={handleProceedToScoring}
+              disabled={!isReadyToPlay || isNavigating}
               style={{
-                minHeight: 48, // Better touch target
+                backgroundColor: (!isReadyToPlay || isNavigating) ? 'rgba(107, 114, 128, 0.3)' : '#C4A24C',
+                borderRadius: 12,
+                paddingVertical: 16,
+                paddingHorizontal: 24,
+                alignItems: 'center',
                 justifyContent: 'center',
-                alignItems: 'center'
+                shadowColor: (isReadyToPlay && !isNavigating) ? '#C4A24C' : 'transparent',
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.3,
+                shadowRadius: 8,
+                elevation: 4,
+                flexDirection: 'row',
               }}
-            />
+            >
+              {isNavigating && (
+                <View style={{
+                  width: 20,
+                  height: 20,
+                  borderWidth: 2,
+                  borderColor: '#1C1A1A',
+                  borderTopColor: 'transparent',
+                  borderRadius: 10,
+                  marginRight: 12,
+                  // Simple rotation animation would go here - using transform for now
+                }} />
+              )}
+              <Text style={{
+                color: (!isReadyToPlay || isNavigating) ? '#6B7280' : '#1C1A1A',
+                fontSize: 16,
+                fontWeight: 'bold',
+                textAlign: 'center',
+              }}>
+                {isNavigating 
+                  ? '🚀 Loading Scoring Calculator...' 
+                  : isReadyToPlay 
+                    ? '🎯 Launch Scoring Calculator' 
+                    : '⚠️ Resolve Setup Issues First'
+                }
+              </Text>
+            </TouchableOpacity>
+
           </View>
 
-          {/* Debug Information (remove in production) */}
-          {__DEV__ && (
+          {/* Quick Stats Preview */}
+          {isReadyToPlay && (
             <View style={{
-              backgroundColor: 'rgba(107, 114, 128, 0.1)',
-              borderRadius: 8,
-              padding: 12,
-              marginBottom: 16,
+              backgroundColor: 'rgba(31, 41, 55, 0.3)',
+              borderRadius: 12,
+              padding: 16,
+              flexDirection: 'row',
+              justifyContent: 'space-around',
+              alignItems: 'center',
             }}>
-              <Text style={{ color: '#6B7280', fontSize: 12, fontWeight: 'bold', marginBottom: 4 }}>
-                Debug Info:
-              </Text>
-              <Text style={{ color: '#6B7280', fontSize: 10 }}>
-                Players: {players?.length || 0} | Ordered: {orderedPlayers.length} | Ready: {isReadyToPlay ? 'Yes' : 'No'}
-              </Text>
-              <Text style={{ color: '#6B7280', fontSize: 10 }}>
-                Issues: {setupIssues.length} | Expansions: {Object.entries(expansions).filter(([_, enabled]) => enabled).length}
-              </Text>
+              <View style={{ alignItems: 'center' }}>
+                <Text style={{ color: '#C4A24C', fontSize: 20, fontWeight: 'bold' }}>
+                  {orderedPlayers.length}
+                </Text>
+                <Text style={{ color: 'rgba(243, 231, 211, 0.7)', fontSize: 11 }}>
+                  Players
+                </Text>
+              </View>
+              
+              <View style={{ width: 1, height: 30, backgroundColor: 'rgba(243, 231, 211, 0.2)' }} />
+              
+              <View style={{ alignItems: 'center' }}>
+                <Text style={{ color: '#C4A24C', fontSize: 20, fontWeight: 'bold' }}>
+                  {Object.values(expansions).filter(Boolean).length}
+                </Text>
+                <Text style={{ color: 'rgba(243, 231, 211, 0.7)', fontSize: 11 }}>
+                  Expansions
+                </Text>
+              </View>
+              
+              <View style={{ width: 1, height: 30, backgroundColor: 'rgba(243, 231, 211, 0.2)' }} />
+              
+              <View style={{ alignItems: 'center' }}>
+                <Text style={{ color: '#C4A24C', fontSize: 20, fontWeight: 'bold' }}>
+                  ~{5 + Object.values(expansions).filter(Boolean).length * 2}
+                </Text>
+                <Text style={{ color: 'rgba(243, 231, 211, 0.7)', fontSize: 11 }}>
+                  Categories
+                </Text>
+              </View>
             </View>
           )}
         </Card>
