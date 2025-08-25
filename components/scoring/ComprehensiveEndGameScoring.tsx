@@ -1,14 +1,14 @@
 // components/scoring/ComprehensiveEndGameScoring.tsx
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-    Alert,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
-    InteractionManager,
+  Alert,
+  InteractionManager,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ARMADA_SHIPYARDS } from '../../data/armadaDatabase';
@@ -687,7 +687,7 @@ interface CategorySectionProps {
   title: string;
   icon: string;
   description: string;
-  children: React.ReactNode;
+  children?: React.ReactNode;
   calculatedPoints?: number;
   isCalculating?: boolean;
   hidden?: boolean;
@@ -1167,20 +1167,23 @@ export default function ComprehensiveEndGameScoring() {
               {((currentWonderAssignment?.side === 'day'
                   ? currentWonder?.daySide?.stages
                   : currentWonder?.nightSide?.stages) || []
-              ).map((stage, index) => (
-                <ToggleButton
-                  key={index}
-                  label={`Stage ${index + 1} (${stage.points || stage.effect?.value || 0} pts)`}
-                  value={currentScore.wonderStagesBuilt?.[index] || false}
-                  onToggle={(value) => {
-                    const newStages = [...(currentScore.wonderStagesBuilt || [])];
-                    newStages[index] = value;
-                    updatePlayerScore('wonderStagesBuilt', newStages);
-                  }}
-                  icon="🏗️"
-                  description={stage.effect?.description || ''}
-                />
-              ))}
+              ).map((stage, index) => {
+                const handleToggle = (value: boolean) => {
+                  const newStages = [...(currentScore.wonderStagesBuilt || [])];
+                  newStages[index] = value;
+                  updatePlayerScore('wonderStagesBuilt', newStages);
+                };
+                
+                return (
+                  <ToggleButton
+                    label={`Stage ${index + 1} (${stage.points || stage.effect?.value || 0} pts)`}
+                    value={currentScore.wonderStagesBuilt?.[index] || false}
+                    onToggle={handleToggle}
+                    icon="🏗️"
+                    description={stage.effect?.description || ''}
+                  />
+                );
+              })}
               
               {expansions?.edifice && (
                 <View style={{ marginTop: 10 }}>
@@ -1348,7 +1351,6 @@ export default function ComprehensiveEndGameScoring() {
                   </Text>
                   {[1, 2, 3].map((age) => (
                     <ToggleButton
-                      key={age}
                       label={`Age ${age}`}
                       value={currentScore.militaryDoveAges?.[age - 1] || false}
                       onToggle={(value) => {
@@ -1806,7 +1808,6 @@ export default function ComprehensiveEndGameScoring() {
                     </Text>
                     {[1, 2, 3].map((age) => (
                       <ToggleButton
-                        key={age}
                         label={`Age ${age}`}
                         value={currentScore.navyDoveAges?.[age - 1] || false}
                         onToggle={(value) => {
@@ -1906,7 +1907,6 @@ export default function ComprehensiveEndGameScoring() {
                   
                   return (
                     <ToggleButton
-                      key={ageKey}
                       label={`Age ${ageKey.slice(-1)}: ${project.name}`}
                       value={currentScore.edificeProjectsContributed?.includes(projectId) || false}
                       onToggle={(value) => {
