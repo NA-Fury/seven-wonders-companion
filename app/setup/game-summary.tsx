@@ -1,7 +1,7 @@
-// app/setup/game-summary.tsx - FIXED with single clear navigation
+// app/setup/game-summary.tsx - FIXED navigation and validation
 import { router } from 'expo-router';
 import React from 'react';
-import { ScrollView, Text, View } from 'react-native';
+import { Alert, ScrollView, Text, View } from 'react-native';
 import { Button, Card, H1, H2, P, Screen } from '../../components/ui';
 import { ARMADA_SHIPYARDS } from '../../data/armadaDatabase';
 import { getProjectById } from '../../data/edificeDatabase';
@@ -12,7 +12,8 @@ export default function GameSummaryScreen() {
   const { players, seating, expansions, wonders, edificeProjects } = useSetupStore();
 
   const getOrderedPlayers = () => {
-    if (seating.length === 0) return players;
+    if (!players || players.length === 0) return [];
+    if (!seating || seating.length === 0) return players;
     return seating.map(seatId => players.find(p => p.id === seatId)).filter(Boolean) as typeof players;
   };
 
@@ -25,30 +26,25 @@ export default function GameSummaryScreen() {
     return activeExpansions.length > 0 ? activeExpansions : ['Base Game Only'];
   };
 
-  // FIXED: Single navigation handler
-  const handleProceedToScoring = () => {
-    router.push('/scoring');
-  };
-
-  const handleBack = () => {
-    router.back();
-  };  
-
-  const handleBackToSetup = () => {
-    router.back();
-  };
-
   const validateGameSetup = () => {
     const issues: string[] = [];
+    
+    // Check players
+    if (!players || players.length === 0) {
+      issues.push('No players found - please add players first');
+      return issues; // Return early if no players
+    }
     
     if (orderedPlayers.length < 3) issues.push('Need at least 3 players');
     if (orderedPlayers.length > 7) issues.push('Maximum 7 players allowed');
     
+    // Check wonder assignments
     const unassignedWonders = orderedPlayers.filter(player => !wonders[player.id]?.boardId);
     if (unassignedWonders.length > 0) {
       issues.push(`${unassignedWonders.length} players missing wonder assignments`);
     }
     
+    // Check shipyard assignments for Armada
     if (expansions.armada) {
       const unassignedShipyards = orderedPlayers.filter(player => !wonders[player.id]?.shipyardId);
       if (unassignedShipyards.length > 0) {
@@ -56,6 +52,7 @@ export default function GameSummaryScreen() {
       }
     }
 
+    // Check edifice projects
     if (expansions.edifice) {
       const { age1, age2, age3 } = edificeProjects;
       if (!age1 || !age2 || !age3) {
@@ -69,6 +66,67 @@ export default function GameSummaryScreen() {
   const setupIssues = validateGameSetup();
   const isReadyToPlay = setupIssues.length === 0;
 
+  const handleProceedToScoring = () => {
+    console.log('[GameSummary] Proceed to Scoring clicked');
+    console.log('[GameSummary] isReadyToPlay:', isReadyToPlay);
+    console.log('[GameSummary] setupIssues:', setupIssues);
+    console.log('[GameSummary] orderedPlayers:', orderedPlayers.length);
+
+    // Check if setup is incomplete
+    if (!isReadyToPlay) {
+      const issueMessage = setupIssues.length > 0 
+        ? `Please resolve these issues first:\n\n${setupIssues.map(issue => `• ${issue}`).join('\n')}`
+        : 'Please complete your game setup before proceeding to scoring.';
+      
+      Alert.alert(
+        'Setup Incomplete', 
+        issueMessage,
+        [
+          { 
+            text: 'OK', 
+            onPress: () => console.log('[GameSummary] User acknowledged setup issues') 
+          }
+        ]
+      );
+      return;
+    }
+
+    // Navigation to scoring
+    try {
+      console.log('[GameSummary] Navigating to /scoring');
+      router.push('/scoring');
+    } catch (error) {
+      console.error('[GameSummary] Navigation error:', error);
+      Alert.alert(
+        'Navigation Error', 
+        'Unable to navigate to scoring. Please try again.',
+        [{ text: 'OK' }]
+      );
+    }
+  };
+
+  const handleBackToSetup = () => {
+    router.back();
+  };
+
+  // Show loading state if no players
+  if (!players || players.length === 0) {
+    return (
+      <Screen>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 }}>
+          <H1>No Game Setup Found</H1>
+          <P className="text-center mb-4">
+            Please complete the game setup first before viewing the summary.
+          </P>
+          <Button
+            title="Go to Setup"
+            onPress={() => router.replace('/setup/expansions')}
+          />
+        </View>
+      </Screen>
+    );
+  }
+
   return (
     <Screen>
       <ScrollView showsVerticalScrollIndicator={false}>
@@ -77,7 +135,7 @@ export default function GameSummaryScreen() {
           Review your complete 7 Wonders setup before starting the scoring calculator.
         </P>
 
-        {/* Setup Validation */}
+        {/* Setup Validation - Enhanced */}
         {!isReadyToPlay && (
           <Card style={{ 
             backgroundColor: 'rgba(239, 68, 68, 0.1)', 
@@ -85,19 +143,19 @@ export default function GameSummaryScreen() {
             borderWidth: 1,
             marginBottom: 16 
           }}>
-            <H2 style={{ color: '#EF4444' }}>Setup Issues</H2>
+            <H2 style={{ color: '#EF4444' }}>Setup Issues ({setupIssues.length})</H2>
             {setupIssues.map((issue, index) => (
               <Text key={index} style={{ color: '#EF4444', fontSize: 13, marginBottom: 4 }}>
                 • {issue}
               </Text>
             ))}
             <P className="text-sm mt-2" style={{ color: 'rgba(239, 68, 68, 0.8)' }}>
-              Please resolve these issues before proceeding.
+              Please resolve these issues before proceeding to scoring.
             </P>
           </Card>
         )}
 
-        {/* Game Configuration */}
+        {/* Game Configuration - Enhanced */}
         <Card>
           <H2>Game Configuration</H2>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 }}>
@@ -117,6 +175,27 @@ export default function GameSummaryScreen() {
                 {getExpansionsList().join(' + ')}
               </Text>
             </View>
+          </View>
+          
+          {/* Setup Status Indicator */}
+          <View style={{
+            backgroundColor: isReadyToPlay ? 'rgba(34, 197, 94, 0.1)' : 'rgba(245, 158, 11, 0.1)',
+            borderRadius: 8,
+            padding: 8,
+            marginTop: 8,
+            flexDirection: 'row',
+            alignItems: 'center',
+          }}>
+            <Text style={{ fontSize: 16, marginRight: 8 }}>
+              {isReadyToPlay ? '✅' : '⚠️'}
+            </Text>
+            <Text style={{ 
+              color: isReadyToPlay ? '#22C55E' : '#F59E0B', 
+              fontSize: 12, 
+              fontWeight: 'bold' 
+            }}>
+              {isReadyToPlay ? 'Setup Complete - Ready for Scoring!' : `${setupIssues.length} issues to resolve`}
+            </Text>
           </View>
         </Card>
 
@@ -253,7 +332,7 @@ export default function GameSummaryScreen() {
           </Card>
         )}
 
-        {/* FIXED: Single Action Section */}
+        {/* Enhanced Action Section */}
         <Card>
           <H2>Ready for Scoring Calculator</H2>
           <P className="mb-4 text-parchment/70 text-sm">
@@ -262,24 +341,63 @@ export default function GameSummaryScreen() {
 
           <View style={{
             padding: 16,
-            backgroundColor: 'rgba(196, 162, 76, 0.1)',
+            backgroundColor: isReadyToPlay ? 'rgba(34, 197, 94, 0.1)' : 'rgba(245, 158, 11, 0.1)',
             borderRadius: 12,
             borderWidth: 1,
-            borderColor: 'rgba(196, 162, 76, 0.3)',
+            borderColor: isReadyToPlay ? 'rgba(34, 197, 94, 0.3)' : 'rgba(245, 158, 11, 0.3)',
             marginBottom: 16,
           }}>
-            <Text style={{ color: '#C4A24C', fontSize: 16, fontWeight: 'bold', marginBottom: 8 }}>
-              📊 Scoring Calculator
+            <Text style={{ 
+              color: isReadyToPlay ? '#22C55E' : '#F59E0B', 
+              fontSize: 16, 
+              fontWeight: 'bold', 
+              marginBottom: 8 
+            }}>
+              📊 {isReadyToPlay ? 'Scoring Calculator' : 'Setup Issues Found'}
             </Text>
-            <Text style={{ color: 'rgba(243, 231, 211, 0.8)', fontSize: 13, marginBottom: 12 }}>
-              Enter your final scores from your completed 7 Wonders game for comprehensive analysis.
+            <Text style={{ 
+              color: 'rgba(243, 231, 211, 0.8)', 
+              fontSize: 13, 
+              marginBottom: 12,
+              lineHeight: 18
+            }}>
+              {isReadyToPlay 
+                ? 'Enter your final scores from your completed 7 Wonders game for comprehensive analysis.'
+                : `Please resolve the ${setupIssues.length} setup issue${setupIssues.length > 1 ? 's' : ''} above before proceeding to scoring.`
+              }
             </Text>
+            
+            {/* Enhanced Button with Better Touch Target */}
             <Button
-              title="Open Scoring Calculator"
+              title={isReadyToPlay ? 'Open Scoring Calculator →' : 'View Setup Issues ↑'}
               onPress={handleProceedToScoring}
-              disabled={!isReadyToPlay}
+              style={{
+                minHeight: 48, // Better touch target
+                justifyContent: 'center',
+                alignItems: 'center'
+              }}
             />
           </View>
+
+          {/* Debug Information (remove in production) */}
+          {__DEV__ && (
+            <View style={{
+              backgroundColor: 'rgba(107, 114, 128, 0.1)',
+              borderRadius: 8,
+              padding: 12,
+              marginBottom: 16,
+            }}>
+              <Text style={{ color: '#6B7280', fontSize: 12, fontWeight: 'bold', marginBottom: 4 }}>
+                Debug Info:
+              </Text>
+              <Text style={{ color: '#6B7280', fontSize: 10 }}>
+                Players: {players?.length || 0} | Ordered: {orderedPlayers.length} | Ready: {isReadyToPlay ? 'Yes' : 'No'}
+              </Text>
+              <Text style={{ color: '#6B7280', fontSize: 10 }}>
+                Issues: {setupIssues.length} | Expansions: {Object.entries(expansions).filter(([_, enabled]) => enabled).length}
+              </Text>
+            </View>
+          )}
         </Card>
 
         {/* Navigation */}
@@ -290,6 +408,12 @@ export default function GameSummaryScreen() {
             onPress={handleBackToSetup}
             className="flex-1"
           />
+          <Button
+            title="Calculate Scores"
+            onPress={handleProceedToScoring}
+            disabled={!isReadyToPlay}
+            className="flex-1"
+          />
         </Card>
 
         <View style={{ height: 20 }} />
@@ -298,7 +422,7 @@ export default function GameSummaryScreen() {
   );
 }
 
-// Edifice Projects Summary Component
+// Enhanced Edifice Projects Summary Component
 function EdificeProjectsSummary() {
   const { edificeProjects } = useSetupStore();
 
@@ -322,7 +446,7 @@ function EdificeProjectsSummary() {
     }
   };
 
-  if (!edificeProjects.age1 && !edificeProjects.age2 && !edificeProjects.age3) {
+  if (!edificeProjects || (!edificeProjects.age1 && !edificeProjects.age2 && !edificeProjects.age3)) {
     return (
       <View style={{
         padding: 16,
@@ -399,7 +523,7 @@ function EdificeProjectsSummary() {
             }}
           >
             <Text style={{ color: '#EF4444', fontSize: 13 }}>
-              {`Error: "${projectId}" not found`}
+              Error: "{projectId}" not found
             </Text>
           </View>
         );
