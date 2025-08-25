@@ -169,9 +169,11 @@ export default function GameSummaryScreen() {
           }}>
             <H2 style={{ color: '#EF4444' }}>Setup Issues ({setupIssues.length})</H2>
             {setupIssues.map((issue, index) => (
-              <Text key={index} style={{ color: '#EF4444', fontSize: 13, marginBottom: 4 }}>
-                • {issue}
-              </Text>
+              <React.Fragment key={index}>
+                <Text style={{ color: '#EF4444', fontSize: 13, marginBottom: 4 }}>
+                  • {issue}
+                </Text>
+              </React.Fragment>
             ))}
             <P className="text-sm mt-2" style={{ color: 'rgba(239, 68, 68, 0.8)' }}>
               Please resolve these issues before proceeding to scoring.
@@ -238,19 +240,19 @@ export default function GameSummaryScreen() {
               ARMADA_SHIPYARDS.find(s => s.id === wonderData.shipyardId) : null;
             
             return (
-              <View
-                key={player.id}
-                style={{
-                  backgroundColor: 'rgba(19, 92, 102, 0.2)',
-                  borderRadius: 12,
-                  padding: 14,
-                  marginBottom: 8,
-                  borderWidth: 1,
-                  borderColor: wonder ? 'rgba(243, 231, 211, 0.1)' : 'rgba(239, 68, 68, 0.3)',
-                }}
-              >
-                <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, marginBottom: 8 }}>
+              <React.Fragment key={player.id}>
+                <View
+                  style={{
+                    backgroundColor: 'rgba(19, 92, 102, 0.2)',
+                    borderRadius: 12,
+                    padding: 14,
+                    marginBottom: 8,
+                    borderWidth: 1,
+                    borderColor: wonder ? 'rgba(243, 231, 211, 0.1)' : 'rgba(239, 68, 68, 0.3)',
+                  }}
+                >
+                  <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, marginBottom: 8 }}>
                     <View style={{
                       width: 32,
                       height: 32,
@@ -341,6 +343,7 @@ export default function GameSummaryScreen() {
                   </Text>
                 )}
               </View>
+              </React.Fragment>
             );
           })}
         </Card>
@@ -581,23 +584,23 @@ function EdificeProjectsSummary() {
       {[1, 2, 3].map(age => {
         const projectId = edificeProjects[`age${age}` as keyof typeof edificeProjects];
         if (!projectId) return (
-          <View
-            key={age}
-            style={{
-              padding: 12,
-              backgroundColor: 'rgba(239, 68, 68, 0.1)',
-              borderRadius: 8,
-              borderWidth: 1,
-              borderColor: 'rgba(239, 68, 68, 0.3)',
-              flexDirection: 'row',
-              alignItems: 'center',
-            }}
-          >
-            <View style={{
-              width: 24,
-              height: 24,
-              borderRadius: 12,
-              backgroundColor: '#EF4444',
+          <React.Fragment key={age}>
+            <View
+              style={{
+                padding: 12,
+                backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                borderRadius: 8,
+                borderWidth: 1,
+                borderColor: 'rgba(239, 68, 68, 0.3)',
+                flexDirection: 'row',
+                alignItems: 'center',
+              }}
+            >
+              <View style={{
+                width: 24,
+                height: 24,
+                borderRadius: 12,
+                backgroundColor: '#EF4444',
               alignItems: 'center',
               justifyContent: 'center',
               marginRight: 12,
@@ -616,39 +619,41 @@ function EdificeProjectsSummary() {
               </Text>
             </View>
           </View>
+          </React.Fragment>
         );
 
         const project = getProjectById(projectId);
         if (!project) return (
-          <View
-            key={age}
-            style={{
-              padding: 12,
-              backgroundColor: 'rgba(239, 68, 68, 0.1)',
-              borderRadius: 8,
-              borderWidth: 1,
-              borderColor: 'rgba(239, 68, 68, 0.3)',
-              flexDirection: 'row',
-              alignItems: 'center',
-            }}
-          >
-            <Text style={{ color: '#EF4444', fontSize: 13 }}>
-              Error: &ldquo;{projectId}&rdquo; not found
-            </Text>
-          </View>
+          <React.Fragment key={age}>
+            <View
+              style={{
+                padding: 12,
+                backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                borderRadius: 8,
+                borderWidth: 1,
+                borderColor: 'rgba(239, 68, 68, 0.3)',
+                flexDirection: 'row',
+                alignItems: 'center',
+              }}
+            >
+              <Text style={{ color: '#EF4444', fontSize: 13 }}>
+                Error: &ldquo;{projectId}&rdquo; not found
+              </Text>
+            </View>
+          </React.Fragment>
         );
         
         return (
-          <View
-            key={age}
-            style={{
-              padding: 14,
-              backgroundColor: 'rgba(139, 69, 19, 0.1)',
-              borderRadius: 12,
-              borderWidth: 1,
-              borderColor: 'rgba(139, 69, 19, 0.3)',
-            }}
-          >
+          <React.Fragment key={age}>
+            <View
+              style={{
+                padding: 14,
+                backgroundColor: 'rgba(139, 69, 19, 0.1)',
+                borderRadius: 12,
+                borderWidth: 1,
+                borderColor: 'rgba(139, 69, 19, 0.3)',
+              }}
+            >
             <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
               <View style={{
                 width: 28,
@@ -700,20 +705,21 @@ function EdificeProjectsSummary() {
                   Cost:
                 </Text>
                 <View style={{ flexDirection: 'row', gap: 3 }}>
-                  {project.cost.map((cost, index) => (
-                    <View
-                      key={index}
-                      style={{
-                        backgroundColor: 'rgba(196, 162, 76, 0.3)',
-                        borderRadius: 4,
-                        paddingHorizontal: 4,
-                        paddingVertical: 1,
-                      }}
-                    >
-                      <Text style={{ color: '#C4A24C', fontSize: 9, fontWeight: 'bold' }}>
-                        {cost.amount} {cost.resource}
-                      </Text>
-                    </View>
+                    {project.cost.map((cost, index) => (
+                    <React.Fragment key={index}>
+                      <View
+                        style={{
+                          backgroundColor: 'rgba(196, 162, 76, 0.3)',
+                          borderRadius: 4,
+                          paddingHorizontal: 4,
+                          paddingVertical: 1,
+                        }}
+                      >
+                        <Text style={{ color: '#C4A24C', fontSize: 9, fontWeight: 'bold' }}>
+                          {cost.amount} {cost.resource}
+                        </Text>
+                      </View>
+                    </React.Fragment>
                   ))}
                 </View>
               </View>
@@ -730,6 +736,7 @@ function EdificeProjectsSummary() {
               </View>
             </View>
           </View>
+          </React.Fragment>
         );
       })}
     </View>
