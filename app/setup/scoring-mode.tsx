@@ -13,10 +13,6 @@ export default function ScoringMode() {
     router.push('/setup/game-summary');
   };
 
-  const handleBack = () => {
-    router.back();
-  };  
-
   return (
     <Screen>
       <StepHeader current={5} />

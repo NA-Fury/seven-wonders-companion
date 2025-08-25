@@ -45,15 +45,11 @@ export default function PlayersScreen() {
     router.push('/setup/seating');
   };
 
-  const handleBack = () => {
-     router.back();
-  }; 
-
   const getExpansionText = () => {
     const active = Object.entries(expansions)
       .filter(([_, enabled]) => enabled)
       .map(([name]) => name.charAt(0).toUpperCase() + name.slice(1));
-    
+
     return active.length > 0 ? `Base + ${active.join(' + ')}` : 'Base Game Only';
   };
 

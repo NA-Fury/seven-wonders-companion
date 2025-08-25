@@ -2,7 +2,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
     Alert,
-    Dimensions,
     Platform,
     ScrollView,
     StyleSheet,
@@ -197,8 +196,6 @@ const createDefaultScore = (maxStages: number = 0): PlayerScoreData => ({
   armadaDirectPoints: 0,
 });
 
-const { width } = Dimensions.get('window');
-const isSmallScreen = width < 375;
 
 // Optimized styles
 const styles = StyleSheet.create({
@@ -528,11 +525,17 @@ const styles = StyleSheet.create({
 });
 
 // Optimized Components
-const MotivationalMessage = React.memo(({ message }: { message: string }) => (
-  <View style={styles.motivationalMessage}>
-    <Text style={styles.motivationalText}>✨ {message}</Text>
-  </View>
-));
+const MotivationalMessage = React.memo(function MotivationalMessage({
+  message,
+}: {
+  message: string;
+}) {
+  return (
+    <View style={styles.motivationalMessage}>
+      <Text style={styles.motivationalText}>✨ {message}</Text>
+    </View>
+  );
+});
 
 interface NumericInputProps {
   label: string;
@@ -546,7 +549,7 @@ interface NumericInputProps {
   icon?: string;
 }
 
-const NumericInput = React.memo(({
+const NumericInput = React.memo(function NumericInput({
   label,
   value,
   onChangeValue,
@@ -555,8 +558,8 @@ const NumericInput = React.memo(({
   step = 1,
   suffix = '',
   helperText = '',
-  icon = ''
-}: NumericInputProps) => {
+  icon = '',
+}: NumericInputProps) {
   const canDecrement = value > min;
   const canIncrement = value < max;
 
@@ -635,13 +638,13 @@ interface ToggleButtonProps {
   icon?: string;
 }
 
-const ToggleButton = React.memo(({ 
+const ToggleButton = React.memo(function ToggleButton({
   label,
   value,
   onToggle,
   description = '',
-  icon = ''
-}: ToggleButtonProps) => {
+  icon = '',
+}: ToggleButtonProps) {
   const handlePress = useCallback(() => {
     requestAnimationFrame(() => onToggle(!value));
   }, [value, onToggle]);
@@ -690,15 +693,15 @@ interface CategorySectionProps {
   hidden?: boolean;
 }
 
-const CategorySection = React.memo(({ 
-  title, 
-  icon, 
-  description, 
-  children, 
+const CategorySection = React.memo(function CategorySection({
+  title,
+  icon,
+  description,
+  children,
   calculatedPoints,
   isCalculating = false,
-  hidden = false
-}: CategorySectionProps) => {
+  hidden = false,
+}: CategorySectionProps) {
   if (hidden) return null;
   
   return (

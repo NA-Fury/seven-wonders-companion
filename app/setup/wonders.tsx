@@ -17,7 +17,7 @@ export default function WonderAssignmentScreen() {
   const [selectedSide, setSelectedSide] = useState<'day' | 'night'>('day');
   const [assigningToPlayer, setAssigningToPlayer] = useState<string | null>(null);
   const [showShipyards, setShowShipyards] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading] = useState(false);
 
   const getOrderedPlayers = useCallback(() => {
     if (seating.length === 0) return players;
