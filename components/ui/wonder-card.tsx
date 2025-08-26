@@ -35,17 +35,26 @@ export function WonderCard({
   onSelect
 }: WonderCardProps) {
   const [isFlipping, setIsFlipping] = useState(false);
-  const [displaySide, setDisplaySide] = useState(selectedSide);
+  const [displaySide, setDisplaySide] = useState<'day' | 'night'>(selectedSide);
   const flipRotation = useSharedValue(selectedSide === 'night' ? 180 : 0);
   const scale = useSharedValue(1);
 
-  // Sync display side with prop changes
+  const onFlipComplete = useCallback(
+    (newSide: 'day' | 'night') => {
+      setIsFlipping(false);
+      setDisplaySide(newSide);
+      onSideChange(newSide);
+    },
+    [onSideChange]
+  );
+
+  // Sync display side when the selected card changes
   useEffect(() => {
-    if (displaySide !== selectedSide && !isFlipping) {
+    if (isSelected && !isFlipping && displaySide !== selectedSide) {
       setDisplaySide(selectedSide);
       flipRotation.value = selectedSide === 'night' ? 180 : 0;
     }
-  }, [selectedSide, displaySide, isFlipping, flipRotation]);
+  }, [selectedSide, isSelected, isFlipping, displaySide, flipRotation]);
 
   const handleFlip = useCallback(() => {
     if (isFlipping) return;
@@ -54,16 +63,12 @@ export function WonderCard({
     const newSide = displaySide === 'day' ? 'night' : 'day';
     const targetRotation = newSide === 'night' ? 180 : 0;
 
-    flipRotation.value = withTiming(targetRotation, { duration: 600 }, (finished) => {
+    flipRotation.value = withTiming(targetRotation, { duration: 600 }, finished => {
       if (finished) {
-        runOnJS(() => {
-          setIsFlipping(false);
-          setDisplaySide(newSide);
-          onSideChange(newSide);
-        })();
+        runOnJS(onFlipComplete)(newSide);
       }
     });
-  }, [displaySide, isFlipping, flipRotation, onSideChange]);
+  }, [displaySide, isFlipping, flipRotation, onFlipComplete]);
 
   const frontAnimatedStyle = useAnimatedStyle(() => {
     const rotateY = interpolate(flipRotation.value, [0, 180], [0, 180]);
