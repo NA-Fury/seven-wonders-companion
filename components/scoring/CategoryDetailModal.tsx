@@ -202,9 +202,8 @@ interface Props {
 
 export default function CategoryDetailModal({ playerId, categoryId, onClose }: Props) {
   const { players, wonders, expansions } = useSetupStore();
-  const { getPlayerScore, updateScore, updateMultipleScores } = useScoringStore();
+  const { getPlayerScore, updateMultipleScores } = useScoringStore();
   
-  const player = players.find(p => p.id === playerId);
   const score = getPlayerScore(playerId);
   const [localChanges, setLocalChanges] = useState<LocalChanges>({});
   
@@ -227,10 +226,6 @@ export default function CategoryDetailModal({ playerId, categoryId, onClose }: P
     const newArray = [...currentArray];
     newArray[index] = value;
     setLocalChanges((prev: LocalChanges) => ({ ...prev, [field]: newArray }));
-  };
-
-  const handleTextInput = (field: string, value: string) => {
-    setLocalChanges((prev: LocalChanges) => ({ ...prev, [field]: value }));
   };
 
   const handleSave = () => {

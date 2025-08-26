@@ -205,7 +205,6 @@ interface CategoryConfig {
 export default function QuickScoreScreen() {
   const { players, seating, expansions, wonders } = useSetupStore();
   const { 
-    playerScores, 
     updateScore, 
     getPlayerScore,
     initializeScores 
@@ -228,9 +227,9 @@ export default function QuickScoreScreen() {
   // Initialize scores on mount
   React.useEffect(() => {
     if (orderedPlayers.length > 0) {
-      initializeScores(orderedPlayers, wonders);
+      initializeScores(orderedPlayers as any, wonders);
     }
-  }, []);
+  }, [orderedPlayers, wonders, initializeScores]);
 
   // Define categories based on expansions
   const categories: CategoryConfig[] = useMemo(() => [
@@ -351,7 +350,7 @@ export default function QuickScoreScreen() {
         {/* Motivational Message */}
         <View style={styles.motivationalCard}>
           <Text style={styles.motivationalText}>
-            💫 Enter quick totals or tap "Details" for comprehensive tracking and personal analysis!
+            💫 Enter quick totals or tap &quot;Details&quot; for comprehensive tracking and personal analysis!
           </Text>
         </View>
 
