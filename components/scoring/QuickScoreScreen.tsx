@@ -4,7 +4,7 @@ import {
     Alert,
     Modal,
     Platform,
-    ScrollView,
+    FlatList,
     StyleSheet,
     Text,
     TouchableOpacity,
@@ -86,11 +86,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     textAlign: 'center',
     fontStyle: 'italic',
-  },
-  categoryGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
   },
   categoryCard: {
     width: '48.5%',
@@ -342,63 +337,64 @@ export default function QuickScoreScreen() {
         </View>
       </View>
 
-      <ScrollView 
+      <FlatList
         style={{ flex: 1 }}
+        data={visibleCategories}
+        keyExtractor={(item) => item.id}
+        numColumns={2}
+        columnWrapperStyle={{ justifyContent: 'space-between' }}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
-      >
-        {/* Motivational Message */}
-        <View style={styles.motivationalCard}>
-          <Text style={styles.motivationalText}>
-            💫 Enter quick totals or tap &quot;Details&quot; for comprehensive tracking and personal analysis!
-          </Text>
-        </View>
+        ListHeaderComponent={
+          <View style={styles.motivationalCard}>
+            <Text style={styles.motivationalText}>
+              💫 Enter quick totals or tap "Details" for comprehensive tracking and personal analysis!
+            </Text>
+          </View>
+        }
+        ListFooterComponent={
+          <View style={styles.totalCard}>
+            <Text style={styles.totalLabel}>TOTAL SCORE</Text>
+            <Text style={styles.totalValue}>{getTotalPoints()}</Text>
+          </View>
+        }
+        renderItem={({ item: category }) => {
+          const points = getCategoryPoints(category.id);
+          const hasDetails = currentScore &&
+            (currentScore[`${category.id}ShowDetails` as keyof typeof currentScore] as boolean);
 
-        {/* Category Grid */}
-        <View style={styles.categoryGrid}>
-          {visibleCategories.map(category => {
-            const points = getCategoryPoints(category.id);
-            const hasDetails = currentScore[`${category.id}ShowDetails` as keyof typeof currentScore];
-            
-            return (
-              <View key={category.id} style={styles.categoryCard}>
-                <View style={styles.categoryHeader}>
-                  <Text style={styles.categoryIcon}>{category.icon}</Text>
-                  <Text style={styles.categoryTitle}>{category.title}</Text>
-                </View>
-                
-                <View style={styles.pointsDisplay}>
-                  <TouchableOpacity
-                    onPress={() => {
-                      const newValue = points > 0 ? 0 : 5;
-                      handleQuickEdit(category.id, newValue);
-                    }}
-                  >
-                    <Text style={[styles.pointsValue, hasDetails ? { color: '#10B981' } : null]}>
-                      {points}
-                    </Text>
-                  </TouchableOpacity>
-                  
-                  <TouchableOpacity
-                    style={styles.detailButton}
-                    onPress={() => handleCategoryPress(category.id)}
-                  >
-                    <Text style={styles.detailButtonText}>
-                      {hasDetails ? '✓ Details' : 'Details'}
-                    </Text>
-                  </TouchableOpacity>
-                </View>
+          return (
+            <View style={styles.categoryCard}>
+              <View style={styles.categoryHeader}>
+                <Text style={styles.categoryIcon}>{category.icon}</Text>
+                <Text style={styles.categoryTitle}>{category.title}</Text>
               </View>
-            );
-          })}
-        </View>
 
-        {/* Total Display */}
-        <View style={styles.totalCard}>
-          <Text style={styles.totalLabel}>TOTAL SCORE</Text>
-          <Text style={styles.totalValue}>{getTotalPoints()}</Text>
-        </View>
-      </ScrollView>
+              <View style={styles.pointsDisplay}>
+                <TouchableOpacity
+                  onPress={() => {
+                    const newValue = points > 0 ? 0 : 5;
+                    handleQuickEdit(category.id, newValue);
+                  }}
+                >
+                  <Text style={[styles.pointsValue, hasDetails ? { color: '#10B981' } : null]}>
+                    {points}
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.detailButton}
+                  onPress={() => handleCategoryPress(category.id)}
+                >
+                  <Text style={styles.detailButtonText}>
+                    {hasDetails ? '✓ Details' : 'Details'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          );
+        }}
+      />
 
       {/* Footer */}
       <View style={styles.footer}>

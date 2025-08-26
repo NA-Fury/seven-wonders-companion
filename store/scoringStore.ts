@@ -1,6 +1,5 @@
 // store/scoringStore.ts
 import { create } from 'zustand';
-import { immer } from 'zustand/middleware/immer';
 
 export interface DetailedScoreData {
   // Direct points (quick entry)
@@ -263,98 +262,93 @@ const createDefaultScore = (maxStages: number = 0): DetailedScoreData => ({
   },
 });
 
-export const useScoringStore = create<ScoringStore>()(
-  immer((set, get) => ({
-    playerScores: {},
-    calculationCache: new Map(),
-    
-    initializeScores: (players, wonders) => set(state => {
-      const scores: Record<string, DetailedScoreData> = {};
-      
-      players.forEach((player: any) => {
-        if (!player) return;
-        
-        const wonderAssignment = wonders[player.id];
-        const maxStages = wonderAssignment?.maxStages || 3;
-        
-        scores[player.id] = createDefaultScore(maxStages);
+export const useScoringStore = create<ScoringStore>((set, get) => ({
+  playerScores: {},
+  calculationCache: new Map(),
+
+  initializeScores: (players, wonders) => {
+    const scores: Record<string, DetailedScoreData> = {};
+    players.forEach((player: any) => {
+      if (!player) return;
+      const wonderAssignment = wonders[player.id];
+      const maxStages = wonderAssignment?.maxStages || 3;
+      scores[player.id] = createDefaultScore(maxStages);
+    });
+    set({ playerScores: scores, calculationCache: new Map() });
+  },
+
+  updateScore: (playerId, field, value) => {
+    set(state => {
+      const current = state.playerScores[playerId] || createDefaultScore();
+      const updated = { ...current, [field]: value } as DetailedScoreData;
+      const category = field.replace(/[A-Z].*/, '');
+      const cacheKey = `${playerId}-${category}`;
+      const newCache = new Map(state.calculationCache);
+      newCache.delete(cacheKey);
+      return {
+        playerScores: { ...state.playerScores, [playerId]: updated },
+        calculationCache: newCache,
+      };
+    });
+  },
+
+  updateMultipleScores: (playerId, updates) => {
+    set(state => {
+      const current = state.playerScores[playerId] || createDefaultScore();
+      const updated = { ...current, ...updates };
+      const newCache = new Map(state.calculationCache);
+      newCache.forEach((_, key) => {
+        if (key.startsWith(`${playerId}-`)) newCache.delete(key);
       });
-      
-      state.playerScores = scores;
-      state.calculationCache.clear();
-    }),
-    
-    updateScore: (playerId, field, value) => set(state => {
-      if (!state.playerScores[playerId]) {
-        state.playerScores[playerId] = createDefaultScore();
-      }
-      
-      (state.playerScores[playerId] as any)[field] = value;
-      
-      // Clear cache for this player
-      const keysToDelete: string[] = [];
-    state.calculationCache.forEach((_: number, key: string) => {
-      if (key.startsWith(playerId)) {
-        keysToDelete.push(key);
-      }
+      return {
+        playerScores: { ...state.playerScores, [playerId]: updated },
+        calculationCache: newCache,
+      };
     });
-      keysToDelete.forEach(key => state.calculationCache.delete(key));
-    }),
-    
-    updateMultipleScores: (playerId, updates) => set(state => {
-      if (!state.playerScores[playerId]) {
-        state.playerScores[playerId] = createDefaultScore();
+  },
+
+  getPlayerScore: (playerId) => get().playerScores[playerId] || null,
+
+  clearCache: (playerId) => {
+    set(state => {
+      if (!playerId) {
+        return { calculationCache: new Map() };
       }
-      
-      Object.assign(state.playerScores[playerId], updates);
-      
-      // Clear cache
-      const keysToDelete: string[] = [];
-    state.calculationCache.forEach((_: number, key: string) => {
-      if (key.startsWith(playerId)) {
-        keysToDelete.push(key);
-      }
+      const newCache = new Map(state.calculationCache);
+      newCache.forEach((_, key) => {
+        if (key.startsWith(`${playerId}-`)) newCache.delete(key);
+      });
+      return { calculationCache: newCache };
     });
-      keysToDelete.forEach(key => state.calculationCache.delete(key));
-    }),
-    
-    getPlayerScore: (playerId) => {
-      return get().playerScores[playerId] || null;
-    },
-    
-    clearCache: (playerId) => set(state => {
-      if (playerId) {
-        const keysToDelete: string[] = [];
-        state.calculationCache.forEach((_: number, key: string) => {
-          if (key.startsWith(playerId)) {
-            keysToDelete.push(key);
-          }
-        });
-        keysToDelete.forEach(key => state.calculationCache.delete(key));
-      } else {
-        state.calculationCache.clear();
-      }
-    }),
-    
-    setLeadersAvailable: (playerId, leaders) => set(state => {
-      if (!state.playerScores[playerId]) {
-        state.playerScores[playerId] = createDefaultScore();
-      }
-      state.playerScores[playerId].leadersAvailable = leaders;
-    }),
-    
-    updateShipyardPositions: (playerId, positions) => set(state => {
-      if (!state.playerScores[playerId]) {
-        state.playerScores[playerId] = createDefaultScore();
-      }
-      Object.assign(state.playerScores[playerId].shipyardPositions, positions);
-    }),
-    
-    updateDiscardRetrievals: (playerId, retrievals) => set(state => {
-      if (!state.playerScores[playerId]) {
-        state.playerScores[playerId] = createDefaultScore();
-      }
-      Object.assign(state.playerScores[playerId].discardRetrievals, retrievals);
-    }),
-  }))
-);
+  },
+
+  setLeadersAvailable: (playerId, leaders) => {
+    set(state => {
+      const current = state.playerScores[playerId] || createDefaultScore();
+      const updated = { ...current, leadersAvailable: leaders };
+      return { playerScores: { ...state.playerScores, [playerId]: updated } };
+    });
+  },
+
+  updateShipyardPositions: (playerId, positions) => {
+    set(state => {
+      const current = state.playerScores[playerId] || createDefaultScore();
+      const updated = {
+        ...current,
+        shipyardPositions: { ...current.shipyardPositions, ...positions },
+      };
+      return { playerScores: { ...state.playerScores, [playerId]: updated } };
+    });
+  },
+
+  updateDiscardRetrievals: (playerId, retrievals) => {
+    set(state => {
+      const current = state.playerScores[playerId] || createDefaultScore();
+      const updated = {
+        ...current,
+        discardRetrievals: { ...current.discardRetrievals, ...retrievals },
+      };
+      return { playerScores: { ...state.playerScores, [playerId]: updated } };
+    });
+  },
+}));
