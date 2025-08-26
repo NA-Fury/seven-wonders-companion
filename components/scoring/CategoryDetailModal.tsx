@@ -201,7 +201,7 @@ interface Props {
 }
 
 export default function CategoryDetailModal({ playerId, categoryId, onClose }: Props) {
-  const { players, wonders, expansions } = useSetupStore();
+  const { wonders, expansions } = useSetupStore();
   const { getPlayerScore, updateMultipleScores } = useScoringStore();
   
   const score = getPlayerScore(playerId);

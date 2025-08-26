@@ -14,10 +14,9 @@ export function calculateCategoryPoints(
   context: CalculationContext,
   useCache: boolean = true
 ): number {
-  const cacheKey = `${playerId}-${categoryId}`;
   const cache = useScoringStore.getState().calculationCache;
-  if (useCache && cache.has(cacheKey)) {
-    return cache.get(cacheKey)!;
+  if (useCache && cache.has(playerId)) {
+    return cache.get(playerId)!;
   }
 
   // Return direct points if no details entered
@@ -74,7 +73,7 @@ export function calculateCategoryPoints(
   }
 
   if (useCache) {
-    cache.set(cacheKey, result);
+    cache.set(playerId, result);
   }
   return result;
 }
