@@ -572,11 +572,11 @@ export default function CategoryDetailModal({ playerId, categoryId, onClose }: P
   const calculatedPoints = useMemo(() => {
     // Ensure an object even if score is undefined and coerce to any to satisfy calculateCategoryPoints
     const mergedScore: any = { ...(score || {}), ...localChanges };
-    return calculateCategoryPoints(categoryId, mergedScore, {
+    return calculateCategoryPoints(playerId, categoryId, mergedScore, {
       wonder: wonderData,
       expansions,
-    });
-  }, [score, localChanges, categoryId, wonderData, expansions]);
+    }, false);
+  }, [playerId, score, localChanges, categoryId, wonderData, expansions]);
 
   return (
     <SafeAreaView style={styles.container}>

@@ -252,19 +252,18 @@ export default function QuickScoreScreen() {
   const visibleCategories = categories.filter(c => c.visible);
 
   const getCategoryPoints = useCallback((categoryId: string) => {
-    if (!currentScore) return 0;
-    
-    // Check if details are entered
-    const hasDetails = currentScore[`${categoryId}ShowDetails` as keyof typeof currentScore];
-    if (hasDetails) {
-      return calculateCategoryPoints(categoryId, currentScore, {
-        wonder: currentPlayer?.id ? wonders[currentPlayer.id] : undefined,
+    if (!currentPlayer || !currentScore) return 0;
+
+    return calculateCategoryPoints(
+      currentPlayer.id,
+      categoryId,
+      currentScore,
+      {
+        wonder: wonders[currentPlayer.id],
         expansions,
-      });
-    }
-    
-    return (currentScore as any)[`${categoryId}DirectPoints`] || 0;
-  }, [currentScore, currentPlayer, wonders, expansions]);
+      }
+    );
+  }, [currentPlayer, currentScore, wonders, expansions]);
 
   const getTotalPoints = useCallback(() => {
     if (!currentScore) return 0;
