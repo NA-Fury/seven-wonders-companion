@@ -1,6 +1,6 @@
 // components/scoring/scoringCalculations.ts
 import { WONDERS_DATABASE } from '../../data/wondersDatabase';
-import { DetailedScoreData } from '../../store/scoringStore';
+import { DetailedScoreData, useScoringStore } from '../../store/scoringStore';
 
 interface CalculationContext {
   wonder?: any;
@@ -8,50 +8,75 @@ interface CalculationContext {
 }
 
 export function calculateCategoryPoints(
+  playerId: string,
   categoryId: string,
   score: DetailedScoreData,
-  context: CalculationContext
+  context: CalculationContext,
+  useCache: boolean = true
 ): number {
-  const cacheKey = `${categoryId}-${JSON.stringify(score)}`;
-  
+  const cacheKey = `${playerId}-${categoryId}`;
+  const cache = useScoringStore.getState().calculationCache;
+  if (useCache && cache.has(cacheKey)) {
+    return cache.get(cacheKey)!;
+  }
+
   // Return direct points if no details entered
   const showDetailsKey = `${categoryId}ShowDetails` as keyof DetailedScoreData;
   const directPointsKey = `${categoryId}DirectPoints` as keyof DetailedScoreData;
-  
+
+  let result: number;
   if (!(score as any)[showDetailsKey]) {
-    return (score as any)[directPointsKey] || 0;
+    result = (score as any)[directPointsKey] || 0;
+  } else {
+    switch (categoryId) {
+      case 'wonder':
+        result = calculateWonderPoints(score, context);
+        break;
+      case 'treasure':
+        result = calculateTreasurePoints(score, context);
+        break;
+      case 'science':
+        result = calculateSciencePoints(score);
+        break;
+      case 'military':
+        result = score.militaryDirectPoints || 0;
+        break;
+      case 'civilian':
+        result = calculateCivilianPoints(score, context);
+        break;
+      case 'commercial':
+        result = calculateCommercialPoints(score, context);
+        break;
+      case 'guilds':
+        result = score.guildsDirectPoints || 0;
+        break;
+      case 'resources':
+        result = calculateResourcePoints(score);
+        break;
+      case 'cities':
+        result = calculateCitiesPoints(score);
+        break;
+      case 'leaders':
+        result = score.leadersDirectPoints || 0;
+        break;
+      case 'navy':
+        result = score.navyDirectPoints || 0;
+        break;
+      case 'islands':
+        result = score.islandDirectPoints || 0;
+        break;
+      case 'edifice':
+        result = calculateEdificePoints(score);
+        break;
+      default:
+        result = (score as any)[`${categoryId}DirectPoints`] || 0;
+    }
   }
 
-  switch (categoryId) {
-    case 'wonder':
-      return calculateWonderPoints(score, context);
-    case 'treasure':
-      return calculateTreasurePoints(score, context);
-    case 'science':
-      return calculateSciencePoints(score);
-    case 'military':
-      return score.militaryDirectPoints || 0;
-    case 'civilian':
-      return calculateCivilianPoints(score, context);
-    case 'commercial':
-      return calculateCommercialPoints(score, context);
-    case 'guilds':
-      return score.guildsDirectPoints || 0;
-    case 'resources':
-      return calculateResourcePoints(score);
-    case 'cities':
-      return calculateCitiesPoints(score);
-    case 'leaders':
-      return score.leadersDirectPoints || 0;
-    case 'navy':
-      return score.navyDirectPoints || 0;
-    case 'islands':
-      return score.islandDirectPoints || 0;
-    case 'edifice':
-      return calculateEdificePoints(score);
-    default:
-      return (score as any)[`${categoryId}DirectPoints`] || 0;
+  if (useCache) {
+    cache.set(cacheKey, result);
   }
+  return result;
 }
 
 function calculateWonderPoints(score: DetailedScoreData, context: CalculationContext): number {
@@ -258,6 +283,7 @@ export function validateDiscardRetrievals(score: DetailedScoreData): boolean {
 
 // Calculate total game score
 export function calculateTotalScore(
+  playerId: string,
   score: DetailedScoreData,
   context: CalculationContext
 ): number {
@@ -275,7 +301,7 @@ export function calculateTotalScore(
   if (context.expansions?.edifice) categories.push('edifice');
 
   return categories.reduce((total, category) => {
-    return total + calculateCategoryPoints(category, score, context);
+    return total + calculateCategoryPoints(playerId, category, score, context);
   }, 0);
 }
 
