@@ -806,19 +806,19 @@ export default function ComprehensiveEndGameScoring() {
     if (!currentPlayer) return;
     const playerId = currentPlayer.id;
 
-    startTransition(() => {
-      setPlayerScores(prev => ({
-        ...prev,
-        [playerId]: {
-          ...prev[playerId],
-          [field]: value
-        }
-      }));
+    InteractionManager.runAfterInteractions(() => {
+      startTransition(() => {
+        setPlayerScores(prev => ({
+          ...prev,
+          [playerId]: {
+            ...prev[playerId],
+            [field]: value
+          }
+        }));
+      });
     });
-
-    calculationCache.current.delete(`${playerId}-wonder`);
-    calculationCache.current.delete(`${playerId}-treasure`);
-    calculationCache.current.delete(`${playerId}-science`);
+    const category = field.replace(/[A-Z].*/, '');
+    calculationCache.current.delete(`${playerId}-${category}`);
     calculationCache.current.delete(`${playerId}-total`);
   }, [currentPlayer]);
 
