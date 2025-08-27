@@ -192,6 +192,19 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: 'bold',
   },
+  infoBox: {
+    backgroundColor: 'rgba(99, 102, 241, 0.1)',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(99, 102, 241, 0.3)',
+  },
+  infoText: {
+    color: '#9CA3AF',
+    fontSize: 12,
+    lineHeight: 16,
+  },
 });
 
 interface Props {
@@ -213,7 +226,6 @@ export default function CategoryDetailModal({ playerId, categoryId, onClose }: P
     : null;
 
   const handleNumericChange = (field: string, value: any) => {
-    // Generic setter (was number-only, causing TS2345 when passing string[] / objects)
     setLocalChanges((prev: LocalChanges) => ({ ...prev, [field]: value }));
   };
 
@@ -278,6 +290,16 @@ export default function CategoryDetailModal({ playerId, categoryId, onClose }: P
                 </TouchableOpacity>
               ))}
             </View>
+            
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Direct Points Override</Text>
+              <NumericInput
+                label="Total Wonder Points"
+                value={currentValue('wonderDirectPoints')}
+                onChange={(v) => handleNumericChange('wonderDirectPoints', v)}
+                max={50}
+              />
+            </View>
           </>
         );
 
@@ -288,7 +310,7 @@ export default function CategoryDetailModal({ playerId, categoryId, onClose }: P
               <Text style={styles.sectionTitle}>Coins & Debts</Text>
               
               <NumericInput
-                label="Total Coins"
+                label="Total Coins (÷3 for points)"
                 value={currentValue('treasureTotalCoins')}
                 onChange={(v) => handleNumericChange('treasureTotalCoins', v)}
                 max={150}
@@ -304,13 +326,13 @@ export default function CategoryDetailModal({ playerId, categoryId, onClose }: P
               {expansions?.cities && (
                 <>
                   <NumericInput
-                    label="Card Debt"
+                    label="Card Debt (Cities)"
                     value={currentValue('treasureCardDebt')}
                     onChange={(v) => handleNumericChange('treasureCardDebt', v)}
                     max={50}
                   />
                   <NumericInput
-                    label="Tax Debt"
+                    label="Tax Debt (Cities)"
                     value={currentValue('treasureTaxDebt')}
                     onChange={(v) => handleNumericChange('treasureTaxDebt', v)}
                     max={50}
@@ -321,19 +343,29 @@ export default function CategoryDetailModal({ playerId, categoryId, onClose }: P
               {expansions?.armada && (
                 <>
                   <NumericInput
-                    label="Piracy Debt"
+                    label="Piracy Debt (Armada)"
                     value={currentValue('treasurePiracyDebt')}
                     onChange={(v) => handleNumericChange('treasurePiracyDebt', v)}
                     max={50}
                   />
                   <NumericInput
-                    label="Commercial Pot Taxes"
+                    label="Commercial Pot Taxes (Armada)"
                     value={currentValue('treasureCommercialDebt')}
                     onChange={(v) => handleNumericChange('treasureCommercialDebt', v)}
                     max={50}
                   />
                 </>
               )}
+            </View>
+            
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Direct Points Override</Text>
+              <NumericInput
+                label="Calculated Treasure Points"
+                value={currentValue('treasureDirectPoints')}
+                onChange={(v) => handleNumericChange('treasureDirectPoints', v)}
+                max={50}
+              />
             </View>
           </>
         );
@@ -390,14 +422,30 @@ export default function CategoryDetailModal({ playerId, categoryId, onClose }: P
                 max={5}
               />
             </View>
+            
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Direct Points Override</Text>
+              <NumericInput
+                label="Calculated Science Points"
+                value={currentValue('scienceDirectPoints')}
+                onChange={(v) => handleNumericChange('scienceDirectPoints', v)}
+                max={100}
+              />
+            </View>
           </>
         );
 
       case 'resources':
         return (
           <>
+            <View style={styles.infoBox}>
+              <Text style={styles.infoText}>
+                Resources don&apos;t directly score points, but are used for construction and trading analysis. Track your resource cards here for strategic insights.
+              </Text>
+            </View>
+            
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Resource Cards</Text>
+              <Text style={styles.sectionTitle}>Resource Cards Collection</Text>
               
               <NumericInput
                 label="🟫 Brown Cards (Common Resources)"
@@ -413,9 +461,23 @@ export default function CategoryDetailModal({ playerId, categoryId, onClose }: P
                 max={20}
               />
             </View>
+          </>
+        );
+
+      case 'bonus':
+        return (
+          <>
+            <View style={styles.infoBox}>
+              <Text style={styles.infoText}>
+                Track special abilities that retrieve cards from the discard pile. This bonus analysis helps understand your game&apos;s efficiency and special power usage.
+              </Text>
+            </View>
             
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Discard Pile Retrievals</Text>
+              <Text style={[styles.infoText, { marginBottom: 12 }]}>
+                Cards retrieved and activated from discard piles (via Halicarnassus, Solomon, or Forging Agency)
+              </Text>
               
               <NumericInput
                 label="Age I Cards Retrieved"
@@ -424,7 +486,7 @@ export default function CategoryDetailModal({ playerId, categoryId, onClose }: P
                   const current = currentValue('discardRetrievals') || {};
                   handleNumericChange('discardRetrievals', { ...current, age1: v });
                 }}
-                max={5}
+                max={10}
               />
               
               <NumericInput
@@ -434,7 +496,7 @@ export default function CategoryDetailModal({ playerId, categoryId, onClose }: P
                   const current = currentValue('discardRetrievals') || {};
                   handleNumericChange('discardRetrievals', { ...current, age2: v });
                 }}
-                max={5}
+                max={10}
               />
               
               <NumericInput
@@ -444,11 +506,11 @@ export default function CategoryDetailModal({ playerId, categoryId, onClose }: P
                   const current = currentValue('discardRetrievals') || {};
                   handleNumericChange('discardRetrievals', { ...current, age3: v });
                 }}
-                max={5}
+                max={10}
               />
               
               <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Source (e.g., Halicarnassus, Solomon)</Text>
+                <Text style={styles.inputLabel}>Retrieval Source</Text>
                 <TextInput
                   style={styles.input}
                   value={currentValue('discardRetrievals')?.source || ''}
@@ -456,11 +518,94 @@ export default function CategoryDetailModal({ playerId, categoryId, onClose }: P
                     const current = currentValue('discardRetrievals') || {};
                     handleNumericChange('discardRetrievals', { ...current, source: text });
                   }}
-                  placeholder="Enter source"
+                  placeholder="e.g., Halicarnassus, Solomon, Forging Agency"
                   placeholderTextColor="rgba(243, 231, 211, 0.4)"
                 />
               </View>
             </View>
+            
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Analysis Summary</Text>
+              <View style={styles.infoBox}>
+                <Text style={styles.infoText}>
+                  Total Cards Retrieved: {
+                    (currentValue('discardRetrievals')?.age1 || 0) +
+                    (currentValue('discardRetrievals')?.age2 || 0) +
+                    (currentValue('discardRetrievals')?.age3 || 0)
+                  }
+                </Text>
+                {currentValue('discardRetrievals')?.source && (
+                  <Text style={[styles.infoText, { marginTop: 4 }]}>
+                    Source: {currentValue('discardRetrievals')?.source}
+                  </Text>
+                )}
+              </View>
+            </View>
+          </>
+        );
+
+      case 'military':
+        return (
+          <>
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Military Strength & Conflicts</Text>
+              
+              <NumericInput
+                label="Victory Points from Military"
+                value={currentValue('militaryDirectPoints')}
+                onChange={(v) => handleNumericChange('militaryDirectPoints', v)}
+                max={30}
+              />
+              
+              <NumericInput
+                label="Total Military Strength (Shields)"
+                value={currentValue('militaryTotalStrength')}
+                onChange={(v) => handleNumericChange('militaryTotalStrength', v)}
+                max={20}
+              />
+              
+              {expansions?.cities && (
+                <TouchableOpacity
+                  style={[
+                    styles.toggleButton,
+                    currentValue('militaryPlayedDove') ? styles.toggleActive : styles.toggleInactive
+                  ]}
+                  onPress={() => handleToggleChange('militaryPlayedDove', !currentValue('militaryPlayedDove'))}
+                >
+                  <Text style={styles.toggleLabel}>
+                    Played Red Dove Diplomacy Token?
+                  </Text>
+                  <View style={[
+                    styles.toggleCheck,
+                    currentValue('militaryPlayedDove') ? styles.toggleCheckActive : styles.toggleCheckInactive
+                  ]}>
+                    {currentValue('militaryPlayedDove') && 
+                      <Text style={{ color: '#1C1A1A', fontSize: 11 }}>✓</Text>
+                    }
+                  </View>
+                </TouchableOpacity>
+              )}
+            </View>
+            
+            {expansions?.armada && (
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Boarding Actions (Armada)</Text>
+                
+                <NumericInput
+                  label="Boarding Applied (You attacked)"
+                  value={currentValue('militaryBoardingApplied')}
+                  onChange={(v) => handleNumericChange('militaryBoardingApplied', v)}
+                  max={10}
+                />
+                
+                <NumericInput
+                  label="Boarding Received (You were attacked)"
+                  value={currentValue('militaryBoardingReceived')}
+                  onChange={(v) => handleNumericChange('militaryBoardingReceived', v)}
+                  max={10}
+                />
+              </View>
+            )}
           </>
         );
 
@@ -492,69 +637,11 @@ export default function CategoryDetailModal({ playerId, categoryId, onClose }: P
           </>
         );
 
-      case 'military':
-        return (
-          <>
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Military Strength</Text>
-              
-              <NumericInput
-                label="Total Military Strength"
-                value={currentValue('militaryTotalStrength')}
-                onChange={(v) => handleNumericChange('militaryTotalStrength', v)}
-                max={20}
-              />
-              
-              {expansions?.cities && (
-                <TouchableOpacity
-                  style={[
-                    styles.toggleButton,
-                    currentValue('militaryPlayedDove') ? styles.toggleActive : styles.toggleInactive
-                  ]}
-                  onPress={() => handleToggleChange('militaryPlayedDove', !currentValue('militaryPlayedDove'))}
-                >
-                  <Text style={styles.toggleLabel}>
-                    Played Red Dove Diplomacy Token?
-                  </Text>
-                  <View style={[
-                    styles.toggleCheck,
-                    currentValue('militaryPlayedDove') ? styles.toggleCheckActive : styles.toggleCheckInactive
-                  ]}>
-                    {currentValue('militaryPlayedDove') && 
-                      <Text style={{ color: '#1C1A1A', fontSize: 11 }}>✓</Text>
-                    }
-                  </View>
-                </TouchableOpacity>
-              )}
-            </View>
-            
-            {expansions?.armada && (
-              <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Boarding Actions</Text>
-                
-                <NumericInput
-                  label="Boarding Applied"
-                  value={currentValue('militaryBoardingApplied')}
-                  onChange={(v) => handleNumericChange('militaryBoardingApplied', v)}
-                  max={10}
-                />
-                
-                <NumericInput
-                  label="Boarding Received"
-                  value={currentValue('militaryBoardingReceived')}
-                  onChange={(v) => handleNumericChange('militaryBoardingReceived', v)}
-                  max={10}
-                />
-              </View>
-            )}
-          </>
-        );
-
       default:
         return (
           <View style={styles.section}>
             <NumericInput
-              label={`${categoryId} Points`}
+              label={`${getCategoryTitle(categoryId)} Points`}
               value={currentValue(`${categoryId}DirectPoints`)}
               onChange={(v) => handleNumericChange(`${categoryId}DirectPoints`, v)}
               max={100}
@@ -565,13 +652,19 @@ export default function CategoryDetailModal({ playerId, categoryId, onClose }: P
   };
 
   const calculatedPoints = useMemo(() => {
-    // Ensure an object even if score is undefined and coerce to any to satisfy calculateCategoryPoints
+    // Don't calculate points for non-scoring categories
+    if (categoryId === 'resources' || categoryId === 'bonus') {
+      return 0;
+    }
+    
     const mergedScore: any = { ...(score || {}), ...localChanges };
     return calculateCategoryPoints(playerId, categoryId, mergedScore, {
       wonder: wonderData,
       expansions,
     }, false);
   }, [playerId, score, localChanges, categoryId, wonderData, expansions]);
+
+  const isAnalysisCategory = categoryId === 'resources' || categoryId === 'bonus';
 
   return (
     <SafeAreaView style={styles.container}>
@@ -592,8 +685,14 @@ export default function CategoryDetailModal({ playerId, categoryId, onClose }: P
 
       <View style={styles.footer}>
         <View style={styles.totalDisplay}>
-          <Text style={styles.totalLabel}>Calculated:</Text>
-          <Text style={styles.totalValue}>{calculatedPoints} pts</Text>
+          {!isAnalysisCategory ? (
+            <>
+              <Text style={styles.totalLabel}>Calculated:</Text>
+              <Text style={styles.totalValue}>{calculatedPoints} pts</Text>
+            </>
+          ) : (
+            <Text style={[styles.totalLabel, { color: '#6366F1' }]}>Analysis Data</Text>
+          )}
         </View>
         <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
           <Text style={styles.saveButtonText}>Save & Close</Text>
@@ -719,7 +818,8 @@ function getCategoryTitle(categoryId: string): string {
     commercial: '🪙 Commercial Structures',
     science: '🔬 Science Structures',
     guilds: '👑 Guild Cards',
-    resources: '📦 Resource Cards',
+    resources: '📦 Resource Analysis',
+    bonus: '🔍 Bonus Analysis',
     cities: '🏴 Cities Expansion',
     leaders: '👤 Leaders',
     navy: '⚓ Naval Conflicts',

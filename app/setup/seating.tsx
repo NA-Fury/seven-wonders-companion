@@ -99,102 +99,102 @@ export default function SeatingScreen() {
   : null;
 
   return (
-    <SetupScreen
-      footer={
-        <View style={{ flexDirection: 'row' }}>
-          <View style={{ flex: 1, marginRight: 12 }}>
-            <Button
-              title="Back to Players"
-              variant="ghost"
-              onPress={() => router.back()}
-              className="w-full"
-            />
+    <>
+      <SetupScreen
+        footer={
+          <View style={{ flexDirection: 'row' }}>
+            <View style={{ flex: 1, marginRight: 12 }}>
+              <Button
+                title="Back to Players"
+                variant="ghost"
+                onPress={() => router.back()}
+                className="w-full"
+              />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Button
+                title="Continue to Wonders"
+                onPress={handleContinue}
+                className="w-full"
+                disabled={selectedSeating.length < 3 || selectedSeating.length > 7}
+              />
+            </View>
           </View>
-          <View style={{ flex: 1 }}>
-            <Button
-              title="Continue to Wonders"
-              onPress={handleContinue}
-              className="w-full"
-              disabled={selectedSeating.length < 3 || selectedSeating.length > 7}
-            />
-          </View>
-        </View>
-      }
-    >
-      <H1>Table Seating</H1>
-      <P className="mb-4">
-        Arrange players around the table. Use the tabs below to visualize different game phases.
-      </P>
+        }
+      >
+        <H1>Table Seating</H1>
+        <P className="mb-4">
+          Arrange players around the table. Use the tabs below to visualize different game phases.
+        </P>
 
-          {/* Game Setup Info */}
-          <Card>
-            <H2>Game Setup</H2>
+        <Card>
+          <H2>Game Setup</H2>
             <P className="text-aurum mb-1">{getExpansionText()}</P>
             <P className="text-parchment/60 text-sm">
               {selectedSeating.length} players • Strategic seating matters for trading & military
             </P>
-          </Card>
+        </Card>
 
-          {/* Seating Statistics */}
-          <SeatingStats 
-            playerIds={selectedSeating}
-            getPlayerName={getPlayerName}
-          />
-
-          {/* Table Mode Selector */}
-          <TableModeSelector
-            currentMode={tableMode}
-            onModeChange={setTableMode}
-            expansions={expansions}
-          />
-
-          {/* Aerial Table View */}
-          <Card>
-            <H2>Aerial Table View</H2>
-            <P className="mb-4 text-parchment/70 text-sm">
-              Tap any player to see their details. Arrows show turn order and conflicts for the selected phase.
-            </P>
-            <AerialTableView 
-              playerIds={selectedSeating}
-              getPlayerName={getPlayerName}
-              selectedPlayer={selectedPlayer}
-              onPlayerSelect={handlePlayerSelect}
-              mode={tableMode}
-              disabled={showPlayerDetails}
-            />
-          </Card>
-
-      {/* Seating Controls */}
-      <SeatingControls
-        onRandomize={handleRandomize}
-        onOptimalSeating={handleOptimalSeating}
-      />
-
-      {/* Drag & Drop Player Reordering */}
-      <Card>
-        <H2>Player Order</H2>
-        <P className="mb-3 text-parchment/70 text-sm">
-          Drag and drop to reorder players • Hold and drag any player to rearrange seating
-        </P>
-        <DragDropPlayerList
+        <SeatingStats
           playerIds={selectedSeating}
           getPlayerName={getPlayerName}
-          getNeighbors={getNeighbors}
-          onReorder={handlePlayerReorder}
-          disabled={showPlayerDetails}
         />
-      </Card>
 
-      <View style={{ height: 20 }} />
-    </SetupScreen>
+        <TableModeSelector
+          currentMode={tableMode}
+          onModeChange={setTableMode}
+          expansions={expansions}
+        />
 
-    {/* Player Details Modal - Properly isolated */}
-    <PlayerDetailsModal
-      visible={showPlayerDetails}
-      player={selectedPlayerData}
-      position={selectedPlayer ? selectedSeating.indexOf(selectedPlayer) + 1 : 0}
-      neighbors={selectedPlayer ? getNeighbors(selectedPlayer) : { left: '', right: '' }}
-      onClose={handleCloseDetails}
-    />
+        <Card>
+          <H2>Aerial Table View</H2>
+          <P className="mb-4 text-parchment/70 text-sm">
+            Tap any player to see their details. Arrows show turn order and conflicts for the selected phase.
+          </P>
+          <AerialTableView
+            playerIds={selectedSeating}
+            getPlayerName={getPlayerName}
+            selectedPlayer={selectedPlayer ?? ''}      // ensure string
+            onPlayerSelect={handlePlayerSelect}
+            mode={tableMode}
+            disabled={showPlayerDetails}
+          />
+        </Card>
+
+        <SeatingControls
+          onRandomize={handleRandomize}
+          onOptimalSeating={handleOptimalSeating}
+        />
+
+        <Card>
+          <H2>Player Order</H2>
+          <P className="mb-3 text-parchment/70 text-sm">
+            Drag and drop to reorder players • Hold and drag any player to rearrange seating
+          </P>
+          <DragDropPlayerList
+            playerIds={selectedSeating}
+            getPlayerName={getPlayerName}
+            getNeighbors={getNeighbors}
+            onReorder={handlePlayerReorder}
+            disabled={showPlayerDetails}
+          />
+        </Card>
+
+        <View style={{ height: 20 }} />
+      </SetupScreen>
+
+      {/* Player Details Modal */}
+      <PlayerDetailsModal
+        visible={showPlayerDetails}
+        player={selectedPlayerData}
+        position={selectedPlayer ? selectedSeating.indexOf(selectedPlayer) + 1 : 0}
+        neighbors={
+          selectedPlayer
+            ? getNeighbors(selectedPlayer)
+            : { left: '', right: '' }
+        }
+        onClose={handleCloseDetails}
+      />
+    </>
   );
 }

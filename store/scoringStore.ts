@@ -1,5 +1,8 @@
-// store/scoringStore.ts - Optimized for performance
+// store/scoringStore.ts - Optimized with persistent storage support
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
+import { createJSONStorage, persist, subscribeWithSelector } from 'zustand/middleware';
+import { useStoreWithEqualityFn } from 'zustand/traditional'; // add this import
 
 export interface DetailedScoreData {
   // Wonder
@@ -102,11 +105,14 @@ export interface DetailedScoreData {
   edificePenalties?: number;
   edificeProjectsContributed?: string[];
   
-  // Resources
-  resourcesDirectPoints?: number;
+  // Resources (Analysis only - no points)
+  resourcesDirectPoints?: number; // Always 0, kept for consistency
   resourcesShowDetails?: boolean;
   resourcesBrownCards?: number;
   resourcesGreyCards?: number;
+  
+  // Bonus Analysis
+  bonusShowDetails?: boolean;
   discardRetrievals?: {
     age1: number;
     age2: number;
@@ -131,11 +137,18 @@ interface Player {
 interface ScoringState {
   playerScores: Record<string, DetailedScoreData>;
   isInitialized: boolean;
+  lastUpdate: number;
+  gameId: string | null;
+  
+  // Actions
   initializeScores: (players: Player[], wonders: any) => void;
   updateScore: (playerId: string, field: string, value: any) => void;
   updateMultipleScores: (playerId: string, updates: Partial<DetailedScoreData>) => void;
   getPlayerScore: (playerId: string) => DetailedScoreData | undefined;
   clearPlayer: (playerId: string) => void;
+  resetAllScores: () => void;
+  saveGame: () => Promise<void>;
+  loadGame: (gameId: string) => Promise<void>;
 }
 
 function createDefaultScore(): DetailedScoreData {
@@ -153,39 +166,150 @@ function createDefaultScore(): DetailedScoreData {
     navyDirectPoints: 0,
     islandDirectPoints: 0,
     edificeDirectPoints: 0,
+    resourcesBrownCards: 0,
+    resourcesGreyCards: 0,
+    discardRetrievals: {
+      age1: 0,
+      age2: 0,
+      age3: 0,
+      source: '',
+    },
   };
 }
 
-export const useScoringStore = create<ScoringState>((set, get) => ({
-  playerScores: {},
-  isInitialized: false,
-  initializeScores: (players, _wonders) => {
-    const scores: Record<string, DetailedScoreData> = {};
-    players.forEach(p => { if (p?.id) scores[p.id] = createDefaultScore(); });
-    set({ playerScores: scores, isInitialized: true });
-  },
-  updateScore: (playerId, field, value) => {
-    set(state => {
-      const next = { ...state.playerScores };
-      if (!next[playerId]) next[playerId] = createDefaultScore();
-      next[playerId] = { ...next[playerId], [field]: value };
-      return { playerScores: next };
-    });
-  },
-  updateMultipleScores: (playerId, updates) => {
-    set(state => {
-      const next = { ...state.playerScores };
-      if (!next[playerId]) next[playerId] = createDefaultScore();
-      next[playerId] = { ...next[playerId], ...updates };
-      return { playerScores: next };
-    });
-  },
-  getPlayerScore: (playerId) => get().playerScores[playerId],
-  clearPlayer: (playerId) => {
-    set(state => {
-      const next = { ...state.playerScores };
-      delete next[playerId];
-      return { playerScores: next };
-    });
-  },
-}));
+// Create the store with persistence
+export const useScoringStore = create<ScoringState>()(
+  subscribeWithSelector(
+    persist(
+      (set, get) => ({
+        playerScores: {},
+        isInitialized: false,
+        lastUpdate: Date.now(),
+        gameId: null,
+        
+        initializeScores: (players, _wonders) => {
+          const scores: Record<string, DetailedScoreData> = {};
+          players.forEach(p => { 
+            if (p?.id) scores[p.id] = createDefaultScore(); 
+          });
+          set({ 
+            playerScores: scores, 
+            isInitialized: true,
+            lastUpdate: Date.now(),
+          });
+        },
+        
+        updateScore: (playerId, field, value) => {
+          const state = get();
+          const next = { ...state.playerScores };
+          if (!next[playerId]) next[playerId] = createDefaultScore();
+          next[playerId] = { ...next[playerId], [field]: value };
+          set({ 
+            playerScores: next,
+            lastUpdate: Date.now(),
+          });
+        },
+        
+        updateMultipleScores: (playerId, updates) => {
+          const state = get();
+          const next = { ...state.playerScores };
+          if (!next[playerId]) next[playerId] = createDefaultScore();
+          next[playerId] = { ...next[playerId], ...updates };
+          set({ 
+            playerScores: next,
+            lastUpdate: Date.now(),
+          });
+        },
+        
+        getPlayerScore: (playerId) => get().playerScores[playerId],
+        
+        clearPlayer: (playerId) => {
+          const state = get();
+          const next = { ...state.playerScores };
+          delete next[playerId];
+          set({ 
+            playerScores: next,
+            lastUpdate: Date.now(),
+          });
+        },
+        
+        resetAllScores: () => {
+          set({ 
+            playerScores: {}, 
+            isInitialized: false,
+            lastUpdate: Date.now(),
+            gameId: null,
+          });
+        },
+        
+        saveGame: async () => {
+          const state = get();
+          const gameId = `game-${Date.now()}`;
+          try {
+            await AsyncStorage.setItem(
+              `@7wonders-game-${gameId}`,
+              JSON.stringify({
+                playerScores: state.playerScores,
+                timestamp: Date.now(),
+              })
+            );
+            set({ gameId });
+          } catch (e) {
+            console.error('Failed to save game:', e);
+          }
+        },
+        
+        loadGame: async (gameId: string) => {
+          try {
+            const saved = await AsyncStorage.getItem(`@7wonders-game-${gameId}`);
+            if (saved) {
+              const data = JSON.parse(saved);
+              set({ 
+                playerScores: data.playerScores,
+                isInitialized: true,
+                lastUpdate: Date.now(),
+                gameId,
+              });
+            }
+          } catch (e) {
+            console.error('Failed to load game:', e);
+          }
+        },
+      }),
+      {
+        name: '7wonders-scoring-storage',
+        storage: createJSONStorage(() => AsyncStorage),
+        partialize: (state) => ({
+          playerScores: state.playerScores,
+          gameId: state.gameId,
+        }),
+      }
+    )
+  )
+);
+
+// Performance optimization: memoized selector
+const deepEqual = (
+  a: DetailedScoreData | undefined,
+  b: DetailedScoreData | undefined
+): boolean => {
+  if (a === b) return true;
+  if (!a || !b) return false;
+  // Cheap deep compare (OK for modest object size)
+  return JSON.stringify(a) === JSON.stringify(b);
+};
+
+export const usePlayerScore = (playerId: string) =>
+  useStoreWithEqualityFn(
+    useScoringStore,
+    state => state.playerScores[playerId],
+    deepEqual
+  );
+
+// Batch updates for better performance
+export const batchUpdateScores = (updates: Array<{ playerId: string; field: string; value: any }>) => {
+  const { updateScore } = useScoringStore.getState();
+  updates.forEach(({ playerId, field, value }) => {
+    updateScore(playerId, field, value);
+  });
+};

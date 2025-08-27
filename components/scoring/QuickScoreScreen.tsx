@@ -23,6 +23,7 @@ interface CategoryConfig {
   title: string;
   icon: string;
   visible: boolean;
+  isScoring: boolean; // New field to distinguish scoring vs analysis categories
 }
 
 const styles = StyleSheet.create({
@@ -79,6 +80,20 @@ const styles = StyleSheet.create({
   buttonText: { fontSize: 14, fontWeight: 'bold' },
   primaryButtonText: { color: '#1C1A1A' },
   secondaryButtonText: { color: '#9CA3AF' },
+  
+  analysisSection: {
+    marginTop: 16,
+    paddingTop: 16,
+    borderTopWidth: 2,
+    borderTopColor: 'rgba(196,162,76,0.2)',
+  },
+  analysisSectionTitle: { 
+    color: '#C4A24C', 
+    fontSize: 14, 
+    fontWeight: 'bold',
+    marginBottom: 12,
+    textAlign: 'center'
+  },
 
   // Category tile styles (used by QuickCategoryItem)
   categoryCard: {
@@ -107,14 +122,12 @@ const styles = StyleSheet.create({
 
 export default function QuickScoreScreen() {
   const { players, seating, expansions, wonders } = useSetupStore();
-  const initializeScores = useScoringStore(s => s.initializeScores);
-  const updateScore = useScoringStore(s => s.updateScore);
-  const isInitialized = useScoringStore(s => s.isInitialized);
+  const { initializeScores, updateScore, isInitialized, playerScores } = useScoringStore();
 
   const [currentPlayerIndex, setCurrentPlayerIndex] = useState(0);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
-  const [ready, setReady] = useState(isInitialized);
+  const [ready, setReady] = useState(false);
 
   const orderedPlayers = useMemo(() => {
     if (!players?.length) return [];
@@ -125,50 +138,52 @@ export default function QuickScoreScreen() {
   useEffect(() => {
     if (!isInitialized && orderedPlayers.length > 0) {
       initializeScores(orderedPlayers, wonders);
-      setReady(true);
-    } else if (isInitialized) {
-      setReady(true);
     }
+    setReady(isInitialized);
   }, [isInitialized, orderedPlayers, initializeScores, wonders]);
 
   const currentPlayer = orderedPlayers[currentPlayerIndex];
-  const currentScore = useScoringStore(s =>
-    currentPlayer ? s.playerScores[currentPlayer.id] : undefined
-  );
+  const currentScore = currentPlayer ? playerScores[currentPlayer.id] : undefined;
 
   const categories: CategoryConfig[] = useMemo(() => [
-    { id: 'wonder', title: 'Wonder', icon: '🏛️', visible: true },
-    { id: 'treasure', title: 'Treasure', icon: '💰', visible: true },
-    { id: 'military', title: 'Military', icon: '⚔️', visible: true },
-    { id: 'civilian', title: 'Civilian', icon: '🏛️', visible: true },
-    { id: 'commercial', title: 'Commercial', icon: '🪙', visible: true },
-    { id: 'science', title: 'Science', icon: '🔬', visible: true },
-    { id: 'guilds', title: 'Guilds', icon: '👑', visible: true },
-    { id: 'resources', title: 'Resources', icon: '📦', visible: true },
-    { id: 'cities', title: 'Cities', icon: '🏴', visible: expansions?.cities },
-    { id: 'leaders', title: 'Leaders', icon: '👤', visible: expansions?.leaders },
-    { id: 'navy', title: 'Navy', icon: '⚓', visible: expansions?.armada },
-    { id: 'islands', title: 'Islands', icon: '🏝️', visible: expansions?.armada },
-    { id: 'edifice', title: 'Edifice', icon: '🗿', visible: expansions?.edifice },
+    { id: 'wonder', title: 'Wonder', icon: '🏛️', visible: true, isScoring: true },
+    { id: 'treasure', title: 'Treasure', icon: '💰', visible: true, isScoring: true },
+    { id: 'military', title: 'Military', icon: '⚔️', visible: true, isScoring: true },
+    { id: 'civilian', title: 'Civilian', icon: '🏛️', visible: true, isScoring: true },
+    { id: 'commercial', title: 'Commercial', icon: '🪙', visible: true, isScoring: true },
+    { id: 'science', title: 'Science', icon: '🔬', visible: true, isScoring: true },
+    { id: 'guilds', title: 'Guilds', icon: '👑', visible: true, isScoring: true },
+    { id: 'cities', title: 'Cities', icon: '🏴', visible: expansions?.cities, isScoring: true },
+    { id: 'leaders', title: 'Leaders', icon: '👤', visible: expansions?.leaders, isScoring: true },
+    { id: 'navy', title: 'Navy', icon: '⚓', visible: expansions?.armada, isScoring: true },
+    { id: 'islands', title: 'Islands', icon: '🏝️', visible: expansions?.armada, isScoring: true },
+    { id: 'edifice', title: 'Edifice', icon: '🗿', visible: expansions?.edifice, isScoring: true },
+    // Analysis categories (non-scoring)
+    { id: 'resources', title: 'Resources', icon: '📦', visible: true, isScoring: false },
+    { id: 'bonus', title: 'Bonus Analysis', icon: '🔍', visible: true, isScoring: false },
   ], [expansions]);
 
-  const visibleCategories = categories.filter(c => c.visible);
+  const scoringCategories = categories.filter(c => c.visible && c.isScoring);
+  const analysisCategories = categories.filter(c => c.visible && !c.isScoring);
 
   const totalPoints = useMemo(() => {
     if (!ready || !currentPlayer || !currentScore) return 0;
-    return visibleCategories.reduce(
-      (sum, cat) =>
-        sum +
-        calculateCategoryPoints(
-          currentPlayer.id,
-          cat.id,
-          currentScore,
-          { wonder: wonders?.[currentPlayer.id], expansions },
-          true
-        ),
-      0
-    );
-  }, [ready, currentPlayer, currentScore, visibleCategories, wonders, expansions]);
+    let sum = 0;
+    
+    // Only sum scoring categories
+    scoringCategories.forEach(cat => {
+      const points = calculateCategoryPoints(
+        currentPlayer.id,
+        cat.id,
+        currentScore,
+        { wonder: wonders?.[currentPlayer.id], expansions },
+        true
+      );
+      sum += points;
+    });
+    
+    return sum;
+  }, [ready, currentPlayer, currentScore, scoringCategories, wonders, expansions]);
 
   const handleCategoryPress = useCallback((categoryId: string) => {
     setSelectedCategory(categoryId);
@@ -176,12 +191,21 @@ export default function QuickScoreScreen() {
   }, []);
 
   const handleQuickEdit = useCallback(
-    (categoryId: string, value: number) => {
-      if (!currentPlayer) return;
-      updateScore(currentPlayer.id, `${categoryId}DirectPoints`, value);
-      clearCategoryPointsCache();
+    (categoryId: string, delta: number) => {
+      if (!currentPlayer || !currentScore) return;
+      
+      const fieldName = `${categoryId}DirectPoints`;
+      const currentValue = (currentScore as any)[fieldName] || 0;
+      const newValue = Math.max(0, currentValue + delta);
+      
+      updateScore(currentPlayer.id, fieldName, newValue);
+      
+      // Only clear cache after actual update
+      requestAnimationFrame(() => {
+        clearCategoryPointsCache();
+      });
     },
-    [currentPlayer, updateScore]
+    [currentPlayer, currentScore, updateScore]
   );
 
   const navigatePlayer = useCallback((dir: 'prev' | 'next') => {
@@ -193,12 +217,11 @@ export default function QuickScoreScreen() {
   }, [orderedPlayers.length]);
 
   const allPlayersScored = useCallback(() => {
-    const scores = useScoringStore.getState().playerScores;
     return orderedPlayers.every(p => {
-      const s = p && scores[p.id];
+      const s = p && playerScores[p.id];
       return s && Object.keys(s).some(k => k.endsWith('DirectPoints') && (s as any)[k] > 0);
     });
-  }, [orderedPlayers]);
+  }, [orderedPlayers, playerScores]);
 
   if (!ready || !currentPlayer || !currentScore) {
     return (
@@ -243,7 +266,7 @@ export default function QuickScoreScreen() {
 
       <FlatList
         style={{ flex: 1 }}
-        data={visibleCategories}
+        data={[...scoringCategories, ...analysisCategories]}
         keyExtractor={c => c.id}
         numColumns={2}
         columnWrapperStyle={{ justifyContent: 'space-between' }}
@@ -262,18 +285,45 @@ export default function QuickScoreScreen() {
             <Text style={styles.totalValue}>{totalPoints}</Text>
           </View>
         }
-        renderItem={({ item }) => (
-          <QuickCategoryItem
-            playerId={currentPlayer.id}
-            category={item}
-            wonder={wonders?.[currentPlayer.id]}
-            expansions={expansions}
-            styles={styles}
-            onDetails={handleCategoryPress}
-            onQuickEdit={handleQuickEdit}
-          />
-        )}
-        initialNumToRender={6}
+        renderItem={({ item, index }) => {
+          // Add separator before analysis categories
+          if (!item.isScoring && index === scoringCategories.length) {
+            return (
+              <>
+                <View style={styles.analysisSection}>
+                  <Text style={styles.analysisSectionTitle}>📊 Deep Analysis (Optional)</Text>
+                </View>
+                <QuickCategoryItem
+                  playerId={currentPlayer.id}
+                  category={item}
+                  wonder={wonders?.[currentPlayer.id]}
+                  expansions={expansions}
+                  styles={styles}
+                  onDetails={handleCategoryPress}
+                  onQuickEdit={handleQuickEdit}
+                  isAnalysis={!item.isScoring}
+                />
+              </>
+            );
+          }
+          
+          return (
+            <QuickCategoryItem
+              playerId={currentPlayer.id}
+              category={item}
+              wonder={wonders?.[currentPlayer.id]}
+              expansions={expansions}
+              styles={styles}
+              onDetails={handleCategoryPress}
+              onQuickEdit={handleQuickEdit}
+              isAnalysis={!item.isScoring}
+            />
+          );
+        }}
+        initialNumToRender={8}
+        maxToRenderPerBatch={4}
+        windowSize={10}
+        removeClippedSubviews={true}
       />
 
       {/* Footer */}
