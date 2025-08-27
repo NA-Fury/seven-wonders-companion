@@ -49,7 +49,7 @@ export const WONDERS_DATABASE: Wonder[] = [
       expansion: 'Base',
       daySide: {
           name: 'Alexandria A',
-          points: 3,
+          points: 10,
           stages: [
               {
                   cost: [{ resource: 'Stone', amount: 2 }],
@@ -57,7 +57,7 @@ export const WONDERS_DATABASE: Wonder[] = [
               },
               {
                   cost: [{ resource: 'Ore', amount: 2 }],
-                  effect: { type: 'Resource', description: 'Choose 1 Raw Material' }
+                  effect: { type: 'Resource', description: 'Choose 1 Raw Material per Turn' }
               },
               {
                   cost: [{ resource: 'Glass', amount: 2 }],
@@ -68,18 +68,18 @@ export const WONDERS_DATABASE: Wonder[] = [
       },
       nightSide: {
           name: 'Alexandria B',
-          points: 0,
+          points: 7,
           stages: [
               {
                   cost: [{ resource: 'Clay', amount: 2 }],
                   effect: { type: 'Resource', description: 'Choose 1 Raw Material' }
               },
               {
-                  cost: [{ resource: 'Wood', amount: 2 }],
+                  cost: [{ resource: 'Ore', amount: 3 }],
                   effect: { type: 'Resource', description: 'Choose 1 Manufactured Good' }
               },
               {
-                  cost: [{ resource: 'Stone', amount: 3 }],
+                  cost: [{ resource: 'Wood', amount: 4 }],
                   effect: { type: 'Points', value: 7, description: '7 Victory Points' }
               }
           ],

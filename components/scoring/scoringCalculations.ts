@@ -154,9 +154,10 @@ function calculateCivilianPoints(score: DetailedScoreData, context: CalculationC
 
   let total = score.civilianDirectPoints || 0;
 
-  // Add shipyard position bonus if applicable
-  if (context.expansions?.armada && score.civilianShipPosition > 0) {
-    const shipyardBonus = getShipyardPositionBonus(score.civilianShipPosition, 'blue');
+  // Add shipyard position bonus if applicable (guard undefined)
+  const civPos = typeof score.civilianShipPosition === 'number' ? score.civilianShipPosition : 0;
+  if (context.expansions?.armada && civPos > 0) {
+    const shipyardBonus = getShipyardPositionBonus(civPos, 'blue');
     total += shipyardBonus;
   }
 
@@ -170,9 +171,10 @@ function calculateCommercialPoints(score: DetailedScoreData, context: Calculatio
 
   let total = score.commercialDirectPoints || 0;
 
-  // Add shipyard position bonus
-  if (context.expansions?.armada && score.commercialShipPosition > 0) {
-    const shipyardBonus = getShipyardPositionBonus(score.commercialShipPosition, 'yellow');
+  // Add shipyard position bonus (guard undefined)
+  const commPos = typeof score.commercialShipPosition === 'number' ? score.commercialShipPosition : 0;
+  if (context.expansions?.armada && commPos > 0) {
+    const shipyardBonus = getShipyardPositionBonus(commPos, 'yellow');
     total += shipyardBonus;
   }
 
@@ -234,14 +236,14 @@ export function validateShipyardPositions(
 ): DetailedScoreData['shipyardPositions'] {
   const positions = { ...score.shipyardPositions };
   
-  // Sync individual category positions with master positions
-  if (score.civilianShipPosition !== positions.blue) {
+  // Only assign when the optional value is a valid number
+  if (typeof score.civilianShipPosition === 'number' && score.civilianShipPosition !== positions.blue) {
     positions.blue = score.civilianShipPosition;
   }
-  if (score.commercialShipPosition !== positions.yellow) {
+  if (typeof score.commercialShipPosition === 'number' && score.commercialShipPosition !== positions.yellow) {
     positions.yellow = score.commercialShipPosition;
   }
-  if (score.greenShipPosition !== positions.green) {
+  if (typeof score.greenShipPosition === 'number' && score.greenShipPosition !== positions.green) {
     positions.green = score.greenShipPosition;
   }
 

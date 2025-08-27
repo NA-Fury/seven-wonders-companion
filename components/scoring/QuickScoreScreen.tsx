@@ -1,33 +1,46 @@
-// components/scoring/QuickScoreScreen.tsx
-import React, { useCallback, useMemo, useState } from 'react';
+// components/scoring/QuickScoreScreen.tsx - Ultra optimized for performance
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+    ActivityIndicator,
     Alert,
-    FlatList,
+    InteractionManager,
     Modal,
     Platform,
+    ScrollView,
     StyleSheet,
     Text,
+    TextInput,
     TouchableOpacity,
-    View,
+    View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useScoringStore } from '../../store/scoringStore';
+import { DetailedScoreData, useScoringStore } from '../../store/scoringStore';
 import { useSetupStore } from '../../store/setupStore';
-import CategoryDetailModal from './CategoryDetailModal';
-import QuickCategoryItem from './QuickCategoryItem';
-import { calculateCategoryPoints } from './scoringCalculations';
 
+// Pre-define styles to avoid recreation
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#1C1A1A',
   },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#1C1A1A',
+  },
+  loadingText: {
+    color: '#C4A24C',
+    fontSize: 16,
+    marginTop: 12,
+  },
   compactHeader: {
     backgroundColor: 'rgba(28,26,26,0.98)',
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(196, 162, 76, 0.2)',
-    paddingVertical: 6,
+    paddingVertical: 8,
     paddingHorizontal: 12,
+    paddingTop: Platform.OS === 'ios' ? 8 : 12,
   },
   headerRow: {
     flexDirection: 'row',
@@ -43,7 +56,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(196, 162, 76, 0.2)',
     borderRadius: 12,
     paddingHorizontal: 12,
-    paddingVertical: 4,
+    paddingVertical: 6,
   },
   playerName: {
     color: '#C4A24C',
@@ -51,9 +64,9 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   navButton: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     backgroundColor: 'rgba(196, 162, 76, 0.3)',
     alignItems: 'center',
     justifyContent: 'center',
@@ -63,7 +76,7 @@ const styles = StyleSheet.create({
   },
   navButtonText: {
     color: '#C4A24C',
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: 'bold',
   },
   gameInfo: {
@@ -72,7 +85,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: 12,
-    paddingBottom: 100,
+    paddingBottom: 120,
   },
   motivationalCard: {
     backgroundColor: 'rgba(196, 162, 76, 0.1)',
@@ -88,6 +101,12 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontStyle: 'italic',
   },
+  categoryGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
   categoryCard: {
     width: '48.5%',
     backgroundColor: 'rgba(31, 41, 55, 0.95)',
@@ -95,11 +114,12 @@ const styles = StyleSheet.create({
     padding: 12,
     borderWidth: 1,
     borderColor: 'rgba(196, 162, 76, 0.25)',
+    marginBottom: 8,
   },
   categoryHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 10,
   },
   categoryIcon: {
     fontSize: 20,
@@ -111,26 +131,65 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: 'bold',
   },
-  pointsDisplay: {
+  pointsSection: {
+    marginBottom: 8,
+  },
+  quickControls: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    marginBottom: 6,
   },
-  pointsValue: {
-    fontSize: 20,
+  quickButton: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#C4A24C',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  quickButtonDisabled: {
+    backgroundColor: 'rgba(107, 114, 128, 0.3)',
+  },
+  quickButtonText: {
+    color: '#1C1A1A',
+    fontSize: 16,
     fontWeight: 'bold',
+  },
+  quickButtonTextDisabled: {
+    color: '#6B7280',
+  },
+  pointsInput: {
+    flex: 1,
+    backgroundColor: 'rgba(196, 162, 76, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(196, 162, 76, 0.3)',
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    marginHorizontal: 8,
     color: '#FEF3C7',
+    fontSize: 18,
+    fontWeight: 'bold',
+    textAlign: 'center',
   },
   detailButton: {
     backgroundColor: 'rgba(196, 162, 76, 0.2)',
     borderRadius: 6,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    alignItems: 'center',
+  },
+  detailButtonActive: {
+    backgroundColor: 'rgba(34, 197, 94, 0.2)',
   },
   detailButtonText: {
     color: '#C4A24C',
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: '600',
+  },
+  detailButtonTextActive: {
+    color: '#10B981',
   },
   totalCard: {
     backgroundColor: 'rgba(196, 162, 76, 0.15)',
@@ -159,8 +218,8 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(17, 24, 39, 0.98)',
     borderTopWidth: 1,
     borderTopColor: 'rgba(196, 162, 76, 0.2)',
-    padding: 8,
-    paddingBottom: Platform.OS === 'ios' ? 20 : 8,
+    padding: 12,
+    paddingBottom: Platform.OS === 'ios' ? 32 : 20,
   },
   footerButtons: {
     flexDirection: 'row',
@@ -168,7 +227,7 @@ const styles = StyleSheet.create({
   },
   footerButton: {
     flex: 1,
-    paddingVertical: 10,
+    paddingVertical: 12,
     borderRadius: 8,
     alignItems: 'center',
   },
@@ -190,24 +249,164 @@ const styles = StyleSheet.create({
   },
 });
 
-interface CategoryConfig {
-  id: string;
-  title: string;
-  icon: string;
-  color?: string;
-  visible: boolean;
-}
+// Simplified category card - no internal calculations
+const CategoryCard = React.memo(({ 
+  category, 
+  points,
+  hasDetails,
+  onDetailsPress,
+  onUpdateScore
+}: {
+  category: any;
+  points: number;
+  hasDetails: boolean;
+  onDetailsPress: () => void;
+  onUpdateScore: (value: number) => void;
+}) => {
+  const [inputValue, setInputValue] = useState<string>('');
+  const [isEditing, setIsEditing] = useState(false);
+
+  const handleDecrement = useCallback(() => {
+    if (points > 0) {
+      onUpdateScore(points - 1);
+    }
+  }, [points, onUpdateScore]);
+
+  const handleIncrement = useCallback(() => {
+    if (points < 100) {
+      onUpdateScore(points + 1);
+    }
+  }, [points, onUpdateScore]);
+
+  const handleInputSubmit = useCallback(() => {
+    const value = parseInt(inputValue, 10);
+    if (!isNaN(value)) {
+      onUpdateScore(Math.max(0, Math.min(100, value)));
+    }
+    setIsEditing(false);
+    setInputValue('');
+  }, [inputValue, onUpdateScore]);
+
+  const handleInputFocus = useCallback(() => {
+    setIsEditing(true);
+    setInputValue(points.toString());
+  }, [points]);
+
+  return (
+    <View style={styles.categoryCard}>
+      <View style={styles.categoryHeader}>
+        <Text style={styles.categoryIcon}>{category.icon}</Text>
+        <Text style={styles.categoryTitle}>{category.title}</Text>
+      </View>
+      
+      <View style={styles.pointsSection}>
+        <View style={styles.quickControls}>
+          <TouchableOpacity
+            style={[styles.quickButton, points <= 0 && styles.quickButtonDisabled]}
+            onPress={handleDecrement}
+            disabled={points <= 0}
+          >
+            <Text style={[
+              styles.quickButtonText, 
+              points <= 0 && styles.quickButtonTextDisabled
+            ]}>−</Text>
+          </TouchableOpacity>
+          
+          {isEditing ? (
+            <TextInput
+              style={styles.pointsInput}
+              value={inputValue}
+              onChangeText={setInputValue}
+              onBlur={handleInputSubmit}
+              onSubmitEditing={handleInputSubmit}
+              keyboardType="number-pad"
+              autoFocus
+              selectTextOnFocus
+              maxLength={3}
+            />
+          ) : (
+            <TouchableOpacity 
+              style={styles.pointsInput} 
+              onPress={handleInputFocus}
+            >
+              <Text style={{
+                color: hasDetails ? '#10B981' : '#FEF3C7',
+                fontSize: 18,
+                fontWeight: 'bold',
+                textAlign: 'center'
+              }}>
+                {points}
+              </Text>
+            </TouchableOpacity>
+          )}
+          
+          <TouchableOpacity
+            style={[styles.quickButton, points >= 100 && styles.quickButtonDisabled]}
+            onPress={handleIncrement}
+            disabled={points >= 100}
+          >
+            <Text style={[
+              styles.quickButtonText, 
+              points >= 100 && styles.quickButtonTextDisabled
+            ]}>+</Text>
+          </TouchableOpacity>
+        </View>
+        
+        <TouchableOpacity 
+          style={[styles.detailButton, hasDetails && styles.detailButtonActive]} 
+          onPress={onDetailsPress}
+        >
+          <Text style={[
+            styles.detailButtonText,
+            hasDetails && styles.detailButtonTextActive
+          ]}>
+            {hasDetails ? '✓ Details Set' : 'Enter Details'}
+          </Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+});
+
+// Pre-defined categories to avoid recreation
+const BASE_CATEGORIES = [
+  { id: 'wonder', title: 'Wonder', icon: '🏛️' },
+  { id: 'treasure', title: 'Treasure', icon: '💰' },
+  { id: 'military', title: 'Military', icon: '⚔️' },
+  { id: 'civilian', title: 'Civilian', icon: '🏛️' },
+  { id: 'commercial', title: 'Commercial', icon: '🪙' },
+  { id: 'science', title: 'Science', icon: '🔬' },
+  { id: 'guilds', title: 'Guilds', icon: '👑' },
+  { id: 'resources', title: 'Resources', icon: '📦' },
+];
+
+const EXPANSION_CATEGORIES = {
+  cities: { id: 'cities', title: 'Cities', icon: '🏴' },
+  leaders: { id: 'leaders', title: 'Leaders', icon: '👤' },
+  navy: { id: 'navy', title: 'Navy', icon: '⚓' },
+  islands: { id: 'islands', title: 'Islands', icon: '🏝️' },
+  edifice: { id: 'edifice', title: 'Edifice', icon: '🗿' },
+};
 
 export default function QuickScoreScreen() {
   const { players, seating, expansions, wonders } = useSetupStore();
-  const updateScore = useScoringStore(state => state.updateScore);
-  const initializeScores = useScoringStore(state => state.initializeScores);
+  const { 
+    playerScores, 
+    updateMultipleScores,
+    initializeScores,
+    isInitialized: storeInitialized
+  } = useScoringStore();
   
   const [currentPlayerIndex, setCurrentPlayerIndex] = useState(0);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
+  const [isLoading, setIsLoading] = useState(!storeInitialized);
+  
+  // Performance optimization: cache calculations
+  const calculationCache = useRef<Map<string, number>>(new Map());
+  const lastUpdateTime = useRef<number>(0);
 
-  // Get ordered players
+  // Get ordered players - memoized
   const orderedPlayers = useMemo(() => {
     if (!players || players.length === 0) return [];
     if (!seating || seating.length === 0) return players;
@@ -215,94 +414,134 @@ export default function QuickScoreScreen() {
   }, [players, seating]);
 
   const currentPlayer = orderedPlayers[currentPlayerIndex];
-  const currentScore = useScoringStore(
-    useCallback(
-      state => (currentPlayer ? state.playerScores[currentPlayer.id] : null),
-      [currentPlayer?.id]
-    )
-  );
 
-  // Initialize scores on mount
-  React.useEffect(() => {
-    if (orderedPlayers.length > 0) {
-      initializeScores(orderedPlayers as any, wonders);
+  // Build categories once
+  const categories = useMemo(() => {
+    const cats = [...BASE_CATEGORIES];
+    if (expansions?.cities) cats.push(EXPANSION_CATEGORIES.cities);
+    if (expansions?.leaders) cats.push(EXPANSION_CATEGORIES.leaders);
+    if (expansions?.armada) {
+      cats.push(EXPANSION_CATEGORIES.navy);
+      cats.push(EXPANSION_CATEGORIES.islands);
     }
-  }, [orderedPlayers, wonders, initializeScores]);
+    if (expansions?.edifice) cats.push(EXPANSION_CATEGORIES.edifice);
+    return cats;
+  }, [expansions]);
 
-  // Define categories based on expansions
-  const categories: CategoryConfig[] = useMemo(() => [
-    { id: 'wonder', title: 'Wonder', icon: '🏛️', visible: true },
-    { id: 'treasure', title: 'Treasure', icon: '💰', visible: true },
-    { id: 'military', title: 'Military', icon: '⚔️', visible: true },
-    { id: 'civilian', title: 'Civilian', icon: '🏛️', color: '#3B82F6', visible: true },
-    { id: 'commercial', title: 'Commercial', icon: '🪙', color: '#F59E0B', visible: true },
-    { id: 'science', title: 'Science', icon: '🔬', color: '#10B981', visible: true },
-    { id: 'guilds', title: 'Guilds', icon: '👑', color: '#8B5CF6', visible: true },
-    { id: 'resources', title: 'Resources', icon: '📦', visible: true },
-    { id: 'cities', title: 'Cities', icon: '🏴', visible: expansions?.cities },
-    { id: 'leaders', title: 'Leaders', icon: '👤', visible: expansions?.leaders },
-    { id: 'navy', title: 'Navy', icon: '⚓', visible: expansions?.armada },
-    { id: 'islands', title: 'Islands', icon: '🏝️', visible: expansions?.armada },
-    { id: 'edifice', title: 'Edifice', icon: '🗿', visible: expansions?.edifice },
-  ], [expansions]);
+  // Initialize only once
+  useEffect(() => {
+    if (!storeInitialized && orderedPlayers.length > 0) {
+      // Delay initialization to next frame to avoid blocking navigation
+      const timer = setTimeout(() => {
+        InteractionManager.runAfterInteractions(() => {
+          initializeScores(orderedPlayers, wonders);
+          setIsLoading(false);
+        });
+      }, 10);
+      return () => clearTimeout(timer);
+    } else {
+      setIsLoading(false);
+    }
+  }, [storeInitialized, orderedPlayers, wonders, initializeScores]);
 
-  const visibleCategories = categories.filter(c => c.visible);
+  // Get category points efficiently
+  const getCategoryPoints = useCallback((categoryId: string, playerId: string) => {
+    const cacheKey = `${playerId}-${categoryId}`;
+    
+    // Check cache first
+    if (calculationCache.current.has(cacheKey)) {
+      const cached = calculationCache.current.get(cacheKey);
+      if (Date.now() - lastUpdateTime.current < 100) {
+        return cached || 0;
+      }
+    }
+    
+    const score = playerScores[playerId];
+    if (!score) return 0;
+    
+    const directPointsKey = `${categoryId}DirectPoints` as keyof DetailedScoreData;
+    const points = score[directPointsKey] as number || 0;
+    
+    calculationCache.current.set(cacheKey, points);
+    return points;
+  }, [playerScores]);
 
+  // Check if category has details
+  const hasDetails = useCallback((categoryId: string, playerId: string) => {
+    const score = playerScores[playerId];
+    if (!score) return false;
+    const showDetailsKey = `${categoryId}ShowDetails` as keyof DetailedScoreData;
+    return Boolean(score[showDetailsKey]);
+  }, [playerScores]);
+
+  // Calculate total efficiently
   const totalPoints = useMemo(() => {
-    if (!currentPlayer || !currentScore) return 0;
-    return visibleCategories.reduce(
-      (sum, cat) =>
-        sum +
-        calculateCategoryPoints(
-          currentPlayer.id,
-          cat.id,
-          currentScore as any,
-          { wonder: wonders[currentPlayer.id], expansions }
-        ),
-      0
-    );
-  }, [currentPlayer, currentScore, visibleCategories, wonders, expansions]);
+    if (!currentPlayer) return 0;
+    
+    return categories.reduce((sum, cat) => {
+      return sum + getCategoryPoints(cat.id, currentPlayer.id);
+    }, 0);
+  }, [categories, currentPlayer, getCategoryPoints]);
 
+  // Handle category press
   const handleCategoryPress = useCallback((categoryId: string) => {
     setSelectedCategory(categoryId);
     setModalVisible(true);
   }, []);
 
-  const handleQuickEdit = useCallback(
-    (categoryId: string, value: number) => {
-      if (!currentPlayer) return;
-      updateScore(currentPlayer.id, `${categoryId}DirectPoints`, value);
-    },
-    [currentPlayer, updateScore] // ensure object dependency included
-  );
-
-  const navigatePlayer = useCallback((direction: 'prev' | 'next') => {
-    if (direction === 'prev' && currentPlayerIndex > 0) {
-      setCurrentPlayerIndex(currentPlayerIndex - 1);
-    } else if (direction === 'next' && currentPlayerIndex < orderedPlayers.length - 1) {
-      setCurrentPlayerIndex(currentPlayerIndex + 1);
-    }
-  }, [currentPlayerIndex, orderedPlayers.length]);
-
-  const allPlayersScored = useCallback(() => {
-    const scores = useScoringStore.getState().playerScores;
-    return orderedPlayers.every(player => {
-      if (!player) return false;
-      const score = scores[player.id];
-      return (
-        score &&
-        Object.keys(score).some(
-          key => key.includes('DirectPoints') && (score as any)[key] > 0
-        )
-      );
+  // Handle score update
+  const handleUpdateScore = useCallback((categoryId: string, value: number) => {
+    if (!currentPlayer) return;
+    
+    // Batch update
+    lastUpdateTime.current = Date.now();
+    calculationCache.current.delete(`${currentPlayer.id}-${categoryId}`);
+    
+    updateMultipleScores(currentPlayer.id, {
+      [`${categoryId}DirectPoints`]: value,
+      [`${categoryId}ShowDetails`]: false
     });
-  }, [orderedPlayers]);
+  }, [currentPlayer, updateMultipleScores]);
 
-  if (!currentPlayer || !currentScore) {
+  // Navigate between players
+  const navigatePlayer = useCallback((direction: 'prev' | 'next') => {
+    // Clear cache when switching players
+    calculationCache.current.clear();
+    lastUpdateTime.current = Date.now();
+    
+    setCurrentPlayerIndex(prev => {
+      if (direction === 'prev' && prev > 0) return prev - 1;
+      if (direction === 'next' && prev < orderedPlayers.length - 1) return prev + 1;
+      return prev;
+    });
+  }, [orderedPlayers.length]);
+
+  // Handle show results
+  const handleShowResults = useCallback(() => {
+    Alert.alert('🎉 Complete!', 'All players have been scored!');
+  }, []);
+
+  // Lazy load the detail modal
+  const DetailModal = React.lazy(() => import('./CategoryDetailModal'));
+
+  // Loading state
+  if (isLoading) {
     return (
       <SafeAreaView style={styles.container}>
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-          <Text style={{ color: '#C4A24C', fontSize: 16 }}>Loading...</Text>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#C4A24C" />
+          <Text style={styles.loadingText}>Loading...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // No players state
+  if (!currentPlayer) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <Text style={styles.loadingText}>No players found</Text>
         </View>
       </SafeAreaView>
     );
@@ -310,7 +549,7 @@ export default function QuickScoreScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Compact Header */}
+      {/* Header */}
       <View style={styles.compactHeader}>
         <View style={styles.headerRow}>
           <View style={styles.playerSelector}>
@@ -336,44 +575,45 @@ export default function QuickScoreScreen() {
           </View>
           
           <Text style={styles.gameInfo}>
-            {orderedPlayers.length} Players • {Object.values(expansions).filter(Boolean).length} Expansions
+            {currentPlayerIndex + 1}/{orderedPlayers.length}
           </Text>
         </View>
       </View>
 
-      <FlatList
+      {/* Content */}
+      <ScrollView 
         style={{ flex: 1 }}
-        data={visibleCategories}
-        keyExtractor={item => item.id}
-        numColumns={2}
-        columnWrapperStyle={{ justifyContent: 'space-between' }}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
-        ListHeaderComponent={
-          <View style={styles.motivationalCard}>
-            <Text style={styles.motivationalText}>
-              💫 Enter quick totals or tap &quot;Details&quot; for comprehensive tracking and personal analysis!
-            </Text>
-          </View>
-        }
-        ListFooterComponent={
-          <View style={styles.totalCard}>
-            <Text style={styles.totalLabel}>TOTAL SCORE</Text>
-            <Text style={styles.totalValue}>{totalPoints}</Text>
-          </View>
-        }
-        renderItem={({ item: category }) => (
-          <QuickCategoryItem
-            playerId={currentPlayer.id}
-            category={category}
-            wonder={wonders[currentPlayer.id]}
-            expansions={expansions}
-            styles={styles}
-            onDetails={handleCategoryPress}
-            onQuickEdit={handleQuickEdit}
-          />
-        )}
-      />
+        removeClippedSubviews={true}
+      >
+        {/* Motivational Message */}
+        <View style={styles.motivationalCard}>
+          <Text style={styles.motivationalText}>
+            💫 Quick scoring with +/− or tap to type!
+          </Text>
+        </View>
+
+        {/* Category Grid */}
+        <View style={styles.categoryGrid}>
+          {categories.map(category => (
+            <CategoryCard
+              key={category.id}
+              category={category}
+              points={getCategoryPoints(category.id, currentPlayer.id)}
+              hasDetails={hasDetails(category.id, currentPlayer.id)}
+              onDetailsPress={() => handleCategoryPress(category.id)}
+              onUpdateScore={(value) => handleUpdateScore(category.id, value)}
+            />
+          ))}
+        </View>
+
+        {/* Total Display */}
+        <View style={styles.totalCard}>
+          <Text style={styles.totalLabel}>TOTAL SCORE</Text>
+          <Text style={styles.totalValue}>{totalPoints}</Text>
+        </View>
+      </ScrollView>
 
       {/* Footer */}
       <View style={styles.footer}>
@@ -400,9 +640,9 @@ export default function QuickScoreScreen() {
             </TouchableOpacity>
           )}
           
-          {allPlayersScored() && (
+          {currentPlayerIndex === orderedPlayers.length - 1 && (
             <TouchableOpacity
-              onPress={() => Alert.alert('Results', 'Navigate to results screen')}
+              onPress={handleShowResults}
               style={[styles.footerButton, { backgroundColor: '#22C55E' }]}
             >
               <Text style={[styles.buttonText, { color: '#FFFFFF' }]}>
@@ -420,13 +660,22 @@ export default function QuickScoreScreen() {
         transparent={false}
         onRequestClose={() => setModalVisible(false)}
       >
-        {selectedCategory && (
-          <CategoryDetailModal
-            playerId={currentPlayer.id}
-            categoryId={selectedCategory}
-            onClose={() => setModalVisible(false)}
-          />
-        )}
+        <React.Suspense fallback={
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#C4A24C" />
+          </View>
+        }>
+          {selectedCategory && (
+            <DetailModal
+              playerId={currentPlayer.id}
+              categoryId={selectedCategory}
+              onClose={() => {
+                setModalVisible(false);
+                calculationCache.current.clear();
+              }}
+            />
+          )}
+        </React.Suspense>
       </Modal>
     </SafeAreaView>
   );
