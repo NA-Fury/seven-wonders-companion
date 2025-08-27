@@ -26,13 +26,12 @@ export default function GameSummaryScreen() {
   useFocusEffect(
     useCallback(() => {
       if (orderedPlayers.length > 0 && !isPreloaded) {
-        // Initialize scoring store in background
         InteractionManager.runAfterInteractions(() => {
           initializeScores(orderedPlayers, wonders);
           setIsPreloaded(true);
         });
       }
-    }, [orderedPlayers, wonders, isPreloaded])
+    }, [orderedPlayers, wonders, isPreloaded, initializeScores]) // added initializeScores
   );
 
   const getExpansionsList = () => {

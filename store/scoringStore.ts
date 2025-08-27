@@ -228,7 +228,7 @@ const createDefaultScore = (maxStages: number = 0): DetailedScoreData => ({
   },
 });
 
-export const useScoringStore = create<ScoringState>((set, get) => ({
+const internalScoringStore = create<ScoringState>((set, get) => ({
   playerScores: {},
   calculationCache: new Map(),
   isInitialized: false,
@@ -320,3 +320,14 @@ export const useScoringStore = create<ScoringState>((set, get) => ({
     set({ calculationCache: new Map() });
   },
 }));
+
+type ScoringStoreHook = {
+  (): ScoringState;
+  <T>(selector: (state: ScoringState) => T, equalityFn?: (a: T, b: T) => boolean): T;
+  getState: typeof internalScoringStore.getState;
+  setState: typeof internalScoringStore.setState;
+  subscribe: typeof internalScoringStore.subscribe;
+  destroy?: () => void;
+};
+
+export const useScoringStore = internalScoringStore as unknown as ScoringStoreHook;

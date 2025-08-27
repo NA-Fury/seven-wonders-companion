@@ -1,5 +1,6 @@
-import React, { useCallback, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import { Text, TouchableOpacity, View } from 'react-native';
+import { shallow } from 'zustand/shallow';
 import { DetailedScoreData, useScoringStore } from '../../store/scoringStore';
 import { calculateCategoryPoints } from './scoringCalculations';
 
@@ -29,32 +30,38 @@ export default React.memo(function QuickCategoryItem({
   onDetails,
   onQuickEdit,
 }: Props) {
-  const categoryScore = useScoringStore(
-    useCallback(state => {
-      const score = state.playerScores[playerId];
-      if (!score) return {} as Record<string, any>;
-      const result: Record<string, any> = {};
-      for (const key in score) {
-        if (key.startsWith(category.id)) {
-          result[key] = (score as any)[key];
-        }
-      }
-      return result;
-    }, [playerId, category.id])
+  // Use direct slice + shallow (stable snapshot; no object reconstruction)
+  const playerScore = useScoringStore(
+    state => state.playerScores[playerId],
+    shallow
   );
+
+  if (!playerScore) {
+    return (
+      <View style={styles.categoryCard}>
+        <View style={styles.categoryHeader}>
+          <Text style={styles.categoryIcon}>{category.icon}</Text>
+          <Text style={styles.categoryTitle}>{category.title}</Text>
+        </View>
+        <Text style={[styles.pointsValue, { opacity: 0.5 }]}>0</Text>
+      </View>
+    );
+  }
 
   const points = useMemo(
     () =>
       calculateCategoryPoints(
         playerId,
         category.id,
-        categoryScore as DetailedScoreData,
+        playerScore as DetailedScoreData,
         { wonder, expansions }
       ),
-    [playerId, category.id, categoryScore, wonder, expansions]
+    [playerId, category.id, playerScore, wonder, expansions]
   );
 
-  const hasDetails = categoryScore[`${category.id}ShowDetails`];
+  const hasDetails = Boolean(
+    (playerScore as any)[`${category.id}ShowDetails`]
+  );
 
   return (
     <View style={styles.categoryCard}>
@@ -70,7 +77,12 @@ export default React.memo(function QuickCategoryItem({
             onQuickEdit(category.id, newValue);
           }}
         >
-          <Text style={[styles.pointsValue, hasDetails ? { color: '#10B981' } : null]}>
+          <Text
+            style={[
+              styles.pointsValue,
+              hasDetails ? { color: '#10B981' } : null,
+            ]}
+          >
             {points}
           </Text>
         </TouchableOpacity>
