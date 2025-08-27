@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { DetailedScoreData, useScoringStore } from '../../store/scoringStore';
+import { shallow } from 'zustand/shallow';
 import { useSetupStore } from '../../store/setupStore';
 
 // Pre-define styles to avoid recreation
@@ -250,19 +251,19 @@ const styles = StyleSheet.create({
 });
 
 // Simplified category card - no internal calculations
-const CategoryCard = React.memo(({ 
-  category, 
-  points,
-  hasDetails,
-  onDetailsPress,
-  onUpdateScore
-}: {
-  category: any;
-  points: number;
-  hasDetails: boolean;
-  onDetailsPress: () => void;
-  onUpdateScore: (value: number) => void;
-}) => {
+  const CategoryCard = React.memo(function CategoryCard({
+    category,
+    points,
+    hasDetails,
+    onDetailsPress,
+    onUpdateScore,
+  }: {
+    category: any;
+    points: number;
+    hasDetails: boolean;
+    onDetailsPress: () => void;
+    onUpdateScore: (value: number) => void;
+  }) {
   const [inputValue, setInputValue] = useState<string>('');
   const [isEditing, setIsEditing] = useState(false);
 
@@ -390,21 +391,10 @@ const EXPANSION_CATEGORIES = {
 
 export default function QuickScoreScreen() {
   const { players, seating, expansions, wonders } = useSetupStore();
-  const { 
-    playerScores, 
-    updateMultipleScores,
-    initializeScores,
-    isInitialized: storeInitialized
-  } = useScoringStore();
-  
+
   const [currentPlayerIndex, setCurrentPlayerIndex] = useState(0);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
-  const [isLoading, setIsLoading] = useState(!storeInitialized);
-  
-  // Performance optimization: cache calculations
-  const calculationCache = useRef<Map<string, number>>(new Map());
-  const lastUpdateTime = useRef<number>(0);
 
   // Get ordered players - memoized
   const orderedPlayers = useMemo(() => {
@@ -414,6 +404,33 @@ export default function QuickScoreScreen() {
   }, [players, seating]);
 
   const currentPlayer = orderedPlayers[currentPlayerIndex];
+  const currentPlayerId = currentPlayer?.id;
+
+  const currentPlayerScore = useScoringStore(
+    useCallback(
+      state => (currentPlayerId ? state.playerScores[currentPlayerId] : undefined),
+      [currentPlayerId]
+    )
+  );
+
+  const { initializeScores, updateMultipleScores, isInitialized: storeInitialized } =
+    useScoringStore(
+      useCallback(
+        state => ({
+          initializeScores: state.initializeScores,
+          updateMultipleScores: state.updateMultipleScores,
+          isInitialized: state.isInitialized,
+        }),
+        []
+      ),
+      shallow
+    );
+
+  const [isLoading, setIsLoading] = useState(!storeInitialized);
+
+  // Performance optimization: cache calculations
+  const calculationCache = useRef<Map<string, number>>(new Map());
+  const lastUpdateTime = useRef<number>(0);
 
   // Build categories once
   const categories = useMemo(() => {
@@ -445,43 +462,46 @@ export default function QuickScoreScreen() {
   }, [storeInitialized, orderedPlayers, wonders, initializeScores]);
 
   // Get category points efficiently
-  const getCategoryPoints = useCallback((categoryId: string, playerId: string) => {
-    const cacheKey = `${playerId}-${categoryId}`;
-    
-    // Check cache first
-    if (calculationCache.current.has(cacheKey)) {
-      const cached = calculationCache.current.get(cacheKey);
-      if (Date.now() - lastUpdateTime.current < 100) {
-        return cached || 0;
+  const getCategoryPoints = useCallback(
+    (categoryId: string) => {
+      if (!currentPlayerId) return 0;
+      const cacheKey = `${currentPlayerId}-${categoryId}`;
+
+      if (calculationCache.current.has(cacheKey)) {
+        const cached = calculationCache.current.get(cacheKey);
+        if (Date.now() - lastUpdateTime.current < 100) {
+          return cached || 0;
+        }
       }
-    }
-    
-    const score = playerScores[playerId];
-    if (!score) return 0;
-    
-    const directPointsKey = `${categoryId}DirectPoints` as keyof DetailedScoreData;
-    const points = score[directPointsKey] as number || 0;
-    
-    calculationCache.current.set(cacheKey, points);
-    return points;
-  }, [playerScores]);
+
+      const score = currentPlayerScore;
+      if (!score) return 0;
+
+      const directPointsKey = `${categoryId}DirectPoints` as keyof DetailedScoreData;
+      const points = (score[directPointsKey] as number) || 0;
+
+      calculationCache.current.set(cacheKey, points);
+      return points;
+    },
+    [currentPlayerScore, currentPlayerId]
+  );
 
   // Check if category has details
-  const hasDetails = useCallback((categoryId: string, playerId: string) => {
-    const score = playerScores[playerId];
-    if (!score) return false;
-    const showDetailsKey = `${categoryId}ShowDetails` as keyof DetailedScoreData;
-    return Boolean(score[showDetailsKey]);
-  }, [playerScores]);
+  const hasDetails = useCallback(
+    (categoryId: string) => {
+      const score = currentPlayerScore;
+      if (!score) return false;
+      const showDetailsKey = `${categoryId}ShowDetails` as keyof DetailedScoreData;
+      return Boolean(score[showDetailsKey]);
+    },
+    [currentPlayerScore]
+  );
 
   // Calculate total efficiently
   const totalPoints = useMemo(() => {
-    if (!currentPlayer) return 0;
-    
-    return categories.reduce((sum, cat) => {
-      return sum + getCategoryPoints(cat.id, currentPlayer.id);
-    }, 0);
-  }, [categories, currentPlayer, getCategoryPoints]);
+    if (!currentPlayerScore) return 0;
+    return categories.reduce((sum, cat) => sum + getCategoryPoints(cat.id), 0);
+  }, [categories, currentPlayerScore, getCategoryPoints]);
 
   // Handle category press
   const handleCategoryPress = useCallback((categoryId: string) => {
@@ -490,18 +510,18 @@ export default function QuickScoreScreen() {
   }, []);
 
   // Handle score update
-  const handleUpdateScore = useCallback((categoryId: string, value: number) => {
-    if (!currentPlayer) return;
-    
-    // Batch update
-    lastUpdateTime.current = Date.now();
-    calculationCache.current.delete(`${currentPlayer.id}-${categoryId}`);
-    
-    updateMultipleScores(currentPlayer.id, {
-      [`${categoryId}DirectPoints`]: value,
-      [`${categoryId}ShowDetails`]: false
-    });
-  }, [currentPlayer, updateMultipleScores]);
+  const handleUpdateScore = useCallback(
+    (categoryId: string, value: number) => {
+      if (!currentPlayerId) return;
+      lastUpdateTime.current = Date.now();
+      calculationCache.current.delete(`${currentPlayerId}-${categoryId}`);
+      updateMultipleScores(currentPlayerId, {
+        [`${categoryId}DirectPoints`]: value,
+        [`${categoryId}ShowDetails`]: false,
+      });
+    },
+    [currentPlayerId, updateMultipleScores]
+  );
 
   // Navigate between players
   const navigatePlayer = useCallback((direction: 'prev' | 'next') => {
@@ -596,16 +616,16 @@ export default function QuickScoreScreen() {
 
         {/* Category Grid */}
         <View style={styles.categoryGrid}>
-          {categories.map(category => (
-            <CategoryCard
-              key={category.id}
-              category={category}
-              points={getCategoryPoints(category.id, currentPlayer.id)}
-              hasDetails={hasDetails(category.id, currentPlayer.id)}
-              onDetailsPress={() => handleCategoryPress(category.id)}
-              onUpdateScore={(value) => handleUpdateScore(category.id, value)}
-            />
-          ))}
+            {categories.map(category => (
+              <CategoryCard
+                key={category.id}
+                category={category}
+                points={getCategoryPoints(category.id)}
+                hasDetails={hasDetails(category.id)}
+                onDetailsPress={() => handleCategoryPress(category.id)}
+                onUpdateScore={(value) => handleUpdateScore(category.id, value)}
+              />
+            ))}
         </View>
 
         {/* Total Display */}
@@ -665,16 +685,16 @@ export default function QuickScoreScreen() {
             <ActivityIndicator size="large" color="#C4A24C" />
           </View>
         }>
-          {selectedCategory && (
-            <DetailModal
-              playerId={currentPlayer.id}
-              categoryId={selectedCategory}
-              onClose={() => {
-                setModalVisible(false);
-                calculationCache.current.clear();
-              }}
-            />
-          )}
+              {selectedCategory && currentPlayerId && (
+                <DetailModal
+                  playerId={currentPlayerId}
+                  categoryId={selectedCategory}
+                  onClose={() => {
+                    setModalVisible(false);
+                    calculationCache.current.clear();
+                  }}
+                />
+              )}
         </React.Suspense>
       </Modal>
     </SafeAreaView>
