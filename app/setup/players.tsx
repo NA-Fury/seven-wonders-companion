@@ -1,9 +1,8 @@
 // app/setup/players.tsx - Fixed version with proper scrolling and safe areas
 import { router } from 'expo-router';
 import React, { useState } from 'react';
-import { Alert, KeyboardAvoidingView, Platform, ScrollView, TextInput, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Button, Card, H1, H2, P } from '../../components/ui'; // removed unused Screen
+import { Alert, TextInput, View, ScrollView } from 'react-native';
+import { Button, Card, H1, H2, P, SetupScreen } from '../../components/ui';
 import { AnimatedButton, PlayerListItem } from '../../components/ui/enhanced';
 import { useSetupStore } from '../../store/setupStore';
 
@@ -54,30 +53,32 @@ export default function PlayersScreen() {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#1C1A1A' }}>
-      <KeyboardAvoidingView 
-        style={{ flex: 1 }} 
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      >
-        <View style={{ 
-          flex: 1, 
-          backgroundColor: '#1C1A1A', 
-          paddingHorizontal: 20,
-          paddingTop: 10
-        }}>
-          <ScrollView 
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={{ 
-              paddingBottom: 120, // Extra space for navigation buttons
-              flexGrow: 1 
-            }}
-            style={{ flex: 1 }}
-          >
-            <H1>Players</H1>
-            {/* className -> style */}
-            <P style={{ marginBottom: 16 }}>Add 3-7 players for your game.</P>
-            
-            <Card>
+    <SetupScreen
+      footer={
+        <View style={{ flexDirection: 'row' }}>
+          <View style={{ flex: 1, marginRight: 12 }}>
+            <Button
+              title="Back"
+              variant="ghost"
+              onPress={() => router.back()}
+              className="w-full"
+            />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Button
+              title={`Continue (${players.length})`}
+              onPress={handleStartGame}
+              disabled={players.length < 3}
+              className="w-full"
+            />
+          </View>
+        </View>
+      }
+    >
+      <H1>Players</H1>
+      <P style={{ marginBottom: 16 }}>Add 3-7 players for your game.</P>
+
+      <Card>
               <H2>Game Setup</H2>
               {/* className -> style (text-aurum) */}
               <P style={{ color: '#C4A24C' }}>
@@ -122,7 +123,7 @@ export default function PlayersScreen() {
               <Card>
                 <H2>Current Players ({players.length})</H2>
                 <View style={{ maxHeight: 300 }}>
-                  <ScrollView 
+                  <ScrollView
                     showsVerticalScrollIndicator={false}
                     nestedScrollEnabled
                   >
@@ -130,9 +131,7 @@ export default function PlayersScreen() {
                       <PlayerListItem
                         key={player.id}
                         player={player}
-                        // pass the correctly typed handler (id => void)
                         onRemove={handleRemovePlayer}
-                        // className -> style
                         style={{ marginBottom: 8 }}
                       />
                     ))}
@@ -140,43 +139,7 @@ export default function PlayersScreen() {
                 </View>
               </Card>
             )}
-
-            {/* Add some space before navigation */}
-            <View style={{ height: 20 }} />
-          </ScrollView>
-
-          {/* Fixed Navigation at Bottom */}
-          <View style={{
-            position: 'absolute',
-            bottom: 0,
-            left: 0,
-            right: 0,
-            backgroundColor: '#1C1A1A',
-            paddingHorizontal: 20,
-            paddingVertical: 16,
-            paddingBottom: Platform.OS === 'ios' ? 34 : 16, // Account for home indicator
-            borderTopWidth: 1,
-            borderTopColor: 'rgba(243, 231, 211, 0.1)',
-          }}>
-            <View style={{ flexDirection: 'row', gap: 12 }}>
-              <Button
-                title="Back"
-                variant="ghost"
-                onPress={() => router.back()}
-                // className -> style
-                style={{ flex: 1 }}
-              />
-              <Button
-                title={`Continue (${players.length})`}
-                onPress={handleStartGame}
-                disabled={players.length < 3}
-                // className -> style
-                style={{ flex: 1 }}
-              />
-            </View>
-          </View>
-        </View>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+      <View style={{ height: 20 }} />
+    </SetupScreen>
   );
 }
