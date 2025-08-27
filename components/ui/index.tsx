@@ -215,3 +215,4 @@ export function ToggleRow(
 export * from './enhanced';
 export * from './wonder-assignment';
 export * from './wonder-card';
+export * from './setup-screen';
