@@ -2,9 +2,9 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import {
     Alert,
+    FlatList,
     Modal,
     Platform,
-    FlatList,
     StyleSheet,
     Text,
     TouchableOpacity,
@@ -14,9 +14,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useScoringStore } from '../../store/scoringStore';
 import { useSetupStore } from '../../store/setupStore';
 import CategoryDetailModal from './CategoryDetailModal';
-import { calculateCategoryPoints } from './scoringCalculations';
 import QuickCategoryItem from './QuickCategoryItem';
-import shallow from 'zustand/shallow';
+import { calculateCategoryPoints } from './scoringCalculations';
 
 const styles = StyleSheet.create({
   container: {
@@ -220,8 +219,7 @@ export default function QuickScoreScreen() {
     useCallback(
       state => (currentPlayer ? state.playerScores[currentPlayer.id] : null),
       [currentPlayer?.id]
-    ),
-    shallow
+    )
   );
 
   // Initialize scores on mount
