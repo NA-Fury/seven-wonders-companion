@@ -15,6 +15,8 @@ import { useScoringStore } from '../../store/scoringStore';
 import { useSetupStore } from '../../store/setupStore';
 import CategoryDetailModal from './CategoryDetailModal';
 import { calculateCategoryPoints } from './scoringCalculations';
+import QuickCategoryItem from './QuickCategoryItem';
+import shallow from 'zustand/shallow';
 
 const styles = StyleSheet.create({
   container: {
@@ -199,11 +201,8 @@ interface CategoryConfig {
 
 export default function QuickScoreScreen() {
   const { players, seating, expansions, wonders } = useSetupStore();
-  const { 
-    updateScore, 
-    getPlayerScore,
-    initializeScores 
-  } = useScoringStore();
+  const updateScore = useScoringStore(state => state.updateScore);
+  const initializeScores = useScoringStore(state => state.initializeScores);
   
   const [currentPlayerIndex, setCurrentPlayerIndex] = useState(0);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
@@ -217,7 +216,13 @@ export default function QuickScoreScreen() {
   }, [players, seating]);
 
   const currentPlayer = orderedPlayers[currentPlayerIndex];
-  const currentScore = currentPlayer ? getPlayerScore(currentPlayer.id) : null;
+  const currentScore = useScoringStore(
+    useCallback(
+      state => (currentPlayer ? state.playerScores[currentPlayer.id] : null),
+      [currentPlayer?.id]
+    ),
+    shallow
+  );
 
   // Initialize scores on mount
   React.useEffect(() => {
@@ -245,36 +250,33 @@ export default function QuickScoreScreen() {
 
   const visibleCategories = categories.filter(c => c.visible);
 
-  const getCategoryPoints = useCallback((categoryId: string) => {
+  const totalPoints = useMemo(() => {
     if (!currentPlayer || !currentScore) return 0;
-
-    return calculateCategoryPoints(
-      currentPlayer.id,
-      categoryId,
-      currentScore,
-      {
-        wonder: wonders[currentPlayer.id],
-        expansions,
-      }
+    return visibleCategories.reduce(
+      (sum, cat) =>
+        sum +
+        calculateCategoryPoints(
+          currentPlayer.id,
+          cat.id,
+          currentScore as any,
+          { wonder: wonders[currentPlayer.id], expansions }
+        ),
+      0
     );
-  }, [currentPlayer, currentScore, wonders, expansions]);
-
-  const getTotalPoints = useCallback(() => {
-    if (!currentScore) return 0;
-    return visibleCategories.reduce((sum, cat) => 
-      sum + getCategoryPoints(cat.id), 0
-    );
-  }, [currentScore, visibleCategories, getCategoryPoints]);
+  }, [currentPlayer, currentScore, visibleCategories, wonders, expansions]);
 
   const handleCategoryPress = useCallback((categoryId: string) => {
     setSelectedCategory(categoryId);
     setModalVisible(true);
   }, []);
 
-  const handleQuickEdit = useCallback((categoryId: string, value: number) => {
-    if (!currentPlayer) return;
-    updateScore(currentPlayer.id, `${categoryId}DirectPoints`, value);
-  }, [currentPlayer, updateScore]);
+  const handleQuickEdit = useCallback(
+    (categoryId: string, value: number) => {
+      if (!currentPlayer) return;
+      updateScore(currentPlayer.id, `${categoryId}DirectPoints`, value);
+    },
+    [currentPlayer, updateScore]
+  );
 
   const navigatePlayer = useCallback((direction: 'prev' | 'next') => {
     if (direction === 'prev' && currentPlayerIndex > 0) {
@@ -285,14 +287,18 @@ export default function QuickScoreScreen() {
   }, [currentPlayerIndex, orderedPlayers.length]);
 
   const allPlayersScored = useCallback(() => {
+    const scores = useScoringStore.getState().playerScores;
     return orderedPlayers.every(player => {
       if (!player) return false;
-      const score = getPlayerScore(player.id);
-      return score && Object.keys(score).some(key => 
-        key.includes('DirectPoints') && (score as any)[key] > 0
+      const score = scores[player.id];
+      return (
+        score &&
+        Object.keys(score).some(
+          key => key.includes('DirectPoints') && (score as any)[key] > 0
+        )
       );
     });
-  }, [orderedPlayers, getPlayerScore]);
+  }, [orderedPlayers]);
 
   if (!currentPlayer || !currentScore) {
     return (
@@ -340,7 +346,7 @@ export default function QuickScoreScreen() {
       <FlatList
         style={{ flex: 1 }}
         data={visibleCategories}
-        keyExtractor={(item) => item.id}
+        keyExtractor={item => item.id}
         numColumns={2}
         columnWrapperStyle={{ justifyContent: 'space-between' }}
         contentContainerStyle={styles.scrollContent}
@@ -355,45 +361,20 @@ export default function QuickScoreScreen() {
         ListFooterComponent={
           <View style={styles.totalCard}>
             <Text style={styles.totalLabel}>TOTAL SCORE</Text>
-            <Text style={styles.totalValue}>{getTotalPoints()}</Text>
+            <Text style={styles.totalValue}>{totalPoints}</Text>
           </View>
         }
-        renderItem={({ item: category }) => {
-          const points = getCategoryPoints(category.id);
-          const hasDetails = currentScore &&
-            (currentScore[`${category.id}ShowDetails` as keyof typeof currentScore] as boolean);
-
-          return (
-            <View style={styles.categoryCard}>
-              <View style={styles.categoryHeader}>
-                <Text style={styles.categoryIcon}>{category.icon}</Text>
-                <Text style={styles.categoryTitle}>{category.title}</Text>
-              </View>
-
-              <View style={styles.pointsDisplay}>
-                <TouchableOpacity
-                  onPress={() => {
-                    const newValue = points > 0 ? 0 : 5;
-                    handleQuickEdit(category.id, newValue);
-                  }}
-                >
-                  <Text style={[styles.pointsValue, hasDetails ? { color: '#10B981' } : null]}>
-                    {points}
-                  </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.detailButton}
-                  onPress={() => handleCategoryPress(category.id)}
-                >
-                  <Text style={styles.detailButtonText}>
-                    {hasDetails ? '✓ Details' : 'Details'}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          );
-        }}
+        renderItem={({ item: category }) => (
+          <QuickCategoryItem
+            playerId={currentPlayer.id}
+            category={category}
+            wonder={wonders[currentPlayer.id]}
+            expansions={expansions}
+            styles={styles}
+            onDetails={handleCategoryPress}
+            onQuickEdit={handleQuickEdit}
+          />
+        )}
       />
 
       {/* Footer */}
