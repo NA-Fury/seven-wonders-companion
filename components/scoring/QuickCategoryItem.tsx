@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useRef, useEffect } from 'react';
+import React, { useCallback, useMemo, useEffect, useState } from 'react';
 import { Text, TouchableOpacity, View } from 'react-native';
 import { shallow } from 'zustand/shallow';
 import { DetailedScoreData, useScoringStore } from '../../store/scoringStore';
@@ -21,17 +21,7 @@ interface Props {
   onQuickEdit: (categoryId: string, value: number) => void;
 }
 
-export default React.memo(function QuickCategoryItem({
-  playerId,
-  category,
-  wonder,
-  expansions,
-  styles,
-  onDetails,
-  onQuickEdit,
-}: Props) {
-  // Map of category -> score fields to subscribe to
-  const CATEGORY_FIELDS: Record<string, (keyof DetailedScoreData)[]> = {
+const CATEGORY_FIELDS: Record<string, (keyof DetailedScoreData)[]> = {
     wonder: ['wonderDirectPoints', 'wonderShowDetails', 'wonderStagesBuilt', 'wonderEdificeStage'],
     treasure: [
       'treasureDirectPoints',
@@ -108,38 +98,58 @@ export default React.memo(function QuickCategoryItem({
     ],
   };
 
-  // Subscribe only to needed fields for this category
-  const sliceRef = useRef<Partial<DetailedScoreData>>({});
+export default React.memo(function QuickCategoryItem({
+  playerId,
+  category,
+  wonder,
+  expansions,
+  styles,
+  onDetails,
+  onQuickEdit,
+}: Props) {
+  const fields = useMemo(() => CATEGORY_FIELDS[category.id] || [], [category.id]);
 
-  useEffect(() => {
-    sliceRef.current = {};
-  }, [playerId, category.id]);
-
-  const playerScore = useScoringStore(
-    useCallback((state) => {
+  const getSlice = useCallback(
+    (state: any) => {
       const allScores = state.playerScores[playerId];
       if (!allScores) return undefined;
-
-      const fields = CATEGORY_FIELDS[category.id] || [];
-      let changed = false;
-      const nextSlice: Partial<DetailedScoreData> = { ...sliceRef.current };
-
-      fields.forEach((k) => {
-        const value = allScores[k];
-        if (nextSlice[k] !== value) {
-          // @ts-ignore dynamic assignment
-          nextSlice[k] = value;
-          changed = true;
-        }
+      const slice: Partial<DetailedScoreData> = {};
+      fields.forEach(k => {
+        // @ts-ignore dynamic assignment
+        slice[k] = allScores[k];
       });
+      return slice as DetailedScoreData;
+    },
+    [playerId, fields]
+  );
 
-      if (changed) {
-        sliceRef.current = nextSlice;
-      }
+  const [playerScore, setPlayerScore] = useState(() => getSlice(useScoringStore.getState()));
 
-      return sliceRef.current as DetailedScoreData;
-    }, [playerId, category.id]),
-    shallow
+  useEffect(
+    () =>
+      (useScoringStore.subscribe as any)(
+        getSlice,
+        setPlayerScore,
+        { equalityFn: shallow }
+      ),
+    [getSlice]
+  );
+
+  const points = useMemo(
+    () =>
+      playerScore
+        ? calculateCategoryPoints(
+            playerId,
+            category.id,
+            playerScore as DetailedScoreData,
+            { wonder, expansions }
+          )
+        : 0,
+    [playerId, category.id, playerScore, wonder, expansions]
+  );
+
+  const hasDetails = Boolean(
+    playerScore && (playerScore as any)[`${category.id}ShowDetails`]
   );
 
   if (!playerScore) {
@@ -149,25 +159,10 @@ export default React.memo(function QuickCategoryItem({
           <Text style={styles.categoryIcon}>{category.icon}</Text>
           <Text style={styles.categoryTitle}>{category.title}</Text>
         </View>
-        <Text style={[styles.pointsValue, { opacity: 0.5 }]}>0</Text>
+        <Text style={[styles.pointsValue, { opacity: 0.5 }]}>{points}</Text>
       </View>
     );
   }
-
-  const points = useMemo(
-    () =>
-      calculateCategoryPoints(
-        playerId,
-        category.id,
-        playerScore as DetailedScoreData,
-        { wonder, expansions }
-      ),
-    [playerId, category.id, playerScore, wonder, expansions]
-  );
-
-  const hasDetails = Boolean(
-    (playerScore as any)[`${category.id}ShowDetails`]
-  );
 
   return (
     <View style={styles.categoryCard}>
