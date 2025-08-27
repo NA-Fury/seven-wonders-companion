@@ -1,8 +1,7 @@
 import React, { useCallback, useMemo } from 'react';
 import { Text, TouchableOpacity, View } from 'react-native';
-import { useScoringStore, DetailedScoreData } from '../../store/scoringStore';
+import { DetailedScoreData, useScoringStore } from '../../store/scoringStore';
 import { calculateCategoryPoints } from './scoringCalculations';
-import shallow from 'zustand/shallow';
 
 interface CategoryConfig {
   id: string;
@@ -41,8 +40,7 @@ export default React.memo(function QuickCategoryItem({
         }
       }
       return result;
-    }, [playerId, category.id]),
-    shallow
+    }, [playerId, category.id])
   );
 
   const points = useMemo(
