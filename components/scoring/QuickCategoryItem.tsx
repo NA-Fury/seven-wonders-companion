@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 import React, { useCallback, useMemo } from 'react';
+=======
+import React, { useCallback, useMemo, useRef, useEffect } from 'react';
+>>>>>>> origin/codex/optimize-scoring-ui-performance-tjsexl
 import { Text, TouchableOpacity, View } from 'react-native';
 import { shallow } from 'zustand/shallow';
 import { DetailedScoreData, useScoringStore } from '../../store/scoringStore';
@@ -109,10 +113,20 @@ export default React.memo(function QuickCategoryItem({
   };
 
   // Subscribe only to needed fields for this category
+<<<<<<< HEAD
+=======
+  const sliceRef = useRef<Partial<DetailedScoreData>>({});
+
+  useEffect(() => {
+    sliceRef.current = {};
+  }, [playerId, category.id]);
+
+>>>>>>> origin/codex/optimize-scoring-ui-performance-tjsexl
   const playerScore = useScoringStore(
     useCallback((state) => {
       const allScores = state.playerScores[playerId];
       if (!allScores) return undefined;
+<<<<<<< HEAD
       const slice: Partial<DetailedScoreData> = {};
       const fields = CATEGORY_FIELDS[category.id] || [];
       fields.forEach((k) => {
@@ -120,6 +134,27 @@ export default React.memo(function QuickCategoryItem({
         slice[k] = allScores[k];
       });
       return slice as DetailedScoreData;
+=======
+
+      const fields = CATEGORY_FIELDS[category.id] || [];
+      let changed = false;
+      const nextSlice: Partial<DetailedScoreData> = { ...sliceRef.current };
+
+      fields.forEach((k) => {
+        const value = allScores[k];
+        if (nextSlice[k] !== value) {
+          // @ts-ignore dynamic assignment
+          nextSlice[k] = value;
+          changed = true;
+        }
+      });
+
+      if (changed) {
+        sliceRef.current = nextSlice;
+      }
+
+      return sliceRef.current as DetailedScoreData;
+>>>>>>> origin/codex/optimize-scoring-ui-performance-tjsexl
     }, [playerId, category.id]),
     shallow
   );
