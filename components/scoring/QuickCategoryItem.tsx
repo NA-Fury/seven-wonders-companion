@@ -1,8 +1,4 @@
-<<<<<<< HEAD
-import React, { useCallback, useMemo } from 'react';
-=======
-import React, { useCallback, useMemo, useRef, useEffect } from 'react';
->>>>>>> origin/codex/optimize-scoring-ui-performance-tjsexl
+import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import { Text, TouchableOpacity, View } from 'react-native';
 import { shallow } from 'zustand/shallow';
 import { DetailedScoreData, useScoringStore } from '../../store/scoringStore';
@@ -25,6 +21,84 @@ interface Props {
   onQuickEdit: (categoryId: string, value: number) => void;
 }
 
+// Fields to watch per category (moved outside component for stability)
+const CATEGORY_FIELDS: Record<string, (keyof DetailedScoreData)[]> = {
+  wonder: ['wonderDirectPoints', 'wonderShowDetails', 'wonderStagesBuilt', 'wonderEdificeStage'],
+  treasure: [
+    'treasureDirectPoints',
+    'treasureShowDetails',
+    'treasureTotalCoins',
+    'treasurePermanentDebt',
+    'treasureCardDebt',
+    'treasureTaxDebt',
+    'treasurePiracyDebt',
+    'treasureCommercialDebt',
+  ],
+  military: [
+    'militaryDirectPoints',
+    'militaryShowDetails',
+    'militaryTotalStrength',
+    'militaryStrengthPerAge',
+    'militaryPlayedDove',
+    'militaryDoveAges',
+    'militaryBoardingApplied',
+    'militaryBoardingReceived',
+    'militaryChainLinks',
+  ],
+  science: [
+    'scienceDirectPoints',
+    'scienceShowDetails',
+    'scienceCompass',
+    'scienceTablet',
+    'scienceGear',
+    'scienceNonCardCompass',
+    'scienceNonCardTablet',
+    'scienceNonCardGear',
+  ],
+  civilian: [
+    'civilianDirectPoints',
+    'civilianShowDetails',
+    'civilianShipPosition',
+    'civilianChainLinks',
+    'civilianTotalCards',
+  ],
+  commercial: [
+    'commercialDirectPoints',
+    'commercialShowDetails',
+    'commercialShipPosition',
+    'commercialChainLinks',
+    'commercialTotalCards',
+    'commercialPointCards',
+  ],
+  guilds: ['guildsDirectPoints', 'guildsShowDetails', 'guildsCardsPlayed'],
+  resources: [
+    'resourcesDirectPoints',
+    'resourcesShowDetails',
+    'resourcesBrownCards',
+    'resourcesGreyCards',
+    'discardRetrievals',
+  ],
+  cities: [
+    'citiesDirectPoints',
+    'citiesShowDetails',
+    'blackPointCards',
+    'blackTotalCards',
+    'blackNeighborPositive',
+    'blackNeighborNegative',
+    'blackPeaceDoves',
+  ],
+  leaders: ['leadersDirectPoints', 'leadersShowDetails', 'leadersPlayed', 'leadersAvailable'],
+  navy: ['navyDirectPoints', 'navyShowDetails', 'navyTotalStrength', 'navyPlayedBlueDove', 'navyDoveAges'],
+  islands: ['islandDirectPoints', 'islandShowDetails', 'islandCards'],
+  edifice: [
+    'edificeDirectPoints',
+    'edificeShowDetails',
+    'edificeRewards',
+    'edificePenalties',
+    'edificeProjectsContributed',
+  ],
+};
+
 export default React.memo(function QuickCategoryItem({
   playerId,
   category,
@@ -34,128 +108,41 @@ export default React.memo(function QuickCategoryItem({
   onDetails,
   onQuickEdit,
 }: Props) {
-  // Map of category -> score fields to subscribe to
-  const CATEGORY_FIELDS: Record<string, (keyof DetailedScoreData)[]> = {
-    wonder: ['wonderDirectPoints', 'wonderShowDetails', 'wonderStagesBuilt', 'wonderEdificeStage'],
-    treasure: [
-      'treasureDirectPoints',
-      'treasureShowDetails',
-      'treasureTotalCoins',
-      'treasurePermanentDebt',
-      'treasureCardDebt',
-      'treasureTaxDebt',
-      'treasurePiracyDebt',
-      'treasureCommercialDebt',
-    ],
-    military: [
-      'militaryDirectPoints',
-      'militaryShowDetails',
-      'militaryTotalStrength',
-      'militaryStrengthPerAge',
-      'militaryPlayedDove',
-      'militaryDoveAges',
-      'militaryBoardingApplied',
-      'militaryBoardingReceived',
-      'militaryChainLinks',
-    ],
-    science: [
-      'scienceDirectPoints',
-      'scienceShowDetails',
-      'scienceCompass',
-      'scienceTablet',
-      'scienceGear',
-      'scienceNonCardCompass',
-      'scienceNonCardTablet',
-      'scienceNonCardGear',
-    ],
-    civilian: [
-      'civilianDirectPoints',
-      'civilianShowDetails',
-      'civilianShipPosition',
-      'civilianChainLinks',
-      'civilianTotalCards',
-    ],
-    commercial: [
-      'commercialDirectPoints',
-      'commercialShowDetails',
-      'commercialShipPosition',
-      'commercialChainLinks',
-      'commercialTotalCards',
-      'commercialPointCards',
-    ],
-    guilds: ['guildsDirectPoints', 'guildsShowDetails', 'guildsCardsPlayed'],
-    resources: [
-      'resourcesDirectPoints',
-      'resourcesShowDetails',
-      'resourcesBrownCards',
-      'resourcesGreyCards',
-      'discardRetrievals',
-    ],
-    cities: [
-      'citiesDirectPoints',
-      'citiesShowDetails',
-      'blackPointCards',
-      'blackTotalCards',
-      'blackNeighborPositive',
-      'blackNeighborNegative',
-      'blackPeaceDoves',
-    ],
-    leaders: ['leadersDirectPoints', 'leadersShowDetails', 'leadersPlayed', 'leadersAvailable'],
-    navy: ['navyDirectPoints', 'navyShowDetails', 'navyTotalStrength', 'navyPlayedBlueDove', 'navyDoveAges'],
-    islands: ['islandDirectPoints', 'islandShowDetails', 'islandCards'],
-    edifice: [
-      'edificeDirectPoints',
-      'edificeShowDetails',
-      'edificeRewards',
-      'edificePenalties',
-      'edificeProjectsContributed',
-    ],
-  };
-
-  // Subscribe only to needed fields for this category
-<<<<<<< HEAD
-=======
+  // Cache the slice to avoid returning a fresh object every render (prevents getSnapshot warning)
   const sliceRef = useRef<Partial<DetailedScoreData>>({});
 
+  // Reset cached slice when player or category changes
   useEffect(() => {
     sliceRef.current = {};
   }, [playerId, category.id]);
 
->>>>>>> origin/codex/optimize-scoring-ui-performance-tjsexl
   const playerScore = useScoringStore(
-    useCallback((state) => {
-      const allScores = state.playerScores[playerId];
-      if (!allScores) return undefined;
-<<<<<<< HEAD
-      const slice: Partial<DetailedScoreData> = {};
-      const fields = CATEGORY_FIELDS[category.id] || [];
-      fields.forEach((k) => {
-        // @ts-ignore dynamic assignment
-        slice[k] = allScores[k];
-      });
-      return slice as DetailedScoreData;
-=======
+    useCallback(
+      (state) => {
+        const allScores = state.playerScores[playerId];
+        if (!allScores) return undefined;
 
-      const fields = CATEGORY_FIELDS[category.id] || [];
-      let changed = false;
-      const nextSlice: Partial<DetailedScoreData> = { ...sliceRef.current };
+        const fields = CATEGORY_FIELDS[category.id] || [];
+        let changed = false;
+        const nextSlice: Partial<DetailedScoreData> = { ...sliceRef.current };
 
-      fields.forEach((k) => {
-        const value = allScores[k];
-        if (nextSlice[k] !== value) {
-          // @ts-ignore dynamic assignment
-          nextSlice[k] = value;
-          changed = true;
+        for (const k of fields) {
+            const value = allScores[k];
+            if (nextSlice[k] !== value) {
+              // @ts-ignore dynamic assignment
+              nextSlice[k] = value;
+              changed = true;
+            }
         }
-      });
 
-      if (changed) {
-        sliceRef.current = nextSlice;
-      }
+        if (changed) {
+          sliceRef.current = nextSlice;
+        }
 
-      return sliceRef.current as DetailedScoreData;
->>>>>>> origin/codex/optimize-scoring-ui-performance-tjsexl
-    }, [playerId, category.id]),
+        return sliceRef.current as DetailedScoreData;
+      },
+      [playerId, category.id]
+    ),
     shallow
   );
 
