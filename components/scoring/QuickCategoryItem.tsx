@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 import React, { useCallback, useEffect, useMemo, useRef } from 'react';
+=======
+import React, { useCallback, useMemo, useEffect, useState } from 'react';
+>>>>>>> origin/codex/optimize-scoring-ui-performance-qcjbi3
 import { Text, TouchableOpacity, View } from 'react-native';
 import { shallow } from 'zustand/shallow';
 import { DetailedScoreData, useScoringStore } from '../../store/scoringStore';
@@ -21,6 +25,7 @@ interface Props {
   onQuickEdit: (categoryId: string, value: number) => void;
 }
 
+<<<<<<< HEAD
 // Fields to watch per category (moved outside component for stability)
 const CATEGORY_FIELDS: Record<string, (keyof DetailedScoreData)[]> = {
   wonder: ['wonderDirectPoints', 'wonderShowDetails', 'wonderStagesBuilt', 'wonderEdificeStage'],
@@ -98,6 +103,84 @@ const CATEGORY_FIELDS: Record<string, (keyof DetailedScoreData)[]> = {
     'edificeProjectsContributed',
   ],
 };
+=======
+const CATEGORY_FIELDS: Record<string, (keyof DetailedScoreData)[]> = {
+    wonder: ['wonderDirectPoints', 'wonderShowDetails', 'wonderStagesBuilt', 'wonderEdificeStage'],
+    treasure: [
+      'treasureDirectPoints',
+      'treasureShowDetails',
+      'treasureTotalCoins',
+      'treasurePermanentDebt',
+      'treasureCardDebt',
+      'treasureTaxDebt',
+      'treasurePiracyDebt',
+      'treasureCommercialDebt',
+    ],
+    military: [
+      'militaryDirectPoints',
+      'militaryShowDetails',
+      'militaryTotalStrength',
+      'militaryStrengthPerAge',
+      'militaryPlayedDove',
+      'militaryDoveAges',
+      'militaryBoardingApplied',
+      'militaryBoardingReceived',
+      'militaryChainLinks',
+    ],
+    science: [
+      'scienceDirectPoints',
+      'scienceShowDetails',
+      'scienceCompass',
+      'scienceTablet',
+      'scienceGear',
+      'scienceNonCardCompass',
+      'scienceNonCardTablet',
+      'scienceNonCardGear',
+    ],
+    civilian: [
+      'civilianDirectPoints',
+      'civilianShowDetails',
+      'civilianShipPosition',
+      'civilianChainLinks',
+      'civilianTotalCards',
+    ],
+    commercial: [
+      'commercialDirectPoints',
+      'commercialShowDetails',
+      'commercialShipPosition',
+      'commercialChainLinks',
+      'commercialTotalCards',
+      'commercialPointCards',
+    ],
+    guilds: ['guildsDirectPoints', 'guildsShowDetails', 'guildsCardsPlayed'],
+    resources: [
+      'resourcesDirectPoints',
+      'resourcesShowDetails',
+      'resourcesBrownCards',
+      'resourcesGreyCards',
+      'discardRetrievals',
+    ],
+    cities: [
+      'citiesDirectPoints',
+      'citiesShowDetails',
+      'blackPointCards',
+      'blackTotalCards',
+      'blackNeighborPositive',
+      'blackNeighborNegative',
+      'blackPeaceDoves',
+    ],
+    leaders: ['leadersDirectPoints', 'leadersShowDetails', 'leadersPlayed', 'leadersAvailable'],
+    navy: ['navyDirectPoints', 'navyShowDetails', 'navyTotalStrength', 'navyPlayedBlueDove', 'navyDoveAges'],
+    islands: ['islandDirectPoints', 'islandShowDetails', 'islandCards'],
+    edifice: [
+      'edificeDirectPoints',
+      'edificeShowDetails',
+      'edificeRewards',
+      'edificePenalties',
+      'edificeProjectsContributed',
+    ],
+  };
+>>>>>>> origin/codex/optimize-scoring-ui-performance-qcjbi3
 
 export default React.memo(function QuickCategoryItem({
   playerId,
@@ -108,6 +191,7 @@ export default React.memo(function QuickCategoryItem({
   onDetails,
   onQuickEdit,
 }: Props) {
+<<<<<<< HEAD
   // Cache the slice to avoid returning a fresh object every render (prevents getSnapshot warning)
   const sliceRef = useRef<Partial<DetailedScoreData>>({});
 
@@ -144,6 +228,51 @@ export default React.memo(function QuickCategoryItem({
       [playerId, category.id]
     ),
     shallow
+=======
+  const fields = useMemo(() => CATEGORY_FIELDS[category.id] || [], [category.id]);
+
+  const getSlice = useCallback(
+    (state: any) => {
+      const allScores = state.playerScores[playerId];
+      if (!allScores) return undefined;
+      const slice: Partial<DetailedScoreData> = {};
+      fields.forEach(k => {
+        // @ts-ignore dynamic assignment
+        slice[k] = allScores[k];
+      });
+      return slice as DetailedScoreData;
+    },
+    [playerId, fields]
+  );
+
+  const [playerScore, setPlayerScore] = useState(() => getSlice(useScoringStore.getState()));
+
+  useEffect(
+    () =>
+      (useScoringStore.subscribe as any)(
+        getSlice,
+        setPlayerScore,
+        { equalityFn: shallow }
+      ),
+    [getSlice]
+  );
+
+  const points = useMemo(
+    () =>
+      playerScore
+        ? calculateCategoryPoints(
+            playerId,
+            category.id,
+            playerScore as DetailedScoreData,
+            { wonder, expansions }
+          )
+        : 0,
+    [playerId, category.id, playerScore, wonder, expansions]
+  );
+
+  const hasDetails = Boolean(
+    playerScore && (playerScore as any)[`${category.id}ShowDetails`]
+>>>>>>> origin/codex/optimize-scoring-ui-performance-qcjbi3
   );
 
   if (!playerScore) {
@@ -153,25 +282,10 @@ export default React.memo(function QuickCategoryItem({
           <Text style={styles.categoryIcon}>{category.icon}</Text>
           <Text style={styles.categoryTitle}>{category.title}</Text>
         </View>
-        <Text style={[styles.pointsValue, { opacity: 0.5 }]}>0</Text>
+        <Text style={[styles.pointsValue, { opacity: 0.5 }]}>{points}</Text>
       </View>
     );
   }
-
-  const points = useMemo(
-    () =>
-      calculateCategoryPoints(
-        playerId,
-        category.id,
-        playerScore as DetailedScoreData,
-        { wonder, expansions }
-      ),
-    [playerId, category.id, playerScore, wonder, expansions]
-  );
-
-  const hasDetails = Boolean(
-    (playerScore as any)[`${category.id}ShowDetails`]
-  );
 
   return (
     <View style={styles.categoryCard}>
