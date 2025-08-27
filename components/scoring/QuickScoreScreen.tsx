@@ -273,7 +273,7 @@ export default function QuickScoreScreen() {
       if (!currentPlayer) return;
       updateScore(currentPlayer.id, `${categoryId}DirectPoints`, value);
     },
-    [currentPlayer, updateScore]
+    [currentPlayer, updateScore] // ensure object dependency included
   );
 
   const navigatePlayer = useCallback((direction: 'prev' | 'next') => {
@@ -352,7 +352,7 @@ export default function QuickScoreScreen() {
         ListHeaderComponent={
           <View style={styles.motivationalCard}>
             <Text style={styles.motivationalText}>
-              💫 Enter quick totals or tap "Details" for comprehensive tracking and personal analysis!
+              💫 Enter quick totals or tap &quot;Details&quot; for comprehensive tracking and personal analysis!
             </Text>
           </View>
         }
