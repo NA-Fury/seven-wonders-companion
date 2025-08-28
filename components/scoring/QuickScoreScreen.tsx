@@ -1,380 +1,341 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+// components/scoring/QuickScoreScreen.tsx
+import { router } from 'expo-router';
+import React, { memo, useCallback, useMemo, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    FlatList,
     Modal,
     Platform,
+    ScrollView,
     StyleSheet,
     Text,
     TouchableOpacity,
-    View
+    View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+
 import { useScoringStore } from '../../store/scoringStore';
 import { useSetupStore } from '../../store/setupStore';
-import QuickCategoryItem from './QuickCategoryItem';
-import { calculateCategoryPoints, clearCategoryPointsCache } from './scoringCalculations';
+import CategoryDetailModal from './CategoryDetailModal';
 
-const DetailModal = React.lazy(() => import('./CategoryDetailModal'));
+type ScoreCategory =
+  | 'wonder'
+  | 'treasure'
+  | 'military'
+  | 'civilian'
+  | 'commercial'
+  | 'science'
+  | 'guilds'
+  | 'cities'
+  | 'leaders'
+  | 'navy'
+  | 'island'
+  | 'edifice';
 
-interface CategoryConfig {
-  id: string;
-  title: string;
-  icon: string;
-  visible: boolean;
-  isScoring: boolean; // New field to distinguish scoring vs analysis categories
-}
+const CATEGORY_LABELS: Record<ScoreCategory, string> = {
+  wonder: 'Wonder',
+  treasure: 'Treasure',
+  military: 'Military',
+  civilian: 'Civilian',
+  commercial: 'Commercial',
+  science: 'Science',
+  guilds: 'Guilds',
+  cities: 'Cities',
+  leaders: 'Leaders',
+  navy: 'Navy',
+  island: 'Island',
+  edifice: 'Edifice',
+};
+
+const CATEGORY_ICONS: Record<ScoreCategory, string> = {
+  wonder: '🏛️',
+  treasure: '💰',
+  military: '⚔️',
+  civilian: '🏗️',
+  commercial: '🪙',
+  science: '🔬',
+  guilds: '👑',
+  cities: '🏴',
+  leaders: '👤',
+  navy: '⚓',
+  island: '🏝️',
+  edifice: '🗿',
+};
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#1C1A1A' },
-  compactHeader: {
+  container: { flex: 1, backgroundColor: '#0F0E1A' },
+  header: {
     backgroundColor: 'rgba(28,26,26,0.98)',
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(196, 162, 76, 0.2)',
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    paddingTop: Platform.OS === 'ios' ? 6 : 12,
+    borderBottomWidth: 2,
+    borderBottomColor: 'rgba(196, 162, 76, 0.3)',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
   },
-  headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  playerSelector: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  playerBadge: {
-    backgroundColor: 'rgba(196, 162, 76, 0.2)',
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 4,
+  playerNavigation: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8,
   },
-  playerName: { color: '#C4A24C', fontSize: 14, fontWeight: 'bold' },
   navButton: {
-    width: 28, height: 28, borderRadius: 14,
-    backgroundColor: 'rgba(196, 162, 76, 0.3)',
-    alignItems: 'center', justifyContent: 'center'
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(196, 162, 76, 0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(196, 162, 76, 0.4)',
   },
   navButtonDisabled: { opacity: 0.3 },
-  navButtonText: { color: '#C4A24C', fontSize: 16, fontWeight: 'bold' },
-  gameInfo: { fontSize: 10, color: 'rgba(243, 231, 211, 0.6)' },
-  scrollContent: { padding: 12, paddingBottom: 100 },
-  motivationalCard: {
+  navButtonText: { color: '#C4A24C', fontSize: 20, fontWeight: 'bold' },
+  playerInfo: { flex: 1, marginHorizontal: 12, alignItems: 'center' },
+  playerName: { color: '#FEF3C7', fontSize: 20, fontWeight: 'bold', textAlign: 'center' },
+  playerMeta: { color: 'rgba(243, 231, 211, 0.6)', fontSize: 11, marginTop: 2 },
+  wonderInfo: {
     backgroundColor: 'rgba(196, 162, 76, 0.1)',
-    borderRadius: 12, padding: 12, marginBottom: 12,
-    borderWidth: 1, borderColor: 'rgba(196,162,76,0.2)',
-  },
-  motivationalText: { color: '#FEF3C7', fontSize: 12, textAlign: 'center', fontStyle: 'italic' },
-  totalCard: {
-    backgroundColor: 'rgba(196, 162, 76, 0.15)',
-    borderRadius: 16, padding: 16, marginTop: 12,
-    borderWidth: 2, borderColor: '#C4A24C', alignItems: 'center'
-  },
-  totalLabel: { color: 'rgba(243,231,211,0.8)', fontSize: 12, marginBottom: 4 },
-  totalValue: { color: '#C4A24C', fontSize: 32, fontWeight: '900' },
-  footer: {
-    position: 'absolute', bottom: 0, left: 0, right: 0,
-    backgroundColor: 'rgba(17, 24, 39, 0.98)',
-    borderTopWidth: 1, borderTopColor: 'rgba(196,162,76,0.2)',
-    padding: 8, paddingBottom: Platform.OS === 'ios' ? 20 : 8
-  },
-  footerButtons: { flexDirection: 'row', gap: 8 },
-  footerButton: { flex: 1, paddingVertical: 10, borderRadius: 8, alignItems: 'center' },
-  primaryButton: { backgroundColor: '#C4A24C' },
-  secondaryButton: { backgroundColor: 'rgba(107,114,128,0.3)' },
-  buttonText: { fontSize: 14, fontWeight: 'bold' },
-  primaryButtonText: { color: '#1C1A1A' },
-  secondaryButtonText: { color: '#9CA3AF' },
-  
-  analysisSection: {
-    marginTop: 16,
-    paddingTop: 16,
-    borderTopWidth: 2,
-    borderTopColor: 'rgba(196,162,76,0.2)',
-  },
-  analysisSectionTitle: { 
-    color: '#C4A24C', 
-    fontSize: 14, 
-    fontWeight: 'bold',
-    marginBottom: 12,
-    textAlign: 'center'
-  },
-
-  // Category tile styles (used by QuickCategoryItem)
-  categoryCard: {
-    flex: 1,
-    backgroundColor: 'rgba(31, 41, 55, 0.6)',
-    borderRadius: 14,
-    padding: 12,
-    marginBottom: 12,
-    marginHorizontal: 4,
-    borderWidth: 1,
-    borderColor: 'rgba(196,162,76,0.15)',
-  },
-  categoryHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 6 },
-  categoryIcon: { fontSize: 18, marginRight: 6 },
-  categoryTitle: { color: '#F3E7D3', fontSize: 14, fontWeight: '600', flexShrink: 1 },
-  pointsDisplay: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  pointsValue: { fontSize: 26, fontWeight: '900', color: '#C4A24C' },
-  detailButton: {
-    paddingHorizontal: 10,
+    borderRadius: 8,
     paddingVertical: 6,
-    backgroundColor: 'rgba(196,162,76,0.18)',
-    borderRadius: 8
+    paddingHorizontal: 12,
+    marginTop: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
   },
-  detailButtonText: { color: '#C4A24C', fontSize: 12, fontWeight: '600' },
+  wonderText: { color: '#C4A24C', fontSize: 13, fontWeight: '600' },
+  scrollContent: { paddingHorizontal: 12, paddingTop: 12, paddingBottom: 140 },
+  sectionTitle: {
+    color: 'rgba(196, 162, 76, 0.7)',
+    fontSize: 11,
+    textTransform: 'uppercase',
+    marginBottom: 8,
+  },
+  grid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginHorizontal: -6,
+  },
+  card: {
+    width: '50%',
+    paddingHorizontal: 6,
+    marginBottom: 12,
+  },
+  cardBody: {
+    backgroundColor: 'rgba(31, 41, 55, 0.8)',
+    borderWidth: 1,
+    borderColor: 'rgba(196, 162, 76, 0.2)',
+    borderRadius: 12,
+    padding: 12,
+  },
+  cardTitle: { color: '#F3E7D3', fontWeight: '700' },
+  valueRow: {
+    marginTop: 6,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  valueText: { color: '#C4A24C', fontSize: 18, fontWeight: '800' },
+  adjustRow: { marginTop: 8, flexDirection: 'row', gap: 8 },
+  adjustButton: {
+    flex: 1,
+    height: 36,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+  },
+  adjustMinus: {
+    backgroundColor: 'rgba(107,114,128,0.2)',
+    borderColor: 'rgba(107,114,128,0.4)',
+  },
+  adjustPlus: { backgroundColor: 'rgba(196,162,76,0.15)', borderColor: 'rgba(196,162,76,0.4)' },
+  adjustText: { fontSize: 16, fontWeight: 'bold' },
+  footer: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    padding: 12,
+    backgroundColor: 'rgba(28,26,26,0.98)',
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(196, 162, 76, 0.2)',
+  },
+  proceed: {
+    backgroundColor: '#C4A24C',
+    borderRadius: 12,
+    height: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  proceedText: { color: '#1C1A1A', fontSize: 16, fontWeight: '900' },
+});
+
+const CategoryCard = memo(function CategoryCard({
+  playerId,
+  category,
+  onOpenDetails,
+}: {
+  playerId: string;
+  category: ScoreCategory;
+  onOpenDetails: (c: ScoreCategory) => void;
+}) {
+  // Narrow subscriptions — one primitive + one action
+  const points =
+    useScoringStore((s) => (s.playerScores[playerId]?.[`${category}Points` as const] as number) ?? 0);
+  const setQuick = useScoringStore((s) => s.updateQuickScore);
+
+  const dec = useCallback(() => setQuick(playerId, category, Math.max(0, points - 1)), [playerId, category, points, setQuick]);
+  const inc = useCallback(() => setQuick(playerId, category, points + 1), [playerId, category, points, setQuick]);
+
+  return (
+    <View style={styles.card}>
+      <View style={styles.cardBody}>
+        <Text style={styles.cardTitle}>{CATEGORY_LABELS[category]}</Text>
+
+        <View style={styles.valueRow}>
+          <Text style={styles.valueText}>{points}</Text>
+          <TouchableOpacity
+            onPress={() => onOpenDetails(category)}
+            style={{
+              paddingHorizontal: 10,
+              paddingVertical: Platform.OS === 'ios' ? 6 : 4,
+              borderRadius: 8,
+              borderWidth: 1,
+              borderColor: 'rgba(196,162,76,0.4)',
+              backgroundColor: 'rgba(196,162,76,0.1)',
+            }}
+          >
+            <Text style={{ color: '#C4A24C', fontSize: 12, fontWeight: '700' }}>Details</Text>
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.adjustRow}>
+          <TouchableOpacity style={[styles.adjustButton, styles.adjustMinus]} onPress={dec}>
+            <Text style={[styles.adjustText, { color: '#F3E7D3' }]}>–</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.adjustButton, styles.adjustPlus]} onPress={inc}>
+            <Text style={[styles.adjustText, { color: '#C4A24C' }]}>+</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </View>
+  );
 });
 
 export default function QuickScoreScreen() {
-  const { players, seating, expansions, wonders } = useSetupStore();
-  const { initializeScores, updateScore, isInitialized, playerScores } = useScoringStore();
+  const insets = useSafeAreaInsets();
 
-  const [currentPlayerIndex, setCurrentPlayerIndex] = useState(0);
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  const [modalVisible, setModalVisible] = useState(false);
-  const [ready, setReady] = useState(false);
+  // Setup store — avoid tuple + equality fn; keep it simple & typed
+  const getOrderedPlayers = useSetupStore((s) => s.getOrderedPlayers);
+  const expansions = useSetupStore((s) => s.expansions);
+  const players = useMemo(() => getOrderedPlayers(), [getOrderedPlayers]);
 
-  const orderedPlayers = useMemo(() => {
-    if (!players?.length) return [];
-    if (!seating?.length) return players;
-    return seating.map(id => players.find(p => p.id === id)).filter(Boolean) as typeof players;
-  }, [players, seating]);
+  // Scoring store — separate subscriptions (no second-arg equality)
+  const index = useScoringStore((s) => s.currentPlayerIndex);
+  const setIndex = useScoringStore((s) => s.setCurrentPlayer);
+  const getPlayerTotal = useScoringStore((s) => s.getPlayerTotal);
 
-  useEffect(() => {
-    if (!isInitialized && orderedPlayers.length > 0) {
-      initializeScores(orderedPlayers, wonders);
-    }
-    setReady(isInitialized);
-  }, [isInitialized, orderedPlayers, initializeScores, wonders]);
+  const [detail, setDetail] = useState<{ open: boolean; category?: ScoreCategory }>({ open: false });
 
-  const currentPlayer = orderedPlayers[currentPlayerIndex];
-  const currentScore = currentPlayer ? playerScores[currentPlayer.id] : undefined;
+  const activePlayer = players[index];
+  const playerId = activePlayer?.id;
 
-  const categories: CategoryConfig[] = useMemo(() => [
-    { id: 'wonder', title: 'Wonder', icon: '🏛️', visible: true, isScoring: true },
-    { id: 'treasure', title: 'Treasure', icon: '💰', visible: true, isScoring: true },
-    { id: 'military', title: 'Military', icon: '⚔️', visible: true, isScoring: true },
-    { id: 'civilian', title: 'Civilian', icon: '🏛️', visible: true, isScoring: true },
-    { id: 'commercial', title: 'Commercial', icon: '🪙', visible: true, isScoring: true },
-    { id: 'science', title: 'Science', icon: '🔬', visible: true, isScoring: true },
-    { id: 'guilds', title: 'Guilds', icon: '👑', visible: true, isScoring: true },
-    { id: 'cities', title: 'Cities', icon: '🏴', visible: expansions?.cities, isScoring: true },
-    { id: 'leaders', title: 'Leaders', icon: '👤', visible: expansions?.leaders, isScoring: true },
-    { id: 'navy', title: 'Navy', icon: '⚓', visible: expansions?.armada, isScoring: true },
-    { id: 'islands', title: 'Islands', icon: '🏝️', visible: expansions?.armada, isScoring: true },
-    { id: 'edifice', title: 'Edifice', icon: '🗿', visible: expansions?.edifice, isScoring: true },
-    // Analysis categories (non-scoring)
-    { id: 'resources', title: 'Resources', icon: '📦', visible: true, isScoring: false },
-    { id: 'bonus', title: 'Bonus Analysis', icon: '🔍', visible: true, isScoring: false },
-  ], [expansions]);
+  const categories: ScoreCategory[] = useMemo(() => {
+    const base: ScoreCategory[] = ['wonder', 'treasure', 'military', 'civilian', 'commercial', 'science', 'guilds'];
+    if (expansions?.cities) base.push('cities');
+    if (expansions?.leaders) base.push('leaders');
+    if (expansions?.armada) base.push('navy', 'island');
+    if (expansions?.edifice) base.push('edifice');
+    return base;
+  }, [expansions]);
 
-  const scoringCategories = categories.filter(c => c.visible && c.isScoring);
-  const analysisCategories = categories.filter(c => c.visible && !c.isScoring);
-
-  const totalPoints = useMemo(() => {
-    if (!ready || !currentPlayer || !currentScore) return 0;
-    let sum = 0;
-    
-    // Only sum scoring categories
-    scoringCategories.forEach(cat => {
-      const points = calculateCategoryPoints(
-        currentPlayer.id,
-        cat.id,
-        currentScore,
-        { wonder: wonders?.[currentPlayer.id], expansions },
-        true
-      );
-      sum += points;
-    });
-    
-    return sum;
-  }, [ready, currentPlayer, currentScore, scoringCategories, wonders, expansions]);
-
-  const handleCategoryPress = useCallback((categoryId: string) => {
-    setSelectedCategory(categoryId);
-    setModalVisible(true);
+  const proceedToResults = useCallback(() => {
+    router.push({ pathname: '/scoring', params: { view: 'results' } });
   }, []);
 
-  const handleQuickEdit = useCallback(
-    (categoryId: string, delta: number) => {
-      if (!currentPlayer || !currentScore) return;
-      
-      const fieldName = `${categoryId}DirectPoints`;
-      const currentValue = (currentScore as any)[fieldName] || 0;
-      const newValue = Math.max(0, currentValue + delta);
-      
-      updateScore(currentPlayer.id, fieldName, newValue);
-      
-      // Only clear cache after actual update
-      requestAnimationFrame(() => {
-        clearCategoryPointsCache();
-      });
-    },
-    [currentPlayer, currentScore, updateScore]
-  );
+  const prev = useCallback(() => setIndex(Math.max(0, index - 1)), [index, setIndex]);
+  const next = useCallback(() => setIndex(Math.min(players.length - 1, index + 1)), [index, players.length, setIndex]);
 
-  const navigatePlayer = useCallback((dir: 'prev' | 'next') => {
-    setCurrentPlayerIndex(prev => {
-      if (dir === 'prev' && prev > 0) return prev - 1;
-      if (dir === 'next' && prev < orderedPlayers.length - 1) return prev + 1;
-      return prev;
-    });
-  }, [orderedPlayers.length]);
+  const openDetails = useCallback((c: ScoreCategory) => setDetail({ open: true, category: c }), []);
+  const closeDetails = useCallback(() => setDetail({ open: false }), []);
 
-  const allPlayersScored = useCallback(() => {
-    return orderedPlayers.every(p => {
-      const s = p && playerScores[p.id];
-      return s && Object.keys(s).some(k => k.endsWith('DirectPoints') && (s as any)[k] > 0);
-    });
-  }, [orderedPlayers, playerScores]);
+  const totalForActive = useMemo(() => {
+    if (!playerId) return { total: 0, isComplete: false };
+    return getPlayerTotal(playerId, expansions);
+  }, [playerId, expansions, getPlayerTotal]);
 
-  if (!ready || !currentPlayer || !currentScore) {
+  if (!activePlayer) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-          <ActivityIndicator size="large" color="#C4A24C" />
+      <SafeAreaView style={[styles.container, { paddingTop: insets.top }]}>
+        <View style={{ padding: 16 }}>
+          <Text style={{ color: '#F3E7D3' }}>No players found.</Text>
         </View>
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      {/* Header */}
-      <View style={styles.compactHeader}>
-        <View style={styles.headerRow}>
-          <View style={styles.playerSelector}>
-            <TouchableOpacity
-              onPress={() => navigatePlayer('prev')}
-              disabled={currentPlayerIndex === 0}
-              style={[styles.navButton, currentPlayerIndex === 0 && styles.navButtonDisabled]}
-            >
-              <Text style={styles.navButtonText}>‹</Text>
-            </TouchableOpacity>
-            <View style={styles.playerBadge}>
-              <Text style={styles.playerName}>{currentPlayer.name}</Text>
-            </View>
-            <TouchableOpacity
-              onPress={() => navigatePlayer('next')}
-              disabled={currentPlayerIndex === orderedPlayers.length - 1}
-              style={[
-                styles.navButton,
-                currentPlayerIndex === orderedPlayers.length - 1 && styles.navButtonDisabled
-              ]}
-            >
-              <Text style={styles.navButtonText}>›</Text>
-            </TouchableOpacity>
-          </View>
-          <Text style={styles.gameInfo}>{currentPlayerIndex + 1}/{orderedPlayers.length}</Text>
-        </View>
-      </View>
+    <SafeAreaView style={[styles.container, { paddingTop: insets.top }]}>
+      <View style={styles.header}>
+        <View style={styles.playerNavigation}>
+          <TouchableOpacity
+            onPress={prev}
+            disabled={index === 0}
+            style={[styles.navButton, index === 0 && styles.navButtonDisabled]}
+          >
+            <Text style={styles.navButtonText}>{'‹'}</Text>
+          </TouchableOpacity>
 
-      <FlatList
-        style={{ flex: 1 }}
-        data={[...scoringCategories, ...analysisCategories]}
-        keyExtractor={c => c.id}
-        numColumns={2}
-        columnWrapperStyle={{ justifyContent: 'space-between' }}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-        ListHeaderComponent={
-          <View style={styles.motivationalCard}>
-            <Text style={styles.motivationalText}>
-              💫 Enter quick totals or tap {'"'}Details{'"'} for more!
+          <View style={styles.playerInfo}>
+            <Text style={styles.playerName}>{activePlayer.name}</Text>
+            <Text style={styles.playerMeta}>
+              Player {index + 1} of {players.length}
             </Text>
           </View>
-        }
-        ListFooterComponent={
-          <View style={styles.totalCard}>
-            <Text style={styles.totalLabel}>TOTAL SCORE</Text>
-            <Text style={styles.totalValue}>{totalPoints}</Text>
-          </View>
-        }
-        renderItem={({ item, index }) => {
-          // Add separator before analysis categories
-          if (!item.isScoring && index === scoringCategories.length) {
-            return (
-              <>
-                <View style={styles.analysisSection}>
-                  <Text style={styles.analysisSectionTitle}>📊 Deep Analysis (Optional)</Text>
-                </View>
-                <QuickCategoryItem
-                  playerId={currentPlayer.id}
-                  category={item}
-                  wonder={wonders?.[currentPlayer.id]}
-                  expansions={expansions}
-                  styles={styles}
-                  onDetails={handleCategoryPress}
-                  onQuickEdit={handleQuickEdit}
-                  isAnalysis={!item.isScoring}
-                />
-              </>
-            );
-          }
-          
-          return (
-            <QuickCategoryItem
-              playerId={currentPlayer.id}
-              category={item}
-              wonder={wonders?.[currentPlayer.id]}
-              expansions={expansions}
-              styles={styles}
-              onDetails={handleCategoryPress}
-              onQuickEdit={handleQuickEdit}
-              isAnalysis={!item.isScoring}
-            />
-          );
-        }}
-        initialNumToRender={8}
-        maxToRenderPerBatch={4}
-        windowSize={10}
-        removeClippedSubviews={true}
-      />
 
-      {/* Footer */}
-      <View style={styles.footer}>
-        <View style={styles.footerButtons}>
-          {currentPlayerIndex > 0 && (
-            <TouchableOpacity
-              onPress={() => navigatePlayer('prev')}
-              style={[styles.footerButton, styles.secondaryButton]}
-            >
-              <Text style={[styles.buttonText, styles.secondaryButtonText]}>← Previous</Text>
-            </TouchableOpacity>
-          )}
-          {currentPlayerIndex < orderedPlayers.length - 1 && (
-            <TouchableOpacity
-              onPress={() => navigatePlayer('next')}
-              style={[styles.footerButton, styles.primaryButton]}
-            >
-              <Text style={[styles.buttonText, styles.primaryButtonText]}>Next →</Text>
-            </TouchableOpacity>
-          )}
-          {currentPlayerIndex === orderedPlayers.length - 1 && allPlayersScored() && (
-            <TouchableOpacity
-              onPress={() => Alert.alert('🎉 Complete!', 'All players have been scored!')}
-              style={[styles.footerButton, { backgroundColor: '#22C55E' }]}
-            >
-              <Text style={[styles.buttonText, { color: '#FFFFFF' }]}>🏆 Results</Text>
-            </TouchableOpacity>
-          )}
+          <TouchableOpacity
+            onPress={next}
+            disabled={index === players.length - 1}
+            style={[styles.navButton, index === players.length - 1 && styles.navButtonDisabled]}
+          >
+            <Text style={styles.navButtonText}>{'›'}</Text>
+          </TouchableOpacity>
         </View>
       </View>
 
-      {/* Category Detail Modal */}
-      <Modal
-        visible={modalVisible}
-        animationType="slide"
-        onRequestClose={() => setModalVisible(false)}
-      >
-        <React.Suspense fallback={
-          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-            <ActivityIndicator size="large" color="#C4A24C" />
-          </View>
-        }>
-          {selectedCategory && currentPlayer && (
-            <DetailModal
-              playerId={currentPlayer.id}
-              categoryId={selectedCategory}
-              onClose={() => setModalVisible(false)}
-            />
-          )}
-        </React.Suspense>
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        <Text style={styles.sectionTitle}>Quick scoring</Text>
+        <View style={styles.grid}>
+          {categories.map((c) => (
+            <CategoryCard key={c} playerId={playerId} category={c} onOpenDetails={openDetails} />
+          ))}
+        </View>
+      </ScrollView>
+
+      <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 12) }]}>
+        <TouchableOpacity onPress={proceedToResults} style={styles.proceed}>
+          <Text style={styles.proceedText}>
+            View Results • {totalForActive.total} pts {totalForActive.isComplete ? '✓' : '…'}
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      <Modal visible={detail.open} transparent animationType="slide" onRequestClose={closeDetails}>
+        {detail.category && playerId && (
+          <CategoryDetailModal
+            playerId={playerId}
+            category={{
+              id: detail.category,
+              title: CATEGORY_LABELS[detail.category],
+              icon: CATEGORY_ICONS[detail.category],
+            }}
+            onClose={closeDetails}
+          />
+        )}
       </Modal>
     </SafeAreaView>
   );

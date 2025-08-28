@@ -1,570 +1,623 @@
-// app/setup/game-summary.tsx - Instant navigation with preloading
-import { router, useFocusEffect } from 'expo-router';
+// app/setup/game-summary.tsx - Clean implementation
+import { router } from 'expo-router';
 import React, { useCallback, useState } from 'react';
-import { InteractionManager, ScrollView, Text, TouchableOpacity, View } from 'react-native';
-import { Button, Card, H1, H2, P, Screen } from '../../components/ui';
+import {
+  ActivityIndicator,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { ARMADA_SHIPYARDS } from '../../data/armadaDatabase';
 import { getProjectById } from '../../data/edificeDatabase';
 import { WONDERS_DATABASE } from '../../data/wondersDatabase';
 import { useScoringStore } from '../../store/scoringStore';
 import { useSetupStore } from '../../store/setupStore';
 
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#0F0E1A',
+  },
+  scrollContent: {
+    padding: 16,
+    paddingBottom: 100,
+  },
+  header: {
+    marginBottom: 20,
+  },
+  title: {
+    color: '#FEF3C7',
+    fontSize: 28,
+    fontWeight: 'bold',
+    marginBottom: 8,
+  },
+  subtitle: {
+    color: 'rgba(243, 231, 211, 0.7)',
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  card: {
+    backgroundColor: 'rgba(31, 41, 55, 0.8)',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(196, 162, 76, 0.2)',
+  },
+  cardTitle: {
+    color: '#C4A24C',
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 12,
+  },
+  issueCard: {
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    borderColor: 'rgba(239, 68, 68, 0.3)',
+  },
+  issueText: {
+    color: '#EF4444',
+    fontSize: 13,
+    marginBottom: 6,
+  },
+  statusBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(34, 197, 94, 0.1)',
+    borderRadius: 8,
+    padding: 12,
+    marginTop: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(34, 197, 94, 0.3)',
+  },
+  statusBarError: {
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    borderColor: 'rgba(239, 68, 68, 0.3)',
+  },
+  statusIcon: {
+    fontSize: 20,
+    marginRight: 12,
+  },
+  statusText: {
+    color: '#22C55E',
+    fontSize: 13,
+    fontWeight: 'bold',
+  },
+  statusTextError: {
+    color: '#EF4444',
+  },
+  playerCard: {
+    backgroundColor: 'rgba(19, 92, 102, 0.2)',
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(243, 231, 211, 0.1)',
+  },
+  playerHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  playerNumber: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#C4A24C',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  playerNumberText: {
+    color: '#0F0E1A',
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  playerName: {
+    color: '#F3E7D3',
+    fontSize: 16,
+    fontWeight: 'bold',
+    flex: 1,
+  },
+  playerNeighbors: {
+    alignItems: 'flex-end',
+    minWidth: 80,
+  },
+  neighborLabel: {
+    color: 'rgba(243, 231, 211, 0.5)',
+    fontSize: 10,
+    marginBottom: 2,
+  },
+  neighborName: {
+    color: 'rgba(243, 231, 211, 0.7)',
+    fontSize: 11,
+  },
+  wonderInfo: {
+    marginTop: 4,
+  },
+  wonderName: {
+    color: '#C4A24C',
+    fontSize: 14,
+    fontWeight: 'bold',
+    marginBottom: 4,
+  },
+  wonderDetails: {
+    color: 'rgba(243, 231, 211, 0.6)',
+    fontSize: 11,
+  },
+  wonderSide: {
+    backgroundColor: '#FFA500',
+    borderRadius: 10,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    marginLeft: 8,
+  },
+  wonderSideNight: {
+    backgroundColor: '#4169E1',
+  },
+  wonderSideText: {
+    color: 'white',
+    fontSize: 9,
+    fontWeight: 'bold',
+  },
+  shipyardInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  shipyardText: {
+    color: 'rgba(99, 102, 241, 0.8)',
+    fontSize: 11,
+    marginRight: 8,
+  },
+  errorText: {
+    color: '#EF4444',
+    fontSize: 13,
+    marginTop: 4,
+  },
+  proceedButton: {
+    backgroundColor: '#C4A24C',
+    borderRadius: 12,
+    paddingVertical: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 12,
+    elevation: 3,
+    shadowColor: '#C4A24C',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+  },
+  proceedButtonDisabled: {
+    backgroundColor: 'rgba(107, 114, 128, 0.5)',
+  },
+  proceedButtonText: {
+    color: '#0F0E1A',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  proceedButtonTextDisabled: {
+    color: '#6B7280',
+  },
+  infoRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  infoColumn: {
+    flex: 1,
+  },
+  infoLabel: {
+    color: 'rgba(243, 231, 211, 0.7)',
+    fontSize: 12,
+    marginBottom: 4,
+  },
+  infoValue: {
+    color: '#C4A24C',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    color: '#C4A24C',
+    fontSize: 14,
+    marginTop: 12,
+  },
+});
+
 export default function GameSummaryScreen() {
   const { players, seating, expansions, wonders, edificeProjects } = useSetupStore();
-  const { initializeScores } = useScoringStore();
-  const [isPreloaded, setIsPreloaded] = useState(false);
+  const { initializeScoring } = useScoringStore();
+  const [isInitialized, setIsInitialized] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const getOrderedPlayers = () => {
+  // Get ordered players based on seating
+  const orderedPlayers = React.useMemo(() => {
     if (!players || players.length === 0) return [];
     if (!seating || seating.length === 0) return players;
     return seating.map(seatId => players.find(p => p.id === seatId)).filter(Boolean) as typeof players;
-  };
+  }, [players, seating]);
 
-  const orderedPlayers = getOrderedPlayers();
-
-  // Pre-initialize scoring data when this screen loads
-  useFocusEffect(
-    useCallback(() => {
-      if (orderedPlayers.length > 0 && !isPreloaded) {
-        InteractionManager.runAfterInteractions(() => {
-          initializeScores(orderedPlayers, wonders);
-          setIsPreloaded(true);
-        });
-      }
-    }, [orderedPlayers, wonders, isPreloaded, initializeScores]) // added initializeScores
-  );
-
+  // Get active expansions list
   const getExpansionsList = () => {
-    const activeExpansions = Object.entries(expansions)
+    const active = Object.entries(expansions)
       .filter(([_, enabled]) => enabled)
       .map(([name]) => name.charAt(0).toUpperCase() + name.slice(1));
-    return activeExpansions.length > 0 ? activeExpansions : ['Base Game Only'];
+    return active.length > 0 ? active : ['Base Game Only'];
   };
 
-  const validateGameSetup = () => {
+  // Validate game setup
+  const validateSetup = useCallback(() => {
     const issues: string[] = [];
-    
+
     if (!players || players.length === 0) {
-      issues.push('No players found - please add players first');
+      issues.push('No players added - please add players first');
       return issues;
     }
-    
-    if (orderedPlayers.length < 3) issues.push('Need at least 3 players');
-    if (orderedPlayers.length > 7) issues.push('Maximum 7 players allowed');
-    
-    const unassignedWonders = orderedPlayers.filter(player => !wonders[player.id]?.boardId);
+
+    if (orderedPlayers.length < 3) {
+      issues.push('Need at least 3 players (current: ' + orderedPlayers.length + ')');
+    }
+
+    if (orderedPlayers.length > 7) {
+      issues.push('Maximum 7 players allowed (current: ' + orderedPlayers.length + ')');
+    }
+
+    // Check wonder assignments
+    const unassignedWonders = orderedPlayers.filter(
+      player => !wonders[player.id]?.boardId
+    );
     if (unassignedWonders.length > 0) {
-      issues.push(`${unassignedWonders.length} players missing wonder assignments`);
+      issues.push(`${unassignedWonders.length} player(s) missing wonder board assignment`);
     }
-    
-    if (expansions.armada) {
-      const unassignedShipyards = orderedPlayers.filter(player => !wonders[player.id]?.shipyardId);
+
+    // Check shipyard assignments if Armada is enabled
+    if (expansions?.armada) {
+      const unassignedShipyards = orderedPlayers.filter(
+        player => !wonders[player.id]?.shipyardId
+      );
       if (unassignedShipyards.length > 0) {
-        issues.push(`${unassignedShipyards.length} players missing shipyard assignments`);
+        issues.push(`${unassignedShipyards.length} player(s) missing shipyard assignment`);
       }
     }
 
-    if (expansions.edifice) {
-      const { age1, age2, age3 } = edificeProjects;
+    // Check Edifice projects if enabled
+    if (expansions?.edifice) {
+      const { age1, age2, age3 } = edificeProjects || {};
       if (!age1 || !age2 || !age3) {
-        issues.push('Edifice projects incomplete - select one project per age');
+        const missing = [];
+        if (!age1) missing.push('Age I');
+        if (!age2) missing.push('Age II');
+        if (!age3) missing.push('Age III');
+        issues.push(`Edifice projects missing for: ${missing.join(', ')}`);
       }
     }
-    
-    return issues;
-  };
 
-  const setupIssues = validateGameSetup();
+    return issues;
+  }, [players, orderedPlayers, wonders, expansions, edificeProjects]);
+
+  const setupIssues = validateSetup();
   const isReadyToPlay = setupIssues.length === 0;
 
-  // INSTANT NAVIGATION - Use replace instead of push for faster transition
-  const handleProceedToScoring = useCallback(() => {
-    if (isReadyToPlay) {
-      // Use requestAnimationFrame for smoother transition
-      requestAnimationFrame(() => {
-        router.replace('/scoring');
-      });
-    }
-  }, [isReadyToPlay]);
+  // Initialize scoring when ready
+  const handleProceedToScoring = useCallback(async () => {
+    if (!isReadyToPlay) return;
 
-  const handleBackToSetup = () => {
+    setIsLoading(true);
+    
+    // Initialize scoring store with player IDs
+    const playerIds = orderedPlayers.map(p => p.id);
+    initializeScoring(playerIds);
+    
+    // Small delay to ensure state updates
+    setTimeout(() => {
+      setIsInitialized(true);
+      router.push('/scoring');
+    }, 100);
+  }, [isReadyToPlay, orderedPlayers, initializeScoring]);
+
+  // Navigate back
+  const handleBack = () => {
     router.back();
   };
 
+  if (isLoading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#C4A24C" />
+          <Text style={styles.loadingText}>Initializing Scoring System...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   if (!players || players.length === 0) {
     return (
-      <Screen>
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 }}>
-          <H1>No Game Setup Found</H1>
-          <P className="text-center mb-4">
-            Please complete the game setup first before viewing the summary.
-          </P>
-          <Button
-            title="Go to Setup"
-            onPress={() => router.replace('/setup/expansions')}
-          />
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <Text style={styles.title}>No Game Setup Found</Text>
+          <Text style={styles.subtitle}>Please complete game setup first</Text>
+          <TouchableOpacity
+            style={[styles.proceedButton, { marginTop: 20 }]}
+            onPress={() => router.push('/setup/expansions')}
+          >
+            <Text style={styles.proceedButtonText}>Go to Setup</Text>
+          </TouchableOpacity>
         </View>
-      </Screen>
+      </SafeAreaView>
     );
   }
 
   return (
-    <Screen>
-      <ScrollView showsVerticalScrollIndicator={false}>
-        <H1>Game Summary</H1>
-        <P className="mb-4">
-          Review your complete 7 Wonders setup before starting the scoring calculator.
-        </P>
+    <SafeAreaView style={styles.container}>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.header}>
+          <Text style={styles.title}>Game Summary</Text>
+          <Text style={styles.subtitle}>
+            Review your setup before starting the scoring calculator
+          </Text>
+        </View>
 
+        {/* Setup Issues */}
         {!isReadyToPlay && (
-          <Card style={{ 
-            backgroundColor: 'rgba(239, 68, 68, 0.1)', 
-            borderColor: 'rgba(239, 68, 68, 0.3)',
-            borderWidth: 1,
-            marginBottom: 16 
-          }}>
-            <H2 style={{ color: '#EF4444' }}>Setup Issues ({setupIssues.length})</H2>
+          <View style={[styles.card, styles.issueCard]}>
+            <Text style={[styles.cardTitle, { color: '#EF4444' }]}>
+              Setup Issues ({setupIssues.length})
+            </Text>
             {setupIssues.map((issue, index) => (
-              <React.Fragment key={index}>
-                <Text style={{ color: '#EF4444', fontSize: 13, marginBottom: 4 }}>
-                  • {issue}
-                </Text>
-              </React.Fragment>
+              <Text key={index} style={styles.issueText}>• {issue}</Text>
             ))}
-            <P className="text-sm mt-2" style={{ color: 'rgba(239, 68, 68, 0.8)' }}>
-              Please resolve these issues before proceeding to scoring.
-            </P>
-          </Card>
+            <Text style={[styles.subtitle, { color: '#EF4444', marginTop: 8 }]}>
+              Resolve these issues before proceeding to scoring
+            </Text>
+          </View>
         )}
 
-        <Card>
-          <H2>Game Configuration</H2>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 }}>
-            <View style={{ flex: 1, marginRight: 8 }}>
-              <Text style={{ color: 'rgba(243, 231, 211, 0.7)', fontSize: 12, marginBottom: 2 }}>
-                Players
-              </Text>
-              <Text style={{ color: '#C4A24C', fontSize: 16, fontWeight: 'bold' }}>
-                {orderedPlayers.length}
-              </Text>
+        {/* Game Configuration */}
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Game Configuration</Text>
+          <View style={styles.infoRow}>
+            <View style={styles.infoColumn}>
+              <Text style={styles.infoLabel}>Players</Text>
+              <Text style={styles.infoValue}>{orderedPlayers.length}</Text>
             </View>
-            <View style={{ flex: 2 }}>
-              <Text style={{ color: 'rgba(243, 231, 211, 0.7)', fontSize: 12, marginBottom: 2 }}>
-                Expansions
-              </Text>
-              <Text style={{ color: '#C4A24C', fontSize: 14, fontWeight: 'bold' }}>
+            <View style={[styles.infoColumn, { flex: 2 }]}>
+              <Text style={styles.infoLabel}>Expansions</Text>
+              <Text style={styles.infoValue}>
                 {getExpansionsList().join(' + ')}
               </Text>
             </View>
           </View>
-          
-          <View style={{
-            backgroundColor: isReadyToPlay ? 'rgba(34, 197, 94, 0.1)' : 'rgba(245, 158, 11, 0.1)',
-            borderRadius: 8,
-            padding: 8,
-            marginTop: 8,
-            flexDirection: 'row',
-            alignItems: 'center',
-          }}>
-            <Text style={{ fontSize: 16, marginRight: 8 }}>
+
+          <View style={[
+            styles.statusBar,
+            !isReadyToPlay && styles.statusBarError,
+          ]}>
+            <Text style={styles.statusIcon}>
               {isReadyToPlay ? '✅' : '⚠️'}
             </Text>
-            <Text style={{ 
-              color: isReadyToPlay ? '#22C55E' : '#F59E0B', 
-              fontSize: 12, 
-              fontWeight: 'bold' 
-            }}>
-              {isReadyToPlay ? 'Setup Complete - Ready for Scoring!' : `${setupIssues.length} issues to resolve`}
+            <Text style={[
+              styles.statusText,
+              !isReadyToPlay && styles.statusTextError,
+            ]}>
+              {isReadyToPlay 
+                ? 'Setup Complete - Ready for Scoring!' 
+                : `${setupIssues.length} issue(s) to resolve`}
             </Text>
           </View>
-        </Card>
+        </View>
 
-        <Card>
-          <H2>Player Setup</H2>
-          <P className="mb-4 text-parchment/70 text-sm">
+        {/* Player Setup */}
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Player Setup</Text>
+          <Text style={[styles.subtitle, { marginBottom: 12 }]}>
             Seating order (clockwise) with assigned wonders
-          </P>
+          </Text>
 
           {orderedPlayers.map((player, index) => {
             const wonderData = wonders[player.id];
-            const wonder = wonderData?.boardId ? 
-              WONDERS_DATABASE.find(w => w.id === wonderData.boardId) : null;
-            const shipyard = wonderData?.shipyardId ?
-              ARMADA_SHIPYARDS.find(s => s.id === wonderData.shipyardId) : null;
-            
+            const wonder = wonderData?.boardId
+              ? WONDERS_DATABASE.find(w => w.id === wonderData.boardId)
+              : null;
+            const shipyard = wonderData?.shipyardId
+              ? ARMADA_SHIPYARDS.find(s => s.id === wonderData.shipyardId)
+              : null;
+
             return (
-              <React.Fragment key={player.id}>
-                <View
-                  style={{
-                    backgroundColor: 'rgba(19, 92, 102, 0.2)',
-                    borderRadius: 12,
-                    padding: 14,
-                    marginBottom: 8,
-                    borderWidth: 1,
-                    borderColor: wonder ? 'rgba(243, 231, 211, 0.1)' : 'rgba(239, 68, 68, 0.3)',
-                  }}
-                >
-                  <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, marginBottom: 8 }}>
-                      <View style={{
-                        width: 32,
-                        height: 32,
-                        borderRadius: 16,
-                        backgroundColor: '#C4A24C',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        marginRight: 12,
-                      }}>
-                        <Text style={{ color: '#1C1A1A', fontSize: 14, fontWeight: 'bold' }}>
-                          {index + 1}
-                        </Text>
-                      </View>
+              <View key={player.id} style={styles.playerCard}>
+                <View style={styles.playerHeader}>
+                  <View style={styles.playerNumber}>
+                    <Text style={styles.playerNumberText}>{index + 1}</Text>
+                  </View>
+                  <Text style={styles.playerName}>{player.name}</Text>
+                  <View style={styles.playerNeighbors}>
+                    <Text style={styles.neighborLabel}>Neighbors</Text>
+                    <Text style={styles.neighborName}>
+                      ← {index === 0 
+                        ? orderedPlayers[orderedPlayers.length - 1].name 
+                        : orderedPlayers[index - 1].name}
+                    </Text>
+                    <Text style={styles.neighborName}>
+                      → {index === orderedPlayers.length - 1 
+                        ? orderedPlayers[0].name 
+                        : orderedPlayers[index + 1].name}
+                    </Text>
+                  </View>
+                </View>
 
-                      <View style={{ flex: 1 }}>
-                        <Text style={{ color: '#F3E7D3', fontSize: 16, fontWeight: 'bold', marginBottom: 2 }}>
-                          {player.name}
-                        </Text>
-                      </View>
-
-                      <View style={{ alignItems: 'flex-end', minWidth: 80 }}>
-                        <Text style={{ color: 'rgba(243, 231, 211, 0.5)', fontSize: 10, marginBottom: 1 }}>
-                          Neighbors
-                        </Text>
-                        <Text style={{ color: 'rgba(243, 231, 211, 0.7)', fontSize: 11, textAlign: 'right' }}>
-                          ← {index === 0 ? orderedPlayers[orderedPlayers.length - 1].name : orderedPlayers[index - 1].name}
-                        </Text>
-                        <Text style={{ color: 'rgba(243, 231, 211, 0.7)', fontSize: 11, textAlign: 'right' }}>
-                          → {index === orderedPlayers.length - 1 ? orderedPlayers[0].name : orderedPlayers[index + 1].name}
+                {wonder ? (
+                  <View style={styles.wonderInfo}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                      <Text style={styles.wonderName}>{wonder.name}</Text>
+                      <View style={[
+                        styles.wonderSide,
+                        wonderData.side === 'night' && styles.wonderSideNight,
+                      ]}>
+                        <Text style={styles.wonderSideText}>
+                          {wonderData.side === 'day' ? '☀️ DAY' : '🌙 NIGHT'}
                         </Text>
                       </View>
                     </View>
-                  </View>
+                    <Text style={styles.wonderDetails}>
+                      Resource: {wonder.resource} • {wonder.difficulty}
+                    </Text>
 
-                  {wonder ? (
-                    <View style={{ marginTop: 4 }}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4, flexWrap: 'wrap' }}>
-                        <Text style={{ color: '#C4A24C', fontSize: 14, fontWeight: 'bold', marginRight: 8 }}>
-                          {wonder.name}
+                    {shipyard && (
+                      <View style={styles.shipyardInfo}>
+                        <Text style={styles.shipyardText}>
+                          ⚓ {shipyard.name}
                         </Text>
-                        
                         <View style={{
-                          backgroundColor: wonderData.side === 'day' ? '#FFA500' : '#4169E1',
-                          borderRadius: 10,
+                          backgroundColor: {
+                            red: '#EF4444',
+                            yellow: '#F59E0B',
+                            blue: '#3B82F6',
+                            green: '#10B981',
+                          }[shipyard.wonderTrack],
+                          borderRadius: 8,
                           paddingHorizontal: 6,
                           paddingVertical: 2,
-                          marginRight: 8,
                         }}>
                           <Text style={{ color: 'white', fontSize: 9, fontWeight: 'bold' }}>
-                            {wonderData.side === 'day' ? '☀️ DAY' : '🌙 NIGHT'}
+                            {shipyard.wonderTrack.toUpperCase()} TRACK
                           </Text>
                         </View>
                       </View>
-                      
-                      <Text style={{ color: 'rgba(243, 231, 211, 0.6)', fontSize: 11, marginBottom: 2 }}>
-                        Resource: {wonder.resource} • {wonder.difficulty}
+                    )}
+                  </View>
+                ) : (
+                  <Text style={styles.errorText}>No wonder assigned</Text>
+                )}
+              </View>
+            );
+          })}
+        </View>
+
+        {/* Edifice Projects */}
+        {expansions?.edifice && (
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>🗿 Edifice Projects</Text>
+            <Text style={[styles.subtitle, { marginBottom: 12 }]}>
+              Collaborative projects for this game
+            </Text>
+
+            {[1, 2, 3].map(age => {
+              const projectId = edificeProjects?.[`age${age}` as keyof typeof edificeProjects];
+              const project = projectId ? getProjectById(projectId) : null;
+
+              return (
+                <View key={age} style={{
+                  backgroundColor: project 
+                    ? 'rgba(139, 69, 19, 0.1)' 
+                    : 'rgba(239, 68, 68, 0.1)',
+                  borderRadius: 8,
+                  padding: 12,
+                  marginBottom: 8,
+                  borderWidth: 1,
+                  borderColor: project 
+                    ? 'rgba(139, 69, 19, 0.3)' 
+                    : 'rgba(239, 68, 68, 0.3)',
+                }}>
+                  {project ? (
+                    <>
+                      <Text style={{ color: '#C4A24C', fontSize: 14, fontWeight: 'bold' }}>
+                        Age {age}: {project.name}
                       </Text>
-                      
-                      {shipyard && (
-                        <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 2 }}>
-                          <Text style={{ color: 'rgba(99, 102, 241, 0.8)', fontSize: 11, marginRight: 4 }}>
-                            ⚓ {shipyard.name}
-                          </Text>
-                          
-                          <View style={{
-                            backgroundColor: {
-                              red: '#EF4444',
-                              yellow: '#F59E0B',
-                              blue: '#3B82F6', 
-                              green: '#10B981'
-                            }[shipyard.wonderTrack],
-                            borderRadius: 8,
-                            paddingHorizontal: 4,
-                            paddingVertical: 1,
-                            borderWidth: 1,
-                            borderColor: '#FFD700',
-                          }}>
-                            <Text style={{ color: 'white', fontSize: 8, fontWeight: 'bold' }}>
-                              🛟 {shipyard.wonderTrack.toUpperCase()}
-                            </Text>
-                          </View>
-                        </View>
-                      )}
-                    </View>
+                      <Text style={{ color: 'rgba(243, 231, 211, 0.7)', fontSize: 11, marginTop: 4 }}>
+                        {project.effect.description}
+                      </Text>
+                    </>
                   ) : (
-                    <Text style={{ color: '#EF4444', fontSize: 13, marginTop: 4 }}>
-                      No wonder assigned
+                    <Text style={{ color: '#EF4444', fontSize: 13 }}>
+                      Age {age}: No project selected
                     </Text>
                   )}
                 </View>
-              </React.Fragment>
-            );
-          })}
-        </Card>
-
-        {expansions.edifice && (
-          <Card>
-            <H2>🗿 Edifice Projects</H2>
-            <P className="mb-3 text-parchment/70 text-sm">
-              Selected collaborative projects for this game
-            </P>
-            <EdificeProjectsSummary />
-          </Card>
+              );
+            })}
+          </View>
         )}
 
-        <Card>
-          <H2>🎯 Scoring Calculator</H2>
-          
-          {/* Optimized button with instant response */}
+        {/* Proceed to Scoring */}
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>🎯 Scoring Calculator</Text>
+          <Text style={styles.subtitle}>
+            Quick score entry with optional detailed breakdowns for deeper analysis
+          </Text>
+
           <TouchableOpacity
+            style={[
+              styles.proceedButton,
+              !isReadyToPlay && styles.proceedButtonDisabled,
+            ]}
             onPress={handleProceedToScoring}
             disabled={!isReadyToPlay}
-            activeOpacity={0.7}
-            style={{
-              backgroundColor: !isReadyToPlay ? 'rgba(107, 114, 128, 0.3)' : '#C4A24C',
-              borderRadius: 12,
-              paddingVertical: 16,
-              paddingHorizontal: 24,
-              alignItems: 'center',
-              justifyContent: 'center',
-              shadowColor: isReadyToPlay ? '#C4A24C' : 'transparent',
-              shadowOffset: { width: 0, height: 4 },
-              shadowOpacity: 0.3,
-              shadowRadius: 8,
-              elevation: 4,
-              marginTop: 12,
-            }}
           >
-            <Text style={{
-              color: !isReadyToPlay ? '#6B7280' : '#1C1A1A',
-              fontSize: 16,
-              fontWeight: 'bold',
-              textAlign: 'center',
-            }}>
-              {isReadyToPlay 
-                ? (isPreloaded ? '🎯 Enter Scoring Calculator' : '⏳ Preparing Calculator...') 
-                : `⚠️ Resolve ${setupIssues.length} Setup Issues First`
-              }
+            <Text style={[
+              styles.proceedButtonText,
+              !isReadyToPlay && styles.proceedButtonTextDisabled,
+            ]}>
+              {isReadyToPlay
+                ? '🎯 Enter Scoring Calculator'
+                : `⚠️ Resolve ${setupIssues.length} Setup Issues First`}
             </Text>
           </TouchableOpacity>
 
           {isReadyToPlay && (
-            <Text style={{ 
-              color: 'rgba(243, 231, 211, 0.6)', 
+            <Text style={{
+              color: 'rgba(99, 102, 241, 0.8)',
               fontSize: 11,
               textAlign: 'center',
               marginTop: 8,
+              fontStyle: 'italic',
             }}>
-              Quick score entry with detailed breakdowns available
+              💡 The more details you enter, the more analysis we can provide!
             </Text>
           )}
-        </Card>
+        </View>
 
-        <Card className="flex-row gap-3 mt-4">
-          <Button
-            title="Back to Setup"
-            variant="ghost"
-            onPress={handleBackToSetup}
-            className="flex-1"
-          />
-          <Button
-            title="Calculate Scores"
+        {/* Navigation Buttons */}
+        <View style={{ flexDirection: 'row', gap: 12, marginTop: 16 }}>
+          <TouchableOpacity
+            style={[styles.proceedButton, { 
+              flex: 1, 
+              backgroundColor: 'rgba(107, 114, 128, 0.5)' 
+            }]}
+            onPress={handleBack}
+          >
+            <Text style={[styles.proceedButtonText, { color: '#F3E7D3' }]}>
+              Back to Setup
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[
+              styles.proceedButton,
+              { flex: 1 },
+              !isReadyToPlay && styles.proceedButtonDisabled,
+            ]}
             onPress={handleProceedToScoring}
             disabled={!isReadyToPlay}
-            className="flex-1"
-          />
-        </Card>
-
-        <View style={{ height: 20 }} />
+          >
+            <Text style={[
+              styles.proceedButtonText,
+              !isReadyToPlay && styles.proceedButtonTextDisabled,
+            ]}>
+              Calculate Scores
+            </Text>
+          </TouchableOpacity>
+        </View>
       </ScrollView>
-    </Screen>
-  );
-}
-
-function EdificeProjectsSummary() {
-  const { edificeProjects } = useSetupStore();
-
-  const getAgeColor = (age: number) => {
-    switch (age) {
-      case 1: return '#8B4513';
-      case 2: return '#C0C0C0';  
-      case 3: return '#FFD700';
-      default: return '#8B4513';
-    }
-  };
-
-  const getStrategyColor = (strategy: string) => {
-    switch (strategy) {
-      case 'Economic': return '#22C55E';
-      case 'Military': return '#EF4444';
-      case 'Science': return '#3B82F6';
-      case 'Balanced': return '#8B5CF6';
-      case 'Situational': return '#F59E0B';
-      default: return '#6B7280';
-    }
-  };
-
-  if (!edificeProjects || (!edificeProjects.age1 && !edificeProjects.age2 && !edificeProjects.age3)) {
-    return (
-      <View style={{
-        padding: 16,
-        backgroundColor: 'rgba(139, 69, 19, 0.1)',
-        borderRadius: 8,
-        alignItems: 'center',
-        borderWidth: 1,
-        borderColor: 'rgba(239, 68, 68, 0.3)',
-      }}>
-        <Text style={{ color: '#EF4444', fontSize: 13, fontWeight: 'bold' }}>
-          No Edifice projects selected
-        </Text>
-        <Text style={{ color: 'rgba(243, 231, 211, 0.6)', fontSize: 11, marginTop: 4 }}>
-          Please return to Edifice setup to select projects
-        </Text>
-      </View>
-    );
-  }
-
-  return (
-    <View style={{ gap: 8 }}>
-      {[1, 2, 3].map(age => {
-        const projectId = edificeProjects[`age${age}` as keyof typeof edificeProjects];
-        if (!projectId) return (
-          <React.Fragment key={age}>
-            <View
-              style={{
-                padding: 12,
-                backgroundColor: 'rgba(239, 68, 68, 0.1)',
-                borderRadius: 8,
-                borderWidth: 1,
-                borderColor: 'rgba(239, 68, 68, 0.3)',
-                flexDirection: 'row',
-                alignItems: 'center',
-              }}
-            >
-              <View style={{
-                width: 24,
-                height: 24,
-                borderRadius: 12,
-                backgroundColor: '#EF4444',
-                alignItems: 'center',
-                justifyContent: 'center',
-                marginRight: 12,
-              }}>
-                <Text style={{ color: '#FFF', fontSize: 12, fontWeight: 'bold' }}>
-                  {age}
-                </Text>
-              </View>
-              
-              <View style={{ flex: 1 }}>
-                <Text style={{ color: '#EF4444', fontSize: 14, fontWeight: 'bold' }}>
-                  Age {age} - No Project Selected
-                </Text>
-                <Text style={{ color: 'rgba(243, 231, 211, 0.7)', fontSize: 12 }}>
-                  Please select a project for Age {age}
-                </Text>
-              </View>
-            </View>
-          </React.Fragment>
-        );
-
-        const project = getProjectById(projectId);
-        if (!project) return null;
-        
-        return (
-          <React.Fragment key={age}>
-            <View
-              style={{
-                padding: 14,
-                backgroundColor: 'rgba(139, 69, 19, 0.1)',
-                borderRadius: 12,
-                borderWidth: 1,
-                borderColor: 'rgba(139, 69, 19, 0.3)',
-              }}
-            >
-              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
-                <View style={{
-                  width: 28,
-                  height: 28,
-                  borderRadius: 14,
-                  backgroundColor: getAgeColor(age),
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  marginRight: 12,
-                }}>
-                  <Text style={{ color: '#FFF', fontSize: 12, fontWeight: 'bold' }}>
-                    {age}
-                  </Text>
-                </View>
-                
-                <View style={{ flex: 1 }}>
-                  <Text style={{ color: getAgeColor(age), fontSize: 16, fontWeight: 'bold' }}>
-                    {project.name}
-                  </Text>
-                  <Text style={{ color: 'rgba(243, 231, 211, 0.7)', fontSize: 11 }}>
-                    Available during Age {age}
-                  </Text>
-                </View>
-
-                <View style={{
-                  backgroundColor: getStrategyColor(project.strategicValue),
-                  borderRadius: 8,
-                  paddingHorizontal: 6,
-                  paddingVertical: 2,
-                }}>
-                  <Text style={{ color: 'white', fontSize: 9, fontWeight: 'bold' }}>
-                    {project.strategicValue.toUpperCase()}
-                  </Text>
-                </View>
-              </View>
-
-              <Text style={{ 
-                color: 'rgba(243, 231, 211, 0.8)', 
-                fontSize: 12, 
-                lineHeight: 16,
-                marginBottom: 8 
-              }}>
-                {project.effect.description}
-              </Text>
-
-              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <Text style={{ color: 'rgba(243, 231, 211, 0.7)', fontSize: 10, marginRight: 6 }}>
-                    Cost:
-                  </Text>
-                  <View style={{ flexDirection: 'row', gap: 3 }}>
-                    {project.cost.map((cost, index) => (
-                      <React.Fragment key={index}>
-                        <View
-                          style={{
-                            backgroundColor: 'rgba(196, 162, 76, 0.3)',
-                            borderRadius: 4,
-                            paddingHorizontal: 4,
-                            paddingVertical: 1,
-                          }}
-                        >
-                          <Text style={{ color: '#C4A24C', fontSize: 9, fontWeight: 'bold' }}>
-                            {cost.amount} {cost.resource}
-                          </Text>
-                        </View>
-                      </React.Fragment>
-                    ))}
-                  </View>
-                </View>
-
-                <View style={{
-                  backgroundColor: 'rgba(196, 162, 76, 0.3)',
-                  borderRadius: 6,
-                  paddingHorizontal: 6,
-                  paddingVertical: 2,
-                }}>
-                  <Text style={{ color: '#C4A24C', fontSize: 10, fontWeight: 'bold' }}>
-                    {project.effect.pointsFormula || `${project.points} pts`}
-                  </Text>
-                </View>
-              </View>
-            </View>
-          </React.Fragment>
-        );
-      })}
-    </View>
+    </SafeAreaView>
   );
 }
