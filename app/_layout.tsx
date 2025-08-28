@@ -1,3 +1,4 @@
+// app/_layout.tsx - Updated with proper scoring routes
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
@@ -13,17 +14,28 @@ export default function RootLayout() {
   });
 
   if (!loaded) {
-    // Async font loading only occurs in development.
     return null;
   }
 
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
       <Stack>
-        {/* Make app/index.tsx the default/home route */}
+        {/* Main index route */}
         <Stack.Screen name="index" options={{ headerShown: false }} />
-        {/* keep the tabs group available if you still need it */}
+        
+        {/* Setup group routes */}
+        <Stack.Screen name="setup" options={{ headerShown: false }} />
+        
+        {/* Scoring group routes */}
+        <Stack.Screen name="scoring" options={{ headerShown: false }} />
+        
+        {/* Tabs if needed */}
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        
+        {/* Test routes */}
+        <Stack.Screen name="test-mobile" options={{ headerShown: false }} />
+        
+        {/* Not found */}
         <Stack.Screen name="+not-found" />
       </Stack>
       <StatusBar style="auto" />
