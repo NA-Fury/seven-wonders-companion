@@ -1,4 +1,5 @@
-// store/scoringStore.ts
+// store/scoringStore.ts - Enhanced with bug fixes and detailed mode support
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { Draft } from 'immer';
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
@@ -19,6 +20,100 @@ export type CategoryKey =
   | 'islands'
   | 'edifice';
 
+// Detailed data types for each category
+export interface WonderDetails {
+  stagesCompleted: boolean[];
+  stagePoints: number[];
+}
+
+export interface TreasuryDetails {
+  coins: number;
+  debtFromCards: number;
+  debtFromTax: number;
+  debtFromPiracy: number;
+  commercialPotTaxes: number;
+}
+
+export interface MilitaryDetails {
+  ageIStrength: number;
+  ageIIStrength: number;
+  ageIIIStrength: number;
+  doveDiplomacyAges: number[];
+  boardingTokensApplied: { age: number; count: number }[];
+  boardingTokensReceived: { age: number; count: number }[];
+  redCardsCount: number;
+  chainLinksUsed: number;
+  armadaShipPosition?: number;
+}
+
+export interface CivilDetails {
+  blueCardsCount: number;
+  directPointsFromCards: number;
+  chainLinksUsed: number;
+  armadaShipPosition?: number;
+  cardsWithArmadaShips?: number;
+}
+
+export interface CommercialDetails {
+  yellowCardsCount: number;
+  chainLinksUsed: number;
+  armadaShipPosition?: number;
+  cardsWithArmadaShips?: number;
+  citiesCardsCount?: number;
+  pointCards: string[];
+}
+
+export interface ScienceDetails {
+  compasses: number;
+  tablets: number;
+  gears: number;
+  bonusSymbols: { type: 'compass' | 'tablet' | 'gear'; source: string }[];
+  greenCardsCount: number;
+  chainLinksUsed: number;
+  armadaShipPosition?: number;
+}
+
+export interface GuildDetails {
+  guildsPlayed: string[];
+  totalPoints: number;
+}
+
+export interface CitiesDetails {
+  blackCardsCount: number;
+  directPointCards: number;
+  affectingNeighbors: { positive: number; negative: number };
+  cardsPlayed: string[];
+}
+
+export interface LeadersDetails {
+  leadersPlayed: string[];
+  totalPoints: number;
+}
+
+export interface NavyDetails {
+  ageIStrength: number;
+  ageIIStrength: number;
+  ageIIIStrength: number;
+  armadaShipPosition: number;
+  cardsContributing: number;
+  blueDoveDiplomacyAges: number[];
+}
+
+export interface IslandDetails {
+  islandCards: { stage1: number; stage2: number; stage3: number };
+  directPoints: number;
+  greenShipPosition: number;
+  islandsOwned: string[];
+}
+
+export interface EdificeDetails {
+  completedProjects: string[];
+  incompleteProjects: string[];
+  contributedProjects: { project: string; wonderStage: number }[];
+  rewards: number;
+  penalties: number;
+}
+
 export interface CategoryScore {
   directPoints: number | null;
   detailedData: Record<string, any>;
@@ -31,19 +126,19 @@ export interface PlayerScore {
   categories: Record<CategoryKey, CategoryScore>;
   total: number;
   lastUpdated: Date;
-  gameNumber?: number;
   isComplete: boolean;
 }
 
 interface GameMetadata {
   gameId: string;
+  gameNumber: number; // Same for all players in this game
   startTime: Date;
   endTime?: Date;
   playerCount: number;
   expansions: {
     leaders: boolean;
     cities: boolean;
-    armada: boolean; // corresponds to 'navy' category
+    armada: boolean;
     edifice: boolean;
   };
 }
@@ -57,9 +152,10 @@ interface ScoringState {
   // UI state
   isLoading: boolean;
   autoSave: boolean;
+  gameCounter: number; // Track total games played
 
   // Actions
-  initializeScoring: (playerIds: string[]) => void;
+  initializeScoring: (playerIds: string[], expansions: any) => void;
   setCurrentPlayer: (playerId: string) => void;
   updateCategoryScore: (
     playerId: string,
@@ -72,6 +168,7 @@ interface ScoringState {
     category: CategoryKey,
     data: Record<string, any>
   ) => void;
+  calculateCategoryPoints: (playerId: string, category: CategoryKey) => number;
   batchUpdateScores: (
     updates: Array<{ playerId: string; category: CategoryKey; points: number }>
   ) => void;
@@ -83,7 +180,9 @@ interface ScoringState {
   getPlayerScore: (playerId: string) => PlayerScore | undefined;
   getAllTotals: () => Record<string, number>;
   isGameComplete: () => boolean;
+  getCompletionProgress: () => number;
   getLeaderboard: () => Array<{ playerId: string; total: number; rank: number }>;
+  getCategoryBreakdown: (playerId: string) => Record<CategoryKey, number>;
 }
 
 // ---- Helpers ---------------------------------------------------------------
@@ -104,14 +203,39 @@ const CATEGORY_KEYS = [
 ] as const satisfies readonly CategoryKey[];
 
 /**
- * Safe total calculator that works with both plain and Draft records.
- * Avoids Object.values (which becomes unknown[] under Draft) to keep types happy.
+ * Calculate points for Science category based on detailed data
+ */
+const calculateSciencePoints = (details: ScienceDetails): number => {
+  const totalCompasses = details.compasses + details.bonusSymbols.filter(s => s.type === 'compass').length;
+  const totalTablets = details.tablets + details.bonusSymbols.filter(s => s.type === 'tablet').length;
+  const totalGears = details.gears + details.bonusSymbols.filter(s => s.type === 'gear').length;
+  
+  const sets = Math.min(totalCompasses, totalTablets, totalGears);
+  
+  return (totalCompasses * totalCompasses) + 
+         (totalTablets * totalTablets) + 
+         (totalGears * totalGears) + 
+         (sets * 7);
+};
+
+/**
+ * Calculate points for Treasury based on detailed data
+ */
+const calculateTreasuryPoints = (details: TreasuryDetails): number => {
+  const totalDebt = details.debtFromCards + details.debtFromTax + 
+                    details.debtFromPiracy + details.commercialPotTaxes;
+  const netCoins = Math.max(0, details.coins - totalDebt);
+  return Math.floor(netCoins / 3);
+};
+
+/**
+ * Safe total calculator that works with both plain and Draft records
  */
 type CategoryMap = Record<CategoryKey, CategoryScore>;
 const computeTotal = (categories: CategoryMap | Draft<CategoryMap>): number => {
   let total = 0;
   for (const key of CATEGORY_KEYS) {
-    const cat = categories[key]; // CategoryScore | Draft<CategoryScore>
+    const cat = categories[key];
     const pts = (cat?.directPoints ?? cat?.calculatedPoints ?? 0);
     total += pts;
   }
@@ -127,7 +251,7 @@ const createCategoryScore = (): CategoryScore => ({
 });
 
 // Create initial player score
-const createPlayerScore = (playerId: string, gameNumber?: number): PlayerScore => ({
+const createPlayerScore = (playerId: string): PlayerScore => ({
   playerId,
   categories: {
     wonder: createCategoryScore(),
@@ -145,7 +269,6 @@ const createPlayerScore = (playerId: string, gameNumber?: number): PlayerScore =
   },
   total: 0,
   lastUpdated: new Date(),
-  gameNumber,
   isComplete: false,
 });
 
@@ -159,26 +282,34 @@ export const useScoringStore = create<ScoringState>()(
     currentPlayerId: null,
     isLoading: false,
     autoSave: true,
+    gameCounter: 0,
 
     // Initialize scoring for all players
-    initializeScoring: (playerIds: string[]) => {
+    initializeScoring: (playerIds: string[], expansions: any) => {
       set((state) => {
+        // Increment game counter
+        state.gameCounter += 1;
+        void AsyncStorage.setItem('gameCounter', state.gameCounter.toString());
+        
+        // Clear previous scores and create fresh ones for each player
         state.playerScores = {};
-        playerIds.forEach((playerId, index) => {
-          state.playerScores[playerId] = createPlayerScore(playerId, index + 1);
+        playerIds.forEach((playerId) => {
+          state.playerScores[playerId] = createPlayerScore(playerId);
         });
 
         state.currentPlayerId = playerIds[0] || null;
 
+        // All players share the same game metadata
         state.gameMetadata = {
           gameId: `game_${Date.now()}`,
+          gameNumber: state.gameCounter, // Same game number for all players
           startTime: new Date(),
           playerCount: playerIds.length,
           expansions: {
-            leaders: false,
-            cities: false,
-            armada: false,
-            edifice: false,
+            leaders: expansions?.leaders || false,
+            cities: expansions?.cities || false,
+            armada: expansions?.armada || false,
+            edifice: expansions?.edifice || false,
           },
         };
 
@@ -204,7 +335,7 @@ export const useScoringStore = create<ScoringState>()(
         playerScore.categories[category].directPoints = points;
         playerScore.categories[category].isDetailed = isDetailed;
 
-        // Recalculate total without Object.values
+        // Recalculate total
         playerScore.total = computeTotal(playerScore.categories);
         playerScore.lastUpdated = new Date();
       });
@@ -218,8 +349,32 @@ export const useScoringStore = create<ScoringState>()(
 
         playerScore.categories[category].detailedData = data;
         playerScore.categories[category].isDetailed = true;
+        
+        // Calculate points based on detailed data
+        let calculatedPoints = 0;
+        
+        if (category === 'science' && data) {
+          calculatedPoints = calculateSciencePoints(data as ScienceDetails);
+        } else if (category === 'treasury' && data) {
+          calculatedPoints = calculateTreasuryPoints(data as TreasuryDetails);
+        }
+        // Add more category calculations as needed
+        
+        playerScore.categories[category].calculatedPoints = calculatedPoints;
+        
+        // Recalculate total
+        playerScore.total = computeTotal(playerScore.categories);
         playerScore.lastUpdated = new Date();
       });
+    },
+
+    // Calculate points for a specific category
+    calculateCategoryPoints: (playerId: string, category: CategoryKey) => {
+      const playerScore = get().playerScores[playerId];
+      if (!playerScore) return 0;
+      
+      const cat = playerScore.categories[category];
+      return cat.directPoints ?? cat.calculatedPoints ?? 0;
     },
 
     // Batch update scores for performance
@@ -289,7 +444,53 @@ export const useScoringStore = create<ScoringState>()(
     // Check if game is complete
     isGameComplete: () => {
       const scores = get().playerScores;
-      return Object.values(scores).every((s) => s.isComplete);
+      const metadata = get().gameMetadata;
+      if (!metadata) return false;
+      
+      // Check if all enabled categories have scores for all players
+      const enabledCategories = CATEGORY_KEYS.filter(cat => {
+        if (cat === 'cities') return metadata.expansions.cities;
+        if (cat === 'leaders') return metadata.expansions.leaders;
+        if (cat === 'navy' || cat === 'islands') return metadata.expansions.armada;
+        if (cat === 'edifice') return metadata.expansions.edifice;
+        return true; // Base game categories
+      });
+      
+      return Object.values(scores).every(score => 
+        enabledCategories.every(cat => 
+          score.categories[cat].directPoints !== null || 
+          score.categories[cat].calculatedPoints !== undefined
+        )
+      );
+    },
+
+    // Get completion progress (0 to 1)
+    getCompletionProgress: () => {
+      const scores = get().playerScores;
+      const metadata = get().gameMetadata;
+      if (!metadata || Object.keys(scores).length === 0) return 0;
+      
+      const enabledCategories = CATEGORY_KEYS.filter(cat => {
+        if (cat === 'cities') return metadata.expansions.cities;
+        if (cat === 'leaders') return metadata.expansions.leaders;
+        if (cat === 'navy' || cat === 'islands') return metadata.expansions.armada;
+        if (cat === 'edifice') return metadata.expansions.edifice;
+        return true;
+      });
+      
+      const totalRequired = enabledCategories.length * Object.keys(scores).length;
+      let completed = 0;
+      
+      Object.values(scores).forEach(score => {
+        enabledCategories.forEach(cat => {
+          if (score.categories[cat].directPoints !== null || 
+              score.categories[cat].calculatedPoints !== undefined) {
+            completed++;
+          }
+        });
+      });
+      
+      return completed / totalRequired;
     },
 
     // Get leaderboard
@@ -304,6 +505,20 @@ export const useScoringStore = create<ScoringState>()(
       });
 
       return leaderboard;
+    },
+
+    // Get category breakdown for a player
+    getCategoryBreakdown: (playerId: string) => {
+      const playerScore = get().playerScores[playerId];
+      if (!playerScore) return {} as Record<CategoryKey, number>;
+      
+      const breakdown: Record<CategoryKey, number> = {} as any;
+      CATEGORY_KEYS.forEach(cat => {
+        breakdown[cat] = playerScore.categories[cat].directPoints ?? 
+                        playerScore.categories[cat].calculatedPoints ?? 0;
+      });
+      
+      return breakdown;
     },
   }))
 );

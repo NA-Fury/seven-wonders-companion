@@ -6,6 +6,18 @@ import { StatusBar } from 'expo-status-bar';
 import 'react-native-reanimated';
 
 import { useColorScheme } from '@/hooks/useColorScheme';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useEffect } from 'react';
+import { useScoringStore } from '../store/scoringStore';
+
+useEffect(() => {
+  (async () => {
+    const raw = await AsyncStorage.getItem('gameCounter');
+    const value = raw ? parseInt(raw, 10) : 0;
+    useScoringStore.setState({ gameCounter: value });
+  })();
+}, []);
+
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();

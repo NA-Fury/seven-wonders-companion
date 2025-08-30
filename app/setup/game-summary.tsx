@@ -313,7 +313,7 @@ export default function GameSummaryScreen() {
     
     // Initialize scoring store with player IDs
     const playerIds = orderedPlayers.map(p => p.id);
-    initializeScoring(playerIds);
+    initializeScoring(playerIds, expansions);
     
     // Small delay to ensure state updates
     setTimeout(() => {

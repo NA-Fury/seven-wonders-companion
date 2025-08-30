@@ -1,14 +1,14 @@
-// app/scoring/results.tsx - Final results and leaderboard
+// app/scoring/results.tsx - Enhanced with analysis, badges, and export
 import { router } from 'expo-router';
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
-    Dimensions,
-    ScrollView,
-    Share,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  Dimensions,
+  ScrollView,
+  Share,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useScoringStore } from '../../store/scoringStore';
@@ -95,6 +95,49 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#0F0E1A',
   },
+  winnerAnalysis: {
+    backgroundColor: 'rgba(255, 215, 0, 0.1)',
+    borderRadius: 12,
+    padding: 16,
+    marginHorizontal: 16,
+    marginVertical: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 215, 0, 0.3)',
+  },
+  analysisTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#FFD700',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  analysisText: {
+    fontSize: 14,
+    color: '#FEF3C7',
+    textAlign: 'center',
+    lineHeight: 20,
+    fontStyle: 'italic',
+  },
+  badgesContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: 8,
+    marginTop: 12,
+  },
+  badge: {
+    backgroundColor: 'rgba(99, 102, 241, 0.2)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(99, 102, 241, 0.3)',
+  },
+  badgeText: {
+    fontSize: 12,
+    color: '#818CF8',
+    fontWeight: '600',
+  },
   rankingsContainer: {
     paddingHorizontal: 16,
   },
@@ -103,11 +146,16 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 14,
     marginBottom: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(196, 162, 76, 0.2)',
+  },
+  expandedCard: {
+    backgroundColor: 'rgba(31, 41, 55, 0.7)',
+  },
+  rankingHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    borderWidth: 1,
-    borderColor: 'rgba(196, 162, 76, 0.2)',
   },
   rankingLeft: {
     flexDirection: 'row',
@@ -144,6 +192,34 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
     color: '#FEF3C7',
+  },
+  expandButton: {
+    marginLeft: 8,
+    padding: 4,
+  },
+  expandButtonText: {
+    fontSize: 18,
+    color: '#C4A24C',
+  },
+  breakdownContainer: {
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(196, 162, 76, 0.2)',
+  },
+  breakdownRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 4,
+  },
+  breakdownCategory: {
+    fontSize: 12,
+    color: 'rgba(243, 231, 211, 0.7)',
+  },
+  breakdownScore: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#C4A24C',
   },
   statsContainer: {
     paddingHorizontal: 16,
@@ -203,9 +279,74 @@ const styles = StyleSheet.create({
   },
 });
 
+// Victory phrases based on scoring patterns
+const VICTORY_PHRASES = {
+  military: [
+    "A true Warmonger! Conquered all who stood in their path!",
+    "The Iron Fist of the Ancient World strikes again!",
+    "Military might prevails! All hail the General!",
+  ],
+  science: [
+    "The Scholar's Path leads to victory!",
+    "Knowledge is power! A brilliant scientific civilization!",
+    "The Great Library would be proud of this intellectual triumph!",
+  ],
+  civil: [
+    "A beacon of civilization! The people's champion!",
+    "Built a utopia worthy of the ages!",
+    "Civic virtue and public works pave the road to victory!",
+  ],
+  commercial: [
+    "The Merchant Prince claims their throne!",
+    "Gold flows like water in this commercial empire!",
+    "Trade routes and coin purses rule the day!",
+  ],
+  wonder: [
+    "The Wonder Builder's magnificent monuments stand tall!",
+    "Architectural marvels that will echo through history!",
+    "These wonders will be remembered for millennia!",
+  ],
+  balanced: [
+    "A Renaissance civilization! Master of all trades!",
+    "Perfectly balanced, as all things should be!",
+    "The complete package - a truly versatile empire!",
+  ],
+  guild: [
+    "The Guild Master's influence knows no bounds!",
+    "Professional excellence in every field!",
+    "The associations and guilds unite for victory!",
+  ],
+  naval: [
+    "Admiral of the Seven Seas claims victory!",
+    "Naval supremacy across the Mediterranean!",
+    "The fleet commander's strategic brilliance shines!",
+  ],
+};
+
+// Badge definitions
+const BADGES = {
+  warmonger: { icon: '⚔️', name: 'Warmonger', condition: (breakdown: any) => breakdown.military >= 20 },
+  scientist: { icon: '🔬', name: 'Great Scientist', condition: (breakdown: any) => breakdown.science >= 25 },
+  merchant: { icon: '💰', name: 'Merchant Prince', condition: (breakdown: any) => breakdown.commercial >= 15 },
+  builder: { icon: '🏗️', name: 'Master Builder', condition: (breakdown: any) => breakdown.civil >= 20 },
+  wonderous: { icon: '🏛️', name: 'Wonder Architect', condition: (breakdown: any) => breakdown.wonder >= 15 },
+  peaceful: { icon: '🕊️', name: 'Pacifist', condition: (breakdown: any) => breakdown.military === 0 },
+  perfectScore: { icon: '💯', name: 'Century Club', condition: (breakdown: any, total: number) => total >= 100 },
+  balanced: { icon: '⚖️', name: 'Well Balanced', condition: (breakdown: any) => {
+    // Ensure we have a number[] to safely spread into Math.max/Math.min
+    const scores = Object.values(breakdown)
+      .filter((v): v is number => typeof v === 'number' && v > 0);
+    if (scores.length < 5) return false;
+    const spread = Math.max(...scores) - Math.min(...scores);
+    return spread <= 10;
+  }},
+  underdog: { icon: '🎯', name: 'Underdog Victory', condition: (breakdown: any, total: number, rank: number) => rank === 1 && total < 60 },
+};
+
 export default function ResultsScreen() {
   const { players } = useSetupStore();
-  const { getLeaderboard, playerScores, completeScoring } = useScoringStore();
+  const { getLeaderboard, playerScores, completeScoring, getCategoryBreakdown, gameMetadata, getAllTotals } = useScoringStore();
+  const [expandedPlayers, setExpandedPlayers] = useState<Set<string>>(new Set());
   
   const leaderboard = useMemo(() => getLeaderboard(), [playerScores]);
   
@@ -213,13 +354,85 @@ export default function ResultsScreen() {
     return players.find(p => p.id === playerId)?.name || 'Unknown Player';
   };
   
-  const getCategorySummary = (playerId: string) => {
-    const score = playerScores[playerId];
-    if (!score) return '';
+  const toggleExpanded = (playerId: string) => {
+    setExpandedPlayers(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(playerId)) {
+        newSet.delete(playerId);
+      } else {
+        newSet.add(playerId);
+      }
+      return newSet;
+    });
+  };
+  
+  // Analyze winner's strategy
+  const winnerAnalysis = useMemo(() => {
+    if (leaderboard.length === 0) return null;
     
-    const categories = Object.entries(score.categories)
-      .filter(([_, cat]) => (cat.directPoints ?? cat.calculatedPoints ?? 0) > 0)
-      .map(([key]) => {
+    const winner = leaderboard[0];
+    const breakdown = getCategoryBreakdown(winner.playerId);
+    
+    // Find dominant categories
+    const sortedCategories = Object.entries(breakdown)
+      .filter(([_, score]) => score > 0)
+      .sort(([_, a], [__, b]) => b - a);
+    
+    if (sortedCategories.length === 0) return null;
+    
+    const [topCategory, topScore] = sortedCategories[0];
+    const totalScore = winner.total;
+    const dominanceRatio = topScore / totalScore;
+    
+    let phrase = '';
+    let strategy = 'balanced';
+    
+    // Determine strategy type
+    if (dominanceRatio > 0.4) {
+      // Single category dominance
+      strategy = topCategory as keyof typeof VICTORY_PHRASES;
+    } else if (topCategory === 'military' && breakdown.navy > 10) {
+      strategy = 'naval';
+    } else if (sortedCategories.length >= 5) {
+      strategy = 'balanced';
+    } else {
+      strategy = topCategory as keyof typeof VICTORY_PHRASES;
+    }
+    
+    const phrases = VICTORY_PHRASES[strategy as keyof typeof VICTORY_PHRASES] || VICTORY_PHRASES.balanced;
+    phrase = phrases[Math.floor(Math.random() * phrases.length)];
+    
+    // Calculate badges
+    const badges = Object.entries(BADGES)
+      .filter(([_, badge]) => badge.condition(breakdown, totalScore, 1))
+      .map(([key, badge]) => ({ key, ...badge }))
+    
+    return { phrase, strategy, badges, topCategories: sortedCategories.slice(0, 3) };
+  }, [leaderboard, getCategoryBreakdown]);
+  
+  // Calculate all player badges
+  const playerBadges = useMemo(() => {
+    const badgeMap: Record<string, any[]> = {};
+    
+    leaderboard.forEach((entry) => {
+      const breakdown = getCategoryBreakdown(entry.playerId);
+      const badges = Object.entries(BADGES)
+        .filter(([_, badge]) => badge.condition(breakdown, entry.total, entry.rank))
+        .map(([key, badge]) => ({ key, ...badge }))
+
+      badgeMap[entry.playerId] = badges;
+    });
+    
+    return badgeMap;
+  }, [leaderboard, getCategoryBreakdown]);
+  
+  const getCategorySummary = (playerId: string) => {
+    const breakdown = getCategoryBreakdown(playerId);
+    const topCategories = Object.entries(breakdown)
+      .filter(([_, score]) => score > 0)
+      .sort(([_, a], [__, b]) => b - a)
+      .slice(0, 3)
+      .map(([cat]) => {
         const categoryNames: Record<string, string> = {
           wonder: 'Wonder',
           treasury: 'Treasury',
@@ -234,29 +447,30 @@ export default function ResultsScreen() {
           islands: 'Islands',
           edifice: 'Edifice',
         };
-        return categoryNames[key] || key;
+        return categoryNames[cat] || cat;
       });
     
-    return categories.length > 0 ? `Strong in: ${categories.slice(0, 3).join(', ')}` : 'No categories scored';
+    return topCategories.length > 0 ? `Strong in: ${topCategories.join(', ')}` : 'No categories scored';
   };
   
   const gameStats = useMemo(() => {
-    const scores = Object.values(playerScores).map(s => s.total);
+    const scores = Object.values(getAllTotals()); // number[]
     const total = scores.reduce((sum, score) => sum + score, 0);
     const average = scores.length > 0 ? Math.round(total / scores.length) : 0;
-    const highest = Math.max(...scores, 0);
-    const lowest = Math.min(...scores, 0);
-    const spread = highest - lowest;
-    
+    const highest = Math.max(0, ...scores);
+    const lowest  = Math.min(0, ...scores);
+    const spread  = highest - lowest;
+
     return { average, highest, lowest, spread };
   }, [playerScores]);
   
   const handleShare = async () => {
-    const message = `7 Wonders Game Results:\n\n${
+    const badges = winnerAnalysis?.badges?.map(b => `${b.icon} ${b.name}`).join(' ') || '';
+    const message = `🎲 7 Wonders Game #${gameMetadata?.gameNumber || '?'} Results:\n\n${
       leaderboard.slice(0, 3).map((entry, index) => 
         `${['🥇', '🥈', '🥉'][index]} ${getPlayerName(entry.playerId)}: ${entry.total} points`
       ).join('\n')
-    }\n\nAverage Score: ${gameStats.average} points\nHighest Score: ${gameStats.highest} points`;
+    }\n\n🏆 ${winnerAnalysis?.phrase || 'Great game!'}\n${badges}\n\nAverage Score: ${gameStats.average} points`;
     
     try {
       await Share.share({ message });
@@ -283,11 +497,34 @@ export default function ResultsScreen() {
       >
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.title}>🏆 Final Results</Text>
+          <Text style={styles.title}>🏆 Game #{gameMetadata?.gameNumber} Results</Text>
           <Text style={styles.subtitle}>
-            Game completed • {new Date().toLocaleDateString()}
+            {new Date().toLocaleDateString()} • {players.length} Players
           </Text>
         </View>
+        
+        {/* Winner Analysis */}
+        {winnerAnalysis && leaderboard.length > 0 && (
+          <View style={styles.winnerAnalysis}>
+            <Text style={styles.analysisTitle}>
+              👑 {getPlayerName(leaderboard[0].playerId)} Wins!
+            </Text>
+            <Text style={styles.analysisText}>
+              {winnerAnalysis.phrase}
+            </Text>
+            {winnerAnalysis.badges.length > 0 && (
+              <View style={styles.badgesContainer}>
+                {winnerAnalysis.badges.map(badge => (
+                  <View key={badge.key} style={styles.badge}>
+                    <Text style={styles.badgeText}>
+                      {badge.icon} {badge.name}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            )}
+          </View>
+        )}
         
         {/* Podium for top 3 */}
         {leaderboard.length >= 3 && (
@@ -329,30 +566,74 @@ export default function ResultsScreen() {
           </View>
         )}
         
-        {/* Full Rankings */}
+        {/* Full Rankings with Expandable Breakdown */}
         <View style={styles.rankingsContainer}>
           <Text style={[styles.title, { fontSize: 20, marginBottom: 12 }]}>
-            Complete Rankings
+            Complete Rankings & Analysis
           </Text>
           
-          {leaderboard.map((entry) => (
-            <View key={entry.playerId} style={styles.rankingCard}>
-              <View style={styles.rankingLeft}>
-                <View style={styles.rankNumber}>
-                  <Text style={styles.rankText}>#{entry.rank}</Text>
-                </View>
-                <View style={styles.playerInfo}>
-                  <Text style={styles.playerName}>
-                    {getPlayerName(entry.playerId)}
-                  </Text>
-                  <Text style={styles.categorySummary}>
-                    {getCategorySummary(entry.playerId)}
-                  </Text>
-                </View>
+          {leaderboard.map((entry) => {
+            const isExpanded = expandedPlayers.has(entry.playerId);
+            const badges = playerBadges[entry.playerId] || [];
+            const breakdown = getCategoryBreakdown(entry.playerId);
+            
+            return (
+              <View key={entry.playerId} style={[styles.rankingCard, isExpanded && styles.expandedCard]}>
+                <TouchableOpacity onPress={() => toggleExpanded(entry.playerId)}>
+                  <View style={styles.rankingHeader}>
+                    <View style={styles.rankingLeft}>
+                      <View style={styles.rankNumber}>
+                        <Text style={styles.rankText}>#{entry.rank}</Text>
+                      </View>
+                      <View style={styles.playerInfo}>
+                        <Text style={styles.playerName}>
+                          {getPlayerName(entry.playerId)}
+                        </Text>
+                        <Text style={styles.categorySummary}>
+                          {getCategorySummary(entry.playerId)}
+                        </Text>
+                        {badges.length > 0 && (
+                          <View style={[styles.badgesContainer, { marginTop: 4, justifyContent: 'flex-start' }]}>
+                            {badges.slice(0, 3).map(badge => (
+                              <View key={badge.key} style={[styles.badge, { paddingVertical: 2, paddingHorizontal: 6 }]}>
+                                <Text style={[styles.badgeText, { fontSize: 10 }]}>
+                                  {badge.icon}
+                                </Text>
+                              </View>
+                            ))}
+                          </View>
+                        )}
+                      </View>
+                    </View>
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                      <Text style={styles.scoreText}>{entry.total}</Text>
+                      <TouchableOpacity style={styles.expandButton}>
+                        <Text style={styles.expandButtonText}>
+                          {isExpanded ? '−' : '+'}
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                </TouchableOpacity>
+                
+                {isExpanded && (
+                  <View style={styles.breakdownContainer}>
+                    {Object.entries(breakdown)
+                      .filter(([_, score]) => score > 0)
+                      .sort(([_, a], [__, b]) => b - a)
+                      .map(([category, score]) => (
+                        <View key={category} style={styles.breakdownRow}>
+                          <Text style={styles.breakdownCategory}>
+                            {category.charAt(0).toUpperCase() + category.slice(1)}
+                          </Text>
+                          <Text style={styles.breakdownScore}>{score} pts</Text>
+                        </View>
+                      ))}
+                  </View>
+                )}
               </View>
-              <Text style={styles.scoreText}>{entry.total}</Text>
-            </View>
-          ))}
+            );
+          })}
         </View>
         
         {/* Game Statistics */}
@@ -375,6 +656,14 @@ export default function ResultsScreen() {
               <Text style={styles.statLabel}>Score Spread</Text>
               <Text style={styles.statValue}>{gameStats.spread} points</Text>
             </View>
+            <View style={styles.statRow}>
+              <Text style={styles.statLabel}>Game Duration</Text>
+              <Text style={styles.statValue}>
+                {gameMetadata?.endTime && gameMetadata?.startTime
+                  ? `${Math.round((new Date(gameMetadata.endTime).getTime() - new Date(gameMetadata.startTime).getTime()) / 60000)} min`
+                  : 'In Progress'}
+              </Text>
+            </View>
           </View>
         </View>
         
@@ -384,7 +673,7 @@ export default function ResultsScreen() {
             style={styles.actionButton}
             onPress={handleSaveGame}
           >
-            <Text style={styles.actionButtonText}>💾 Save Game</Text>
+            <Text style={styles.actionButtonText}>💾 Save & Exit</Text>
           </TouchableOpacity>
           
           <TouchableOpacity

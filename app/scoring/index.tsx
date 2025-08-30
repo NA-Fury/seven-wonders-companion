@@ -1,16 +1,17 @@
-// app/scoring/index.tsx - Main scoring screen with optimized performance
+// app/scoring/index.tsx - Fixed with proper progress tracking
 import { router } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-    ActivityIndicator,
-    Animated,
-    Dimensions,
-    ScrollView,
-    StyleSheet,
-    Text,
-    View
+  ActivityIndicator,
+  Animated,
+  Dimensions,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { AnalysisHelpers } from '../../components/scoring/AnalysisHelpers';
 import { CategoryCard } from '../../components/scoring/CategoryCard';
 import { PlayerSelector } from '../../components/scoring/PlayerSelector';
 import { TotalScoreBar } from '../../components/scoring/TotalScoreBar';
@@ -110,6 +111,31 @@ const styles = StyleSheet.create({
     marginTop: 12,
     fontSize: 14,
   },
+  progressOverview: {
+    backgroundColor: 'rgba(31, 41, 55, 0.5)',
+    marginHorizontal: 16,
+    marginVertical: 8,
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(196, 162, 76, 0.2)',
+  },
+  progressText: {
+    fontSize: 12,
+    color: 'rgba(243, 231, 211, 0.7)',
+    marginBottom: 8,
+  },
+  progressBarContainer: {
+    height: 6,
+    backgroundColor: 'rgba(196, 162, 76, 0.1)',
+    borderRadius: 3,
+    overflow: 'hidden',
+  },
+  progressBarFill: {
+    height: '100%',
+    backgroundColor: '#C4A24C',
+    borderRadius: 3,
+  },
 });
 
 // Define base and expansion categories
@@ -129,9 +155,11 @@ export default function ScoringScreen() {
     playerScores,
     currentPlayerId,
     setCurrentPlayer,
-    updateCategoryScore,
     getPlayerScore,
     initializeScoring,
+    gameMetadata,
+    getCompletionProgress,
+    isGameComplete,
   } = useScoringStore();
   
   const [isInitialized, setIsInitialized] = useState(false);
@@ -144,7 +172,7 @@ export default function ScoringScreen() {
         ? seating 
         : players.map(p => p.id);
       
-      initializeScoring(playerIds);
+      initializeScoring(playerIds, expansions);
       setIsInitialized(true);
       
       // Fade in animation
@@ -154,7 +182,7 @@ export default function ScoringScreen() {
         useNativeDriver: true,
       }).start();
     }
-  }, [players, seating, isInitialized]);
+  }, [players, seating, expansions, isInitialized]);
   
   // Memoized current player data
   const currentPlayer = useMemo(() => {
@@ -207,13 +235,6 @@ export default function ScoringScreen() {
     };
   }, [currentPlayerId, seating, players]);
   
-  // Handle category score update
-  const handleScoreUpdate = useCallback((category: CategoryKey, points: number | null) => {
-    if (currentPlayerId) {
-      updateCategoryScore(currentPlayerId, category, points, false);
-    }
-  }, [currentPlayerId, updateCategoryScore]);
-  
   // Handle player change
   const handlePlayerChange = useCallback((playerId: string) => {
     setCurrentPlayer(playerId);
@@ -221,6 +242,29 @@ export default function ScoringScreen() {
   
   // Get current score
   const currentScore = currentPlayerId ? getPlayerScore(currentPlayerId) : null;
+  
+  // Calculate overall progress
+  const completionProgress = useMemo(() => {
+    return getCompletionProgress();
+  }, [playerScores, gameMetadata]);
+  
+  // Count completed categories across all players
+  const completedCategoriesInfo = useMemo(() => {
+    let completed = 0;
+    let total = 0;
+    
+    Object.values(playerScores).forEach(score => {
+      availableCategories.forEach(cat => {
+        total++;
+        if (score.categories[cat].directPoints !== null || 
+            score.categories[cat].calculatedPoints !== undefined) {
+          completed++;
+        }
+      });
+    });
+    
+    return { completed, total };
+  }, [playerScores, availableCategories]);
   
   if (!isInitialized || !currentPlayer) {
     return (
@@ -261,7 +305,7 @@ export default function ScoringScreen() {
               <View style={styles.playerMeta}>
                 <View style={styles.metaTag}>
                   <Text style={styles.metaText}>
-                    Game #{currentScore?.gameNumber || 1}
+                    Game #{gameMetadata?.gameNumber || 1}
                   </Text>
                 </View>
                 
@@ -298,6 +342,21 @@ export default function ScoringScreen() {
             </View>
           </View>
           
+          {/* Progress Overview */}
+          <View style={styles.progressOverview}>
+            <Text style={styles.progressText}>
+              Overall Progress: {completedCategoriesInfo.completed}/{completedCategoriesInfo.total} categories scored
+            </Text>
+            <View style={styles.progressBarContainer}>
+              <Animated.View 
+                style={[
+                  styles.progressBarFill,
+                  { width: `${completionProgress * 100}%` }
+                ]}
+              />
+            </View>
+          </View>
+          
           {/* Info Message */}
           <View style={styles.messageCard}>
             <Text style={styles.messageText}>
@@ -311,10 +370,10 @@ export default function ScoringScreen() {
             <Text style={styles.sectionTitle}>🏛️ Base Game</Text>
             {BASE_CATEGORIES.map(category => (
               <CategoryCard
-                key={category}
+                key={`${currentPlayerId}-${category}`}
                 category={category}
                 score={currentScore?.categories[category] || null}
-                onScoreUpdate={(points) => handleScoreUpdate(category, points)}
+                playerId={currentPlayerId!}
                 wonderData={category === 'wonder' ? wonderData : undefined}
                 expansions={expansions}
               />
@@ -325,9 +384,10 @@ export default function ScoringScreen() {
               <>
                 <Text style={styles.sectionTitle}>🏙️ Cities Expansion</Text>
                 <CategoryCard
+                  key={`${currentPlayerId}-cities`}
                   category="cities"
                   score={currentScore?.categories.cities || null}
-                  onScoreUpdate={(points) => handleScoreUpdate('cities', points)}
+                  playerId={currentPlayerId!}
                   expansions={expansions}
                 />
               </>
@@ -338,9 +398,10 @@ export default function ScoringScreen() {
               <>
                 <Text style={styles.sectionTitle}>👑 Leaders Expansion</Text>
                 <CategoryCard
+                  key={`${currentPlayerId}-leaders`}
                   category="leaders"
                   score={currentScore?.categories.leaders || null}
-                  onScoreUpdate={(points) => handleScoreUpdate('leaders', points)}
+                  playerId={currentPlayerId!}
                   expansions={expansions}
                 />
               </>
@@ -351,15 +412,17 @@ export default function ScoringScreen() {
               <>
                 <Text style={styles.sectionTitle}>⚓ Armada Expansion</Text>
                 <CategoryCard
+                  key={`${currentPlayerId}-navy`}
                   category="navy"
                   score={currentScore?.categories.navy || null}
-                  onScoreUpdate={(points) => handleScoreUpdate('navy', points)}
+                  playerId={currentPlayerId!}
                   expansions={expansions}
                 />
                 <CategoryCard
+                  key={`${currentPlayerId}-islands`}
                   category="islands"
                   score={currentScore?.categories.islands || null}
-                  onScoreUpdate={(points) => handleScoreUpdate('islands', points)}
+                  playerId={currentPlayerId!}
                   expansions={expansions}
                 />
               </>
@@ -370,22 +433,32 @@ export default function ScoringScreen() {
               <>
                 <Text style={styles.sectionTitle}>🗿 Edifice Expansion</Text>
                 <CategoryCard
+                  key={`${currentPlayerId}-edifice`}
                   category="edifice"
                   score={currentScore?.categories.edifice || null}
-                  onScoreUpdate={(points) => handleScoreUpdate('edifice', points)}
+                  playerId={currentPlayerId!}
                   expansions={expansions}
                 />
               </>
             )}
+            
+            {/* Analysis Helpers Section */}
+            <AnalysisHelpers
+              playerId={currentPlayerId!}
+              wonderData={wonderData}
+              onDataUpdate={(data) => {
+                // Store analysis data for later calculations
+                console.log('Analysis data updated:', data);
+              }}
+            />
           </View>
         </ScrollView>
         
         {/* Fixed Total Score Bar */}
         <TotalScoreBar
           total={currentScore?.total || 0}
-          isComplete={availableCategories.every(cat => 
-            currentScore?.categories[cat]?.directPoints !== null
-          )}
+          isComplete={isGameComplete()}
+          completionProgress={completionProgress}
           onViewResults={() => router.push('/scoring/results')}
         />
       </Animated.View>
