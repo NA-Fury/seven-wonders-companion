@@ -8,6 +8,8 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
+import { getIslandByName, searchIslands, sumImmediateIslandVP } from '../../data/islandsDatabase';
+import { getLeaderByName, searchLeaders, sumImmediateVP } from '../../data/leadersDatabase';
 import { CategoryKey, CategoryScore, useScoringStore } from '../../store/scoringStore';
 
 // Get actual wonder stages from the database
@@ -266,8 +268,14 @@ export const CategoryCard = memo<CategoryCardProps>(({
     score?.directPoints !== null && score?.directPoints !== undefined ? String(score.directPoints) : ''
   );
   
-  // Detailed mode states
-  const [detailedData, setDetailedData] = useState<any>({});
+  // Detailed mode states - typed to avoid implicit any
+  const [detailedData, setDetailedData] = useState<Record<string, any>>({});
+
+    // Leaders UI state
+  const [leaderQuery, setLeaderQuery] = useState<string>(''); 
+
+    // Islands UI state (identical pattern to Leaders)
+  const [islandQuery, setIslandQuery] = useState<string>('');
   
   const config = CATEGORY_CONFIG[category];
   
@@ -279,6 +287,8 @@ export const CategoryCard = memo<CategoryCardProps>(({
         : ''
     );
     setShowDetailed(false);
+    setLeaderQuery(''); // Reset leader query when switching players
+    setIslandQuery(''); // Reset island query when switching players
   }, [playerId, score?.directPoints]);
   
   const handleInputChange = useCallback((text: string) => {
@@ -298,8 +308,8 @@ export const CategoryCard = memo<CategoryCardProps>(({
     setShowDetailed(!showDetailed);
   }, [showDetailed]);
   
-  const updateDetailedField = (field: string, value: any) => {
-    const newData = { ...detailedData, [field]: value };
+  const updateDetailedField = useCallback((field: string, value: any) => {
+    const newData: Record<string, any> = { ...detailedData, [field]: value };
     setDetailedData(newData);
     updateDetailedData(playerId, category, newData);
     
@@ -319,8 +329,77 @@ export const CategoryCard = memo<CategoryCardProps>(({
         updateCategoryScore(playerId, category, totalPoints, true);
       }
     }
-  };
-  
+    
+    // Auto-calculate leader points when leaders are selected
+    if (category === 'leaders' && field === 'selectedLeaders') {
+      const selectedLeaders = Array.isArray(value) ? value : [];
+      const directVP = sumImmediateVP(selectedLeaders);
+      updateCategoryScore(playerId, category, directVP, true);
+    }
+
+    // Auto-calc Islands direct VP
+    if (category === 'islands' && field === 'selectedIslands') {
+      const selected: string[] = Array.isArray(value) ? value : [];
+      updateCategoryScore(playerId, 'islands', sumImmediateIslandVP(selected), true);
+    } 
+  }, [detailedData, playerId, category, updateCategoryScore, updateDetailedData]);
+
+  // Leaders-specific helper functions
+  const addLeader = useCallback((name: string) => {
+    if (!name) return;
+
+    const selected: string[] = Array.isArray(detailedData.selectedLeaders) ? (detailedData.selectedLeaders as string[]) : [];
+    const alreadySelected = selected.some((s: string) => s.toLowerCase() === name.toLowerCase());
+    
+    if (alreadySelected) {
+      setLeaderQuery('');
+      return;
+    }
+
+    const leader = getLeaderByName(name);
+    if (!leader) {
+      setLeaderQuery('');
+      return;
+    }
+    
+    const newSelected = [...selected, leader.name];
+    updateDetailedField('selectedLeaders', newSelected);
+    setLeaderQuery('');
+  }, [detailedData, updateDetailedField]);
+
+  const removeLeader = useCallback((name: string) => {
+    const selected: string[] = Array.isArray(detailedData.selectedLeaders) ? (detailedData.selectedLeaders as string[]) : [];
+    const newSelected = selected.filter((s: string) => s.toLowerCase() !== name.toLowerCase());
+    updateDetailedField('selectedLeaders', newSelected);
+  }, [detailedData, updateDetailedField]);
+
+  // Get leader suggestions
+  const suggestions = leaderQuery.length >= 1 ? searchLeaders(leaderQuery, 8) : [];
+
+  // When reading selectedLeaders for rendering, make its type explicit
+  const selectedLeaders: string[] = Array.isArray(detailedData.selectedLeaders) ? (detailedData.selectedLeaders as string[]) : [];
+  const totalDirectVP = sumImmediateVP(selectedLeaders);
+
+  // Islands helpers
+  const addIsland = useCallback((name: string) => {
+    if (!name) return;
+    const selected: string[] = Array.isArray(detailedData.selectedIslands) ? detailedData.selectedIslands : [];
+    if (selected.some(s => s.toLowerCase() === name.toLowerCase())) { setIslandQuery(''); return; }
+    const island = getIslandByName(name);
+    if (!island) { setIslandQuery(''); return; }
+    updateDetailedField('selectedIslands', [...selected, island.name]);
+    setIslandQuery('');
+  }, [detailedData, updateDetailedField]);
+
+  const removeIsland = useCallback((name: string) => {
+    const selected: string[] = Array.isArray(detailedData.selectedIslands) ? detailedData.selectedIslands : [];
+    updateDetailedField('selectedIslands', selected.filter(s => s.toLowerCase() !== name.toLowerCase()));
+  }, [detailedData, updateDetailedField]);
+
+  const islandSuggestions = islandQuery.length >= 1 ? searchIslands(islandQuery, 8) : [];
+  const selectedIslands: string[] = Array.isArray(detailedData.selectedIslands) ? detailedData.selectedIslands : [];
+  const islandsDirectVP = sumImmediateIslandVP(selectedIslands);  
+
   // Render detailed mode based on category
   const renderDetailedMode = () => {
     switch (category) {
@@ -815,29 +894,122 @@ export const CategoryCard = memo<CategoryCardProps>(({
         );
         
       case 'leaders':
+        const selectedLeaders = Array.isArray(detailedData.selectedLeaders) ? detailedData.selectedLeaders : [];
+        const totalDirectVP = sumImmediateVP(selectedLeaders);
+        
         return (
           <>
             <View style={styles.detailField}>
-              <Text style={styles.detailLabel}>Leaders Played (enter names)</Text>
+              <Text style={styles.detailLabel}>Add a recruited Leader</Text>
               <TextInput
                 style={styles.detailInput}
-                value={detailedData.leaderNames || ''}
-                onChangeText={(text) => updateDetailedField('leaderNames', text)}
-                placeholder="e.g., Alexander, Cleopatra"
+                value={leaderQuery}
+                onChangeText={setLeaderQuery}
+                placeholder="Type a leader name (e.g., Cleo...)"
                 placeholderTextColor="rgba(196, 162, 76, 0.3)"
-                multiline
+                autoCapitalize="none"
+                autoCorrect={false}
               />
+              
+              {/* Suggestions */}
+              {suggestions.length > 0 && (
+                <View style={{
+                  marginTop: 6, 
+                  borderWidth: 1, 
+                  borderColor: 'rgba(196,162,76,0.2)',
+                  borderRadius: 8, 
+                  overflow: 'hidden', 
+                  backgroundColor: 'rgba(28,26,26,0.6)',
+                  maxHeight: 200,
+                }}>
+                  <ScrollView showsVerticalScrollIndicator={false}>
+                    {suggestions.map((leader) => (
+                      <TouchableOpacity
+                        key={leader.id}
+                        onPress={() => addLeader(leader.name)}
+                        style={{ 
+                          paddingHorizontal: 10, 
+                          paddingVertical: 8, 
+                          borderBottomWidth: 1, 
+                          borderBottomColor: 'rgba(196,162,76,0.1)' 
+                        }}
+                      >
+                        <Text style={{ color: '#F3E7D3', fontSize: 14 }}>
+                          {leader.name}
+                          {leader.immediate?.vp ? ` • +${leader.immediate?.vp} VP (direct)` : ''}
+                          {leader.immediate?.coins ? ` • ${leader.immediate?.coins} coins` : ''}
+                          {leader.immediate?.military ? ` • +${leader.immediate?.military} military` : ''}
+                        </Text>
+                        {leader.textEffect && (
+                          <Text style={{ 
+                            color:'rgba(243,231,211,0.6)', 
+                            fontSize:11, 
+                            marginTop:2 
+                          }}>
+                            {leader.textEffect}
+                          </Text>
+                        )}
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                </View>
+              )}
             </View>
+
+            {/* Selected leaders list as removable chips */}
+            {selectedLeaders.length > 0 && (
+              <View style={styles.detailField}>
+                <Text style={styles.detailLabel}>Recruited Leaders ({selectedLeaders.length})</Text>
+                <View style={{ flexDirection:'row', flexWrap:'wrap', gap:8 }}>
+                  {selectedLeaders.map((name) => {
+                    const leader = getLeaderByName(name);
+                    const vp = leader?.immediate?.vp ?? 0;
+                    return (
+                      <View key={name} style={{
+                        flexDirection:'row', 
+                        alignItems:'center',
+                        backgroundColor:'rgba(99,102,241,0.2)', 
+                        borderWidth:1,
+                        borderColor:'rgba(99,102,241,0.3)', 
+                        paddingHorizontal:10,
+                        paddingVertical:6, 
+                        borderRadius:16
+                      }}>
+                        <Text style={{ 
+                          color:'#818CF8', 
+                          fontSize:12, 
+                          fontWeight:'600' 
+                        }}>
+                          {name}{vp ? ` (+${vp} VP)` : ''}
+                        </Text>
+                        <TouchableOpacity 
+                          onPress={() => removeLeader(name)} 
+                          style={{ marginLeft:8 }}
+                        >
+                          <Text style={{ color:'#818CF8', fontSize:12 }}>✕</Text>
+                        </TouchableOpacity>
+                      </View>
+                    );
+                  })}
+                </View>
+              </View>
+            )}
+
+            {/* Calculated direct VP preview */}
+            <View style={styles.calculatedScore}>
+              <Text style={styles.calculatedLabel}>Direct VP from Leaders</Text>
+              <Text style={styles.calculatedValue}>{totalDirectVP}</Text>
+              <Text style={[styles.calculatedLabel, { marginTop: 4 }]}>
+                Auto-calculated and applied to your score
+              </Text>
+            </View>
+
+            {/* Notes/help */}
             <View style={styles.detailField}>
-              <Text style={styles.detailLabel}>Total Points from Leaders</Text>
-              <TextInput
-                style={styles.detailInput}
-                value={detailedData.totalPoints?.toString() || ''}
-                onChangeText={(text) => updateDetailedField('totalPoints', parseInt(text) || 0)}
-                keyboardType="number-pad"
-                placeholder="0"
-                placeholderTextColor="rgba(196, 162, 76, 0.3)"
-              />
+              <Text style={styles.detailLabel}>
+                Leaders with immediate VP (Sappho, Zenobia, Nefertiti, Cleopatra, Aspasia) are auto-scored. 
+                Coins, military, diplomacy, and end-game effects are stored for future analysis.
+              </Text>
             </View>
           </>
         );
@@ -919,72 +1091,85 @@ export const CategoryCard = memo<CategoryCardProps>(({
           </>
         );
         
-      case 'islands':
+      case 'islands': {
         return (
           <>
             <View style={styles.detailField}>
-              <Text style={styles.detailLabel}>Island Cards by Stage</Text>
-              <View style={styles.inlineInputs}>
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.detailLabel, { fontSize: 10 }]}>Stage 1</Text>
-                  <TextInput
-                    style={styles.smallInput}
-                    value={detailedData.stage1?.toString() || ''}
-                    onChangeText={(text) => updateDetailedField('stage1', parseInt(text) || 0)}
-                    keyboardType="number-pad"
-                    placeholder="0"
-                    placeholderTextColor="rgba(196, 162, 76, 0.3)"
-                  />
+              <Text style={styles.detailLabel}>Add an Island card you gained</Text>
+              <TextInput
+                style={styles.detailInput}
+                value={islandQuery}
+                onChangeText={setIslandQuery}
+                placeholder="Type an island name (e.g., Inhab...)"
+                placeholderTextColor="rgba(196, 162, 76, 0.3)"
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+              {islandSuggestions.length > 0 && (
+                <View style={{
+                  marginTop: 6, borderWidth: 1, borderColor: 'rgba(196,162,76,0.2)',
+                  borderRadius: 8, overflow: 'hidden', backgroundColor: 'rgba(28,26,26,0.6)', maxHeight: 220
+                }}>
+                  <ScrollView showsVerticalScrollIndicator={false}>
+                    {islandSuggestions.map(card => (
+                      <TouchableOpacity key={card.id} onPress={() => addIsland(card.name)}
+                        style={{ paddingHorizontal: 10, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: 'rgba(196,162,76,0.1)' }}>
+                        <Text style={{ color: '#F3E7D3', fontSize: 14 }}>
+                          {card.name} • L{card.level}
+                          {card.immediate?.vp ? ` • +${card.immediate.vp} VP (direct)` : ''}
+                          {card.immediate?.naval ? ` • +${card.immediate.naval} naval` : ''}
+                          {card.immediate?.military ? ` • +${card.immediate.military} military` : ''}
+                          {card.immediate?.advanceFleet?.length ? ` • fleet advance` : ''}
+                        </Text>
+                        {!!card.notes?.length && (
+                          <Text style={{ color: 'rgba(243,231,211,0.6)', fontSize: 11, marginTop: 2 }}>
+                            {card.notes[0]}
+                          </Text>
+                        )}
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
                 </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.detailLabel, { fontSize: 10 }]}>Stage 2</Text>
-                  <TextInput
-                    style={styles.smallInput}
-                    value={detailedData.stage2?.toString() || ''}
-                    onChangeText={(text) => updateDetailedField('stage2', parseInt(text) || 0)}
-                    keyboardType="number-pad"
-                    placeholder="0"
-                    placeholderTextColor="rgba(196, 162, 76, 0.3)"
-                  />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.detailLabel, { fontSize: 10 }]}>Stage 3</Text>
-                  <TextInput
-                    style={styles.smallInput}
-                    value={detailedData.stage3?.toString() || ''}
-                    onChangeText={(text) => updateDetailedField('stage3', parseInt(text) || 0)}
-                    keyboardType="number-pad"
-                    placeholder="0"
-                    placeholderTextColor="rgba(196, 162, 76, 0.3)"
-                  />
+              )}
+            </View>
+
+            {selectedIslands.length > 0 && (
+              <View style={styles.detailField}>
+                <Text style={styles.detailLabel}>Islands Collected ({selectedIslands.length})</Text>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                  {selectedIslands.map(name => {
+                    const card = getIslandByName(name);
+                    const vp = card?.immediate?.vp ?? 0; // ONLY direct VP shown/applied now
+                    return (
+                      <View key={name} style={{
+                        flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(16,185,129,0.18)',
+                        borderWidth: 1, borderColor: 'rgba(16,185,129,0.28)', paddingHorizontal: 10,
+                        paddingVertical: 6, borderRadius: 16
+                      }}>
+                        <Text style={{ color: '#A7F3D0', fontSize: 12, fontWeight: '600' }}>
+                          {name}{vp ? ` (+${vp} VP)` : ''}
+                        </Text>
+                        <TouchableOpacity onPress={() => removeIsland(name)} style={{ marginLeft: 8 }}>
+                          <Text style={{ color: '#A7F3D0', fontSize: 12 }}>✕</Text>
+                        </TouchableOpacity>
+                      </View>
+                    );
+                  })}
                 </View>
               </View>
-            </View>
-            <View style={styles.detailField}>
-              <Text style={styles.detailLabel}>Green Ship Position (0-7)</Text>
-              <TextInput
-                style={styles.detailInput}
-                value={detailedData.greenShipPosition?.toString() || ''}
-                onChangeText={(text) => updateDetailedField('greenShipPosition', parseInt(text) || 0)}
-                keyboardType="number-pad"
-                placeholder="0"
-                placeholderTextColor="rgba(196, 162, 76, 0.3)"
-              />
-            </View>
-            <View style={styles.detailField}>
-              <Text style={styles.detailLabel}>Total Direct Points from Islands</Text>
-              <TextInput
-                style={styles.detailInput}
-                value={detailedData.directPoints?.toString() || ''}
-                onChangeText={(text) => updateDetailedField('directPoints', parseInt(text) || 0)}
-                keyboardType="number-pad"
-                placeholder="0"
-                placeholderTextColor="rgba(196, 162, 76, 0.3)"
-              />
+            )}
+
+            <View style={styles.calculatedScore}>
+              <Text style={styles.calculatedLabel}>Direct VP from Islands</Text>
+              <Text style={styles.calculatedValue}>{islandsDirectVP}</Text>
+              <Text style={[styles.calculatedLabel, { marginTop: 4 }]}>
+                Auto-applied (end-game/indirect effects are stored for analysis)
+              </Text>
             </View>
           </>
         );
-        
+      }
+       
       case 'edifice':
         return (
           <>
