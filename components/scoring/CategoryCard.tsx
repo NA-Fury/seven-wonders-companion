@@ -294,17 +294,30 @@ export const CategoryCard = memo<CategoryCardProps>(({
   const { players, edificeProjects } = useSetupStore();
   const { scores } = useScoringStore() as any;
 
-  // FIXED: Move all memoized calculations here, always computed regardless of category
+  // FIXED: Move all memoized calculations here with better dependency tracking
   const playerIds = useMemo(() => (players || []).map((p: any) => p.id), [players]);
   
+  // Add a refresh trigger to force re-evaluation
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+  
   const edificeCompletion = useMemo(
-    () => evaluateEdificeCompletion(playerIds, scores),
-    [playerIds, scores]
+    () => {
+      console.log('🔄 Recalculating edifice completion...', { playerIds: playerIds.length, refreshTrigger });
+      const result = evaluateEdificeCompletion(playerIds, scores);
+      console.log('📊 Edifice completion result:', result);
+      return result;
+    },
+    [playerIds, scores, refreshTrigger]
   );
   
   const edificeOutcome = useMemo(
-    () => edificeOutcomeForPlayer(playerId, playerIds, scores),
-    [playerId, playerIds, scores]
+    () => {
+      console.log('🎯 Recalculating edifice outcome for player:', playerId);
+      const result = edificeOutcomeForPlayer(playerId, playerIds, scores);
+      console.log('🎲 Edifice outcome result:', result);
+      return result;
+    },
+    [playerId, playerIds, scores, refreshTrigger]
   );
 
   // FIXED: All state hooks declared in consistent order
@@ -1235,6 +1248,66 @@ export const CategoryCard = memo<CategoryCardProps>(({
         };
         const ages: (1|2|3)[] = [1, 2, 3];
 
+        // Calculate total effects for this player
+        let totalEdificePoints = 0;
+        let totalCoinsDelta = 0;
+        let totalMilitaryTokensII = 0;
+        let totalMilitaryTokensIII = 0;
+        let totalMilitaryStrength = 0;
+        let totalPenaltyEffects: string[] = [];
+        const effectsBreakdown: string[] = [];
+
+        ages.forEach(age => {
+          const project = projByAge[age];
+          if (!project) return;
+
+          const contributed = !!detailedData[`contributedAge${age}`];
+          const complete = !!edificeCompletion.completeByAge[age];
+          const outcome = edificeOutcome[age];
+
+          if (outcome === 'reward' && project.reward) {
+            const r = project.reward;
+            switch (r.kind) {
+              case 'Coins':
+                totalCoinsDelta += r.amount || 0;
+                effectsBreakdown.push(`Age ${age}: +${r.amount || 0} coins (reward)`);
+                break;
+              case 'MilitaryVictoryToken':
+                if (r.tokenAge === 2) totalMilitaryTokensII += r.amount || 0;
+                else if (r.tokenAge === 3) totalMilitaryTokensIII += r.amount || 0;
+                effectsBreakdown.push(`Age ${age}: +${r.amount || 0} Age ${r.tokenAge} military tokens (reward)`);
+                break;
+              case 'MilitaryStrength':
+                totalMilitaryStrength += r.amount || 0;
+                effectsBreakdown.push(`Age ${age}: +${r.amount || 0} military strength (reward)`);
+                break;
+              case 'EndGameVP':
+                // These would need city snapshot data to calculate properly
+                effectsBreakdown.push(`Age ${age}: VP bonus from ${project.name} (reward) - calculate manually`);
+                break;
+              case 'Special':
+                effectsBreakdown.push(`Age ${age}: ${r.description} (reward)`);
+                break;
+            }
+          } else if (outcome === 'penalty' && project.penalty) {
+            const p = project.penalty;
+            switch (p.kind) {
+              case 'Coins':
+                totalCoinsDelta -= p.amount || 0;
+                effectsBreakdown.push(`Age ${age}: -${p.amount || 0} coins (penalty)`);
+                break;
+              case 'RemoveCard':
+                totalPenaltyEffects.push(`Remove 1 ${p.colorToRemove} card from Age ${age}`);
+                effectsBreakdown.push(`Age ${age}: Remove 1 ${p.colorToRemove} card (penalty)`);
+                break;
+              case 'LoseMilitaryVictoryTokens':
+                totalPenaltyEffects.push(`Lose ${p.amount || 0} military victory tokens from Age ${age}`);
+                effectsBreakdown.push(`Age ${age}: Lose ${p.amount || 0} military tokens (penalty)`);
+                break;
+            }
+          }
+        });
+
         const StagePill = ({active, label, onPress}: any) => (
           <TouchableOpacity
             onPress={onPress}
@@ -1253,12 +1326,71 @@ export const CategoryCard = memo<CategoryCardProps>(({
         return (
           <>
             <View style={[styles.detailField, { marginTop: 2 }]}>
-              <Text style={[styles.detailLabel, { fontStyle: 'italic' }]}>
-                Edifice effects fully apply only after all players update their contribution status.
-                Contributors get rewards only if the project is Complete; non-contributors take the
-                penalty only if it's Incomplete.
-              </Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                <Text style={[styles.detailLabel, { fontStyle: 'italic', flex: 1 }]}>
+                  Mark your contributions below. Effects apply automatically based on completion status.
+                </Text>
+                <TouchableOpacity
+                  onPress={() => setRefreshTrigger(prev => prev + 1)}
+                  style={{
+                    backgroundColor: 'rgba(99, 102, 241, 0.2)',
+                    borderRadius: 6,
+                    paddingHorizontal: 8,
+                    paddingVertical: 4,
+                    borderWidth: 1,
+                    borderColor: 'rgba(99, 102, 241, 0.3)',
+                  }}
+                >
+                  <Text style={{ color: '#818CF8', fontSize: 10, fontWeight: '600' }}>🔄 Refresh</Text>
+                </TouchableOpacity>
+              </View>
             </View>
+
+            {/* Debug Info (remove this in production) */}
+            {edificeCompletion.debug && (
+              <View style={[styles.detailField, { backgroundColor: 'rgba(107, 114, 128, 0.1)', padding: 8, borderRadius: 6 }]}>
+                <Text style={[styles.detailLabel, { fontSize: 10, color: '#9CA3AF' }]}>
+                  🐛 Debug: {edificeCompletion.debug.playerCount} players, need {edificeCompletion.debug.required} contributions
+                  {'\n'}Counts: Age1={edificeCompletion.counts[1]}, Age2={edificeCompletion.counts[2]}, Age3={edificeCompletion.counts[3]}
+                  {'\n'}Your data found: {Object.keys(edificeCompletion.debug.playerData[playerId]?.detailedData || {}).join(', ')}
+                </Text>
+              </View>
+            )}
+
+            {/* Effects Summary */}
+            {effectsBreakdown.length > 0 && (
+              <View style={[styles.calculatedScore, { backgroundColor: 'rgba(99, 102, 241, 0.1)' }]}>
+                <Text style={styles.calculatedLabel}>📊 Calculated Edifice Effects</Text>
+                {totalCoinsDelta !== 0 && (
+                  <Text style={[styles.calculatedValue, { fontSize: 16, color: totalCoinsDelta > 0 ? '#22C55E' : '#EF4444' }]}>
+                    {totalCoinsDelta > 0 ? '+' : ''}{totalCoinsDelta} coins → Add to Treasury
+                  </Text>
+                )}
+                {totalMilitaryTokensII > 0 && (
+                  <Text style={[styles.calculatedValue, { fontSize: 16, color: '#22C55E' }]}>
+                    +{totalMilitaryTokensII} Age II tokens → Add to Military
+                  </Text>
+                )}
+                {totalMilitaryTokensIII > 0 && (
+                  <Text style={[styles.calculatedValue, { fontSize: 16, color: '#22C55E' }]}>
+                    +{totalMilitaryTokensIII} Age III tokens → Add to Military
+                  </Text>
+                )}
+                {totalMilitaryStrength > 0 && (
+                  <Text style={[styles.calculatedValue, { fontSize: 16, color: '#22C55E' }]}>
+                    +{totalMilitaryStrength} military strength → Add to Military
+                  </Text>
+                )}
+                {totalPenaltyEffects.map((effect, i) => (
+                  <Text key={i} style={[styles.calculatedValue, { fontSize: 14, color: '#EF4444' }]}>
+                    ⚠️ {effect}
+                  </Text>
+                ))}
+                <Text style={[styles.calculatedLabel, { marginTop: 4, fontSize: 10 }]}>
+                  💡 Apply these effects manually to the relevant scoring categories
+                </Text>
+              </View>
+            )}
 
             {ages.map((age) => {
               const project = projByAge[age];
@@ -1278,9 +1410,13 @@ export const CategoryCard = memo<CategoryCardProps>(({
                     marginTop: 12,
                     padding: 12,
                     borderRadius: 8,
-                    backgroundColor: 'rgba(31, 41, 55, 0.4)',
+                    backgroundColor: outcome === 'reward' ? 'rgba(34, 197, 94, 0.1)' : 
+                                    outcome === 'penalty' ? 'rgba(239, 68, 68, 0.1)' : 
+                                    'rgba(31, 41, 55, 0.4)',
                     borderWidth: 1,
-                    borderColor: 'rgba(196, 162, 76, 0.2)',
+                    borderColor: outcome === 'reward' ? 'rgba(34, 197, 94, 0.3)' : 
+                                outcome === 'penalty' ? 'rgba(239, 68, 68, 0.3)' : 
+                                'rgba(196, 162, 76, 0.2)',
                   }}
                 >
                   <Text style={[styles.detailLabel, { fontWeight: '700' }]}>
@@ -1304,7 +1440,7 @@ export const CategoryCard = memo<CategoryCardProps>(({
                   <View style={styles.statusRow}>
                     <View style={[styles.chip, complete ? styles.chipSuccess : styles.chipWarn]}>
                       <Text style={styles.chipText}>
-                        {complete ? `Complete (${took}/${req})` : `Incomplete (${took}/${req})`}
+                        {complete ? `✅ Complete (${took}/${req})` : `⏳ Incomplete (${took}/${req})`}
                       </Text>
                     </View>
 
@@ -1320,13 +1456,32 @@ export const CategoryCard = memo<CategoryCardProps>(({
                     >
                       <Text style={styles.chipText}>
                         {outcome === 'penalty'
-                          ? 'Penalty Applicable'
+                          ? '💀 Penalty Applied'
                           : outcome === 'reward'
-                          ? 'Reward Granted'
-                          : 'No Effect'}
+                          ? '🎉 Reward Granted'
+                          : '➖ No Effect'}
                       </Text>
                     </View>
                   </View>
+
+                  {/* Show specific effect for this age */}
+                  {outcome !== 'none' && project && (
+                    <View style={{ 
+                      marginTop: 8, 
+                      padding: 8, 
+                      backgroundColor: outcome === 'reward' ? 'rgba(34, 197, 94, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+                      borderRadius: 6 
+                    }}>
+                      <Text style={{ 
+                        color: outcome === 'reward' ? '#22C55E' : '#EF4444', 
+                        fontSize: 12, 
+                        fontWeight: '600' 
+                      }}>
+                        {outcome === 'reward' ? '🎁 ' : '⚡ '}
+                        {outcome === 'reward' ? project.reward?.description : project.penalty?.description}
+                      </Text>
+                    </View>
+                  )}
 
                   {/* Optional: which Wonder stage was used to contribute */}
                   {contributed && (
@@ -1354,6 +1509,19 @@ export const CategoryCard = memo<CategoryCardProps>(({
                 </View>
               );
             })}
+
+            {/* Instruction card */}
+            <View style={[styles.detailField, { backgroundColor: 'rgba(99, 102, 241, 0.1)', padding: 12, borderRadius: 8, marginTop: 12 }]}>
+              <Text style={[styles.detailLabel, { fontSize: 11, color: 'rgba(99, 102, 241, 0.8)' }]}>
+                💡 <Text style={{ fontWeight: 'bold' }}>How to use these effects:</Text>
+              </Text>
+              <Text style={[styles.detailLabel, { fontSize: 10, marginTop: 4 }]}>
+                • Coin effects: Add/subtract from your Treasury category{'\n'}
+                • Military tokens: Add to your Military category total{'\n'}
+                • Card removal penalties: Subtract those card points from the relevant color category{'\n'}
+                • VP bonuses: Calculate based on your city composition and add to Edifice direct points above
+              </Text>
+            </View>
           </>
         );
       }

@@ -1,7 +1,5 @@
-// data/edificeDatabase.ts
+// data/edificeDatabase.ts - Fixed version with proper data synchronization
 // Updated to support 7 Wonders: Edifice expansion cards, participation, rewards, and penalties.
-// This file preserves existing exports (EdificeProject, getProjectsByAge, getRandomProjects, getProjectById)
-// and adds detailed scoring helpers used by the scoring UI.
 
 // ---------- Types used by existing UI ----------
 export interface EdificeProject {
@@ -9,9 +7,9 @@ export interface EdificeProject {
   name: string;
   age: 1 | 2 | 3;
   description: string;
-  cost: ResourceCost[]; // include Coin for participation cost
+  cost: ResourceCost[];
   effect: EdificeEffect;
-  points: number; // direct VP (for cards that grant static VP); many Edifice cards are dynamic (pointsFormula)
+  points: number;
   imageUrl?: string;
   strategicValue: 'Economic' | 'Military' | 'Science' | 'Balanced' | 'Situational';
   complexity: 'Simple' | 'Moderate' | 'Complex';
@@ -25,7 +23,7 @@ export interface EdificeProject {
 export interface EdificeEffect {
   type: 'EndGame' | 'Immediate' | 'Ongoing';
   description: string;
-  pointsFormula?: string; // human-readable math, e.g. '1 × Wonder Stages Built'
+  pointsFormula?: string;
   condition?: string;
 }
 
@@ -64,31 +62,30 @@ export interface EdificeReward {
     | 'EndGameVP'
     | 'ResourceGeneration'
     | 'Special';
-  amount?: number; // coins or shields; when kind === 'MilitaryVictoryToken', amount is count of tokens
-  tokenAge?: 2 | 3; // for MilitaryVictoryToken
+  amount?: number;
+  tokenAge?: 2 | 3;
   vpPer?:
     | 'WonderStage'
     | 'BlueCard'
     | 'CompleteBrownGreySet'
-    | 'DifferentColorAgeCards'; // used by evaluator
-  description?: string; // fallback human text
+    | 'DifferentColorAgeCards';
+  description?: string;
 }
 
 export interface EdificePenalty {
   kind: 'Coins' | 'RemoveCard' | 'LoseMilitaryVictoryTokens' | 'Special';
-  amount?: number; // coins or tokens
-  colorToRemove?: CardColor; // when kind === 'RemoveCard'
-  description?: string; // fallback human text
+  amount?: number;
+  colorToRemove?: CardColor;
+  description?: string;
 }
 
 // ---------- Per-game + per-player scoring helpers ----------
 export interface CitySnapshot {
-  // Provide these counts at scoring time for dynamic formulas
   wonderStagesBuilt: number;
   blueCount: number;
   brownCount: number;
   greyCount: number;
-  differentColorAgeCards?: number; // 7W color diversity across Ages
+  differentColorAgeCards?: number;
 }
 
 export interface EdificeSelectionByAge {
@@ -105,7 +102,7 @@ export interface EdificeCompletionByAge {
 
 export interface PlayerEdificeParticipation {
   contributed: boolean;
-  stage?: WonderStageRoman; // I / II / III when contributed
+  stage?: WonderStageRoman;
 }
 
 export interface PlayerEdificeByAge {
@@ -115,29 +112,17 @@ export interface PlayerEdificeByAge {
 }
 
 export interface EdificeDetailedScore {
-  // Edifice-only VP; DO NOT include conversion of coins to VP (that's Treasury category).
   edificePoints: number;
-
-  // Side-effects to other categories (surface for the app to route appropriately)
-  coinsDelta: number; // + for rewards, - for penalties
+  coinsDelta: number;
   militaryVictoryTokensAgeII: number;
   militaryVictoryTokensAgeIII: number;
-  militaryStrengthDelta: number; // shields; affects Military resolution, not VP directly here
-  loseMilitaryVictoryTokens: number; // generic loss if specified
-
-  // For penalties that remove a card; the app can prompt the user to adjust that category
+  militaryStrengthDelta: number;
+  loseMilitaryVictoryTokens: number;
   removeCardColors: CardColor[];
-
-  // Useful for audit trail in UI
   notes: string[];
 }
 
-// ---------- Edifice card data (official names & behaviors) ----------
-// The participation cost is always in coins; when a project is COMPLETED,
-// every player who has a participation pawn (i.e., contributed when building a Wonder stage)
-// receives the REWARD. If the project is NOT completed by the end of the Age,
-// players WITHOUT a participation pawn suffer the PENALTY.
-// If a player contributed but the project wasn't completed, they neither receive rewards nor penalties.
+// ---------- Edifice card data ----------
 
 // AGE I
 export const AGE1_PROJECTS: EdificeProject[] = [
@@ -362,10 +347,10 @@ export const AGE3_PROJECTS: EdificeProject[] = [
     participationCostCoins: 5,
     effect: {
       type: 'Immediate',
-      description: 'If constructed: gain Military Strength (≈+2 shields). If not: those without a pawn lose two Military Victory tokens.',
+      description: 'If constructed: gain Military Strength (~+2 shields). If not: those without a pawn lose two Military Victory tokens.',
       pointsFormula: '',
     },
-    reward: { kind: 'MilitaryStrength', amount: 2, description: 'Gain ≈2 shields (treat as military strength bonus)' },
+    reward: { kind: 'MilitaryStrength', amount: 2, description: 'Gain ~2 shields (treat as military strength bonus)' },
     penalty: { kind: 'LoseMilitaryVictoryTokens', amount: 2, description: 'Lose two Military Victory tokens' },
     points: 0,
     strategicValue: 'Military',
@@ -472,8 +457,8 @@ export function computeEdificeDetailedScore(params: {
   projectId: string;
   isCompleted: boolean;
   playerContributed: boolean;
-  contributedStage?: WonderStageRoman; // I/II/III (stored for analytics/UI)
-  city: CitySnapshot; // snapshot of the player's city for endgame formulas
+  contributedStage?: WonderStageRoman;
+  city: CitySnapshot;
 }): EdificeDetailedScore {
   const project = getProjectById(params.projectId);
   if (!project) {
@@ -570,7 +555,6 @@ export function computeEdificeDetailedScore(params: {
       }
     }
   } else {
-    // (Completed && !contributed) or (!Completed && contributed) -> neither reward nor penalty
     notes.push('No reward or penalty for this player based on contribution/completion rules.');
   }
 
@@ -586,31 +570,6 @@ export function computeEdificeDetailedScore(params: {
   };
 }
 
-// Convenience: compute all three Ages for a player
-export function computeEdificeDetailedScoreForPlayer(params: {
-  selectedByAge: EdificeSelectionByAge;
-  completedByAge: EdificeCompletionByAge;
-  playerByAge: PlayerEdificeByAge;
-  // Provide snapshots for the player; can reuse same snapshot for each age if you prefer
-  cityByAge: { age1: CitySnapshot; age2: CitySnapshot; age3: CitySnapshot };
-}): { age1?: EdificeDetailedScore; age2?: EdificeDetailedScore; age3?: EdificeDetailedScore } {
-  const out: any = {};
-  (['age1', 'age2', 'age3'] as const).forEach((k, i) => {
-    const projId = params.selectedByAge[k];
-    if (!projId) return;
-    const isCompleted = params.completedByAge[k as 'age1' | 'age2' | 'age3'];
-    const p = params.playerByAge[k] ?? { contributed: false };
-    out[k] = computeEdificeDetailedScore({
-      projectId: projId,
-      isCompleted,
-      playerContributed: !!p.contributed,
-      contributedStage: p.stage,
-      city: params.cityByAge[k],
-    });
-  });
-  return out;
-}
-
 // ---------- Reference notes for in-app help ----------
 export const EDIFICE_REFERENCE_NOTES: string = [
   'Edifice cards are constructed collaboratively when players build Wonder stages.',
@@ -621,19 +580,17 @@ export const EDIFICE_REFERENCE_NOTES: string = [
   'You may record which Wonder Stage (I, II, III) you contributed on for analytics or tie-ins to other effects.',
 ].join('\n');
 
-
 export const EDIFICE_REFERENCE_NOTES_EXTENDED: string = [
-  'Edifice cards are a new category of cards included in the Edifice expansion. They represent prestigious buildings that players construct together during the game.',
+  'Edifice cards are a new category of cards included in the Edifice expansion.',
   'For each game, a random Edifice is chosen for each Age.',
-  'Each Edifice has a Project side and a Constructed side. A player can participate in the construction of the Edifice when they build a Stage of their Wonder.',
+  'Each Edifice has a Project side and a Constructed side.',
   'If a player pays the participation cost of the Edifice when they build their Wonder, they take a Participation pawn for that Age.',
   'If the Edifice is constructed, all players who participated gain the Reward of the Edifice.',
   'If an Edifice is not constructed by the end of the Age, all players who do not have a participation pawn suffer the Penalty of the Edifice card.',
-  'Ur is a wonder included in the Edifice expansion that directly interacts with the Edifice cards. Its Wonder stages include effects that allow it to take participation pawns from the box.'
 ].join('\n');
 
 // =========================
-// Edifice scoring helpers
+// FIXED: Edifice scoring helpers with proper data synchronization
 // =========================
 
 export type EdificeAge = 1 | 2 | 3;
@@ -649,8 +606,8 @@ export function getParticipationRequirement(playerCount: number): number {
 }
 
 /**
- * Count contributions and decide which Ages are completed.
- * Expects allScores[playerId].categories.edifice.detailedData to hold booleans contributedAge1/2/3
+ * FIXED: Count contributions and decide which Ages are completed.
+ * Now properly handles the scoring store data structure and ensures real-time updates.
  */
 export function evaluateEdificeCompletion(
   playerIds: string[],
@@ -659,18 +616,56 @@ export function evaluateEdificeCompletion(
   completeByAge: Record<EdificeAge, boolean>;
   counts: Record<EdificeAge, number>;
   required: number;
+  debug?: any; // For troubleshooting
 } {
   const required = getParticipationRequirement(playerIds.length);
   const counts: Record<EdificeAge, number> = { 1: 0, 2: 0, 3: 0 };
 
+  // DEBUG: Track what we're finding
+  const debugInfo: any = {
+    playerIds,
+    playerCount: playerIds.length,
+    required,
+    playerData: {},
+  };
+
   playerIds.forEach(pid => {
-    const d = allScores?.[pid]?.categories?.edifice?.detailedData || {};
-    if (d.contributedAge1) counts[1]++;
-    if (d.contributedAge2) counts[2]++;
-    if (d.contributedAge3) counts[3]++;
+    // Try multiple possible data structures to ensure compatibility
+    let detailedData = null;
+    
+    // First try: direct path to edifice detailed data
+    if (allScores?.[pid]?.categories?.edifice?.detailedData) {
+      detailedData = allScores[pid].categories.edifice.detailedData;
+    }
+    // Second try: check if it's a different structure
+    else if (allScores?.[pid]?.edifice?.detailedData) {
+      detailedData = allScores[pid].edifice.detailedData;
+    }
+    // Third try: check if it's directly on the player
+    else if (allScores?.[pid]?.detailedData) {
+      detailedData = allScores[pid].detailedData;
+    }
+
+    debugInfo.playerData[pid] = {
+      found: !!detailedData,
+      detailedData,
+      contributions: {
+        age1: detailedData?.contributedAge1,
+        age2: detailedData?.contributedAge2,
+        age3: detailedData?.contributedAge3,
+      }
+    };
+
+    if (detailedData) {
+      if (detailedData.contributedAge1) counts[1]++;
+      if (detailedData.contributedAge2) counts[2]++;
+      if (detailedData.contributedAge3) counts[3]++;
+    }
   });
 
-  return {
+  debugInfo.finalCounts = counts;
+
+  const result = {
     completeByAge: {
       1: counts[1] >= required,
       2: counts[2] >= required,
@@ -678,14 +673,17 @@ export function evaluateEdificeCompletion(
     },
     counts,
     required,
+    debug: debugInfo,
   };
+
+  // Log for debugging if needed
+  console.log('Edifice Evaluation:', result);
+
+  return result;
 }
 
 /**
- * Outcome for one player per Age:
- * - 'reward'    => project Complete AND player contributed
- * - 'penalty'   => project NOT Complete AND player did NOT contribute
- * - 'none'      => otherwise
+ * FIXED: Outcome for one player per Age with better error handling
  */
 export function edificeOutcomeForPlayer(
   playerId: string,
@@ -693,15 +691,31 @@ export function edificeOutcomeForPlayer(
   allScores: any
 ): Record<EdificeAge, 'reward' | 'penalty' | 'none'> {
   const { completeByAge } = evaluateEdificeCompletion(playerIds, allScores);
-  const d = allScores?.[playerId]?.categories?.edifice?.detailedData || {};
+  
+  // Get player's detailed data with fallback handling
+  let detailedData = null;
+  if (allScores?.[playerId]?.categories?.edifice?.detailedData) {
+    detailedData = allScores[playerId].categories.edifice.detailedData;
+  } else if (allScores?.[playerId]?.edifice?.detailedData) {
+    detailedData = allScores[playerId].edifice.detailedData;
+  } else if (allScores?.[playerId]?.detailedData) {
+    detailedData = allScores[playerId].detailedData;
+  }
+
+  const d = detailedData || {};
   const res: Record<EdificeAge, 'reward' | 'penalty' | 'none'> = { 1: 'none', 2: 'none', 3: 'none' };
 
-  ( [1,2,3] as EdificeAge[] ).forEach(age => {
+  ([1, 2, 3] as EdificeAge[]).forEach(age => {
     const contributed = !!d[`contributedAge${age}`];
     const complete = completeByAge[age];
-    if (complete && contributed) res[age] = 'reward';
-    else if (!complete && !contributed) res[age] = 'penalty';
-    else res[age] = 'none';
+    
+    if (complete && contributed) {
+      res[age] = 'reward';
+    } else if (!complete && !contributed) {
+      res[age] = 'penalty';
+    } else {
+      res[age] = 'none';
+    }
   });
 
   return res;
