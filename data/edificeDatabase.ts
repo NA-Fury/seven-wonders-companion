@@ -632,3 +632,77 @@ export const EDIFICE_REFERENCE_NOTES_EXTENDED: string = [
   'Ur is a wonder included in the Edifice expansion that directly interacts with the Edifice cards. Its Wonder stages include effects that allow it to take participation pawns from the box.'
 ].join('\n');
 
+// =========================
+// Edifice scoring helpers
+// =========================
+
+export type EdificeAge = 1 | 2 | 3;
+
+// Table: Participation pawns required by player count
+export const PARTICIPATION_PAWNS_TABLE: Record<number, number> = {
+  3: 2, 4: 3, 5: 3, 6: 4, 7: 5,
+};
+
+export function getParticipationRequirement(playerCount: number): number {
+  const clamped = Math.max(3, Math.min(7, playerCount || 3));
+  return PARTICIPATION_PAWNS_TABLE[clamped];
+}
+
+/**
+ * Count contributions and decide which Ages are completed.
+ * Expects allScores[playerId].categories.edifice.detailedData to hold booleans contributedAge1/2/3
+ */
+export function evaluateEdificeCompletion(
+  playerIds: string[],
+  allScores: any
+): {
+  completeByAge: Record<EdificeAge, boolean>;
+  counts: Record<EdificeAge, number>;
+  required: number;
+} {
+  const required = getParticipationRequirement(playerIds.length);
+  const counts: Record<EdificeAge, number> = { 1: 0, 2: 0, 3: 0 };
+
+  playerIds.forEach(pid => {
+    const d = allScores?.[pid]?.categories?.edifice?.detailedData || {};
+    if (d.contributedAge1) counts[1]++;
+    if (d.contributedAge2) counts[2]++;
+    if (d.contributedAge3) counts[3]++;
+  });
+
+  return {
+    completeByAge: {
+      1: counts[1] >= required,
+      2: counts[2] >= required,
+      3: counts[3] >= required,
+    },
+    counts,
+    required,
+  };
+}
+
+/**
+ * Outcome for one player per Age:
+ * - 'reward'    => project Complete AND player contributed
+ * - 'penalty'   => project NOT Complete AND player did NOT contribute
+ * - 'none'      => otherwise
+ */
+export function edificeOutcomeForPlayer(
+  playerId: string,
+  playerIds: string[],
+  allScores: any
+): Record<EdificeAge, 'reward' | 'penalty' | 'none'> {
+  const { completeByAge } = evaluateEdificeCompletion(playerIds, allScores);
+  const d = allScores?.[playerId]?.categories?.edifice?.detailedData || {};
+  const res: Record<EdificeAge, 'reward' | 'penalty' | 'none'> = { 1: 'none', 2: 'none', 3: 'none' };
+
+  ( [1,2,3] as EdificeAge[] ).forEach(age => {
+    const contributed = !!d[`contributedAge${age}`];
+    const complete = completeByAge[age];
+    if (complete && contributed) res[age] = 'reward';
+    else if (!complete && !contributed) res[age] = 'penalty';
+    else res[age] = 'none';
+  });
+
+  return res;
+}

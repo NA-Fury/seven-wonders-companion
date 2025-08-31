@@ -1,5 +1,5 @@
-// components/scoring/CategoryCard.tsx - Fixed Wonder details and stage calculations
-import React, { memo, useCallback, useEffect, useState } from 'react';
+// components/scoring/CategoryCard.tsx - Fixed hook ordering and enhanced Edifice integration
+import React, { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ScrollView,
   StyleSheet,
@@ -8,9 +8,15 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
+import {
+  edificeOutcomeForPlayer,
+  evaluateEdificeCompletion,
+  getProjectById
+} from '../../data/edificeDatabase';
 import { getIslandByName, searchIslands, sumImmediateIslandVP } from '../../data/islandsDatabase';
 import { getLeaderByName, searchLeaders, sumImmediateVP } from '../../data/leadersDatabase';
 import { CategoryKey, CategoryScore, useScoringStore } from '../../store/scoringStore';
+import { useSetupStore } from '../../store/setupStore';
 
 // Get actual wonder stages from the database
 function getWonderStagesData(playerId: string): { stages: any[], wonderName: string } | null {
@@ -169,12 +175,6 @@ const styles = StyleSheet.create({
   checkboxChecked: {
     backgroundColor: '#C4A24C',
   },
-  checkboxLabel: {
-    flex: 1,
-    fontSize: 12,
-    color: 'rgba(243, 231, 211, 0.7)',
-    lineHeight: 16,
-  },
   calculatedScore: {
     marginTop: 12,
     padding: 10,
@@ -221,6 +221,33 @@ const styles = StyleSheet.create({
     color: '#C4A24C',
     textAlign: 'center',
   },
+  checkboxLabel: {
+    flexShrink: 1,
+    color: 'rgba(243, 231, 211, 0.7)',
+    fontSize: 12,
+    lineHeight: 16,
+  },
+  statusRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 10,
+  },
+  chip: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: 'rgba(196,162,76,0.25)',
+    backgroundColor: 'rgba(196,162,76,0.08)',
+    marginRight: 8,
+    marginTop: 6,
+  },
+  chipText: { color: '#F3E7D3', fontSize: 11, fontWeight: '600' },
+  chipNeutral: { borderColor: 'rgba(148,163,184,0.35)', backgroundColor: 'rgba(148,163,184,0.10)' },
+  chipSuccess: { borderColor: 'rgba(34,197,94,0.35)', backgroundColor: 'rgba(34,197,94,0.10)' },
+  chipWarn:    { borderColor: 'rgba(251,191,36,0.35)', backgroundColor: 'rgba(251,191,36,0.10)' },
+  chipDanger:  { borderColor: 'rgba(239,68,68,0.35)', backgroundColor: 'rgba(239,68,68,0.10)' },
 });
 
 interface CategoryCardProps {
@@ -262,35 +289,37 @@ export const CategoryCard = memo<CategoryCardProps>(({
   expansions,
 }) => {
   const { updateCategoryScore, updateDetailedData } = useScoringStore();
+  
+  // Setup info (players + selected Edifice projects) and all scores
+  const { players, edificeProjects } = useSetupStore();
+  const { scores } = useScoringStore() as any;
+
+  // FIXED: Move all memoized calculations here, always computed regardless of category
+  const playerIds = useMemo(() => (players || []).map((p: any) => p.id), [players]);
+  
+  const edificeCompletion = useMemo(
+    () => evaluateEdificeCompletion(playerIds, scores),
+    [playerIds, scores]
+  );
+  
+  const edificeOutcome = useMemo(
+    () => edificeOutcomeForPlayer(playerId, playerIds, scores),
+    [playerId, playerIds, scores]
+  );
+
+  // FIXED: All state hooks declared in consistent order
   const [isFocused, setIsFocused] = useState(false);
   const [showDetailed, setShowDetailed] = useState(false);
   const [inputValue, setInputValue] = useState(
     score?.directPoints !== null && score?.directPoints !== undefined ? String(score.directPoints) : ''
   );
-  
-  // Detailed mode states - typed to avoid implicit any
   const [detailedData, setDetailedData] = useState<Record<string, any>>({});
-
-    // Leaders UI state
-  const [leaderQuery, setLeaderQuery] = useState<string>(''); 
-
-    // Islands UI state (identical pattern to Leaders)
+  const [leaderQuery, setLeaderQuery] = useState<string>('');
   const [islandQuery, setIslandQuery] = useState<string>('');
   
   const config = CATEGORY_CONFIG[category];
   
-  // Reset input value when player changes
-  useEffect(() => {
-    setInputValue(
-      score?.directPoints !== null && score?.directPoints !== undefined 
-        ? String(score.directPoints) 
-        : ''
-    );
-    setShowDetailed(false);
-    setLeaderQuery(''); // Reset leader query when switching players
-    setIslandQuery(''); // Reset island query when switching players
-  }, [playerId, score?.directPoints]);
-  
+  // FIXED: All useCallback hooks declared in consistent order, regardless of category
   const handleInputChange = useCallback((text: string) => {
     setInputValue(text);
     
@@ -324,8 +353,6 @@ export const CategoryCard = memo<CategoryCardProps>(({
             totalPoints += stage.points;
           }
         });
-        
-        // Update the category score with calculated points
         updateCategoryScore(playerId, category, totalPoints, true);
       }
     }
@@ -341,10 +368,10 @@ export const CategoryCard = memo<CategoryCardProps>(({
     if (category === 'islands' && field === 'selectedIslands') {
       const selected: string[] = Array.isArray(value) ? value : [];
       updateCategoryScore(playerId, 'islands', sumImmediateIslandVP(selected), true);
-    } 
+    }
   }, [detailedData, playerId, category, updateCategoryScore, updateDetailedData]);
 
-  // Leaders-specific helper functions
+  // FIXED: All leader-related callbacks declared consistently
   const addLeader = useCallback((name: string) => {
     if (!name) return;
 
@@ -373,20 +400,19 @@ export const CategoryCard = memo<CategoryCardProps>(({
     updateDetailedField('selectedLeaders', newSelected);
   }, [detailedData, updateDetailedField]);
 
-  // Get leader suggestions
-  const suggestions = leaderQuery.length >= 1 ? searchLeaders(leaderQuery, 8) : [];
-
-  // When reading selectedLeaders for rendering, make its type explicit
-  const selectedLeaders: string[] = Array.isArray(detailedData.selectedLeaders) ? (detailedData.selectedLeaders as string[]) : [];
-  const totalDirectVP = sumImmediateVP(selectedLeaders);
-
-  // Islands helpers
+  // FIXED: All island-related callbacks declared consistently
   const addIsland = useCallback((name: string) => {
     if (!name) return;
     const selected: string[] = Array.isArray(detailedData.selectedIslands) ? detailedData.selectedIslands : [];
-    if (selected.some(s => s.toLowerCase() === name.toLowerCase())) { setIslandQuery(''); return; }
+    if (selected.some(s => s.toLowerCase() === name.toLowerCase())) { 
+      setIslandQuery(''); 
+      return; 
+    }
     const island = getIslandByName(name);
-    if (!island) { setIslandQuery(''); return; }
+    if (!island) { 
+      setIslandQuery(''); 
+      return; 
+    }
     updateDetailedField('selectedIslands', [...selected, island.name]);
     setIslandQuery('');
   }, [detailedData, updateDetailedField]);
@@ -396,9 +422,44 @@ export const CategoryCard = memo<CategoryCardProps>(({
     updateDetailedField('selectedIslands', selected.filter(s => s.toLowerCase() !== name.toLowerCase()));
   }, [detailedData, updateDetailedField]);
 
+  // FIXED: Edifice-related callbacks
+  const setEdificeContribution = useCallback((age: 1|2|3, contributed: boolean) => {
+    updateDetailedField(`contributedAge${age}`, contributed);
+    // Clear stage selection when turning off contribution
+    if (!contributed) {
+      updateDetailedField(`contributedStageAge${age}`, undefined);
+    }
+  }, [updateDetailedField]);
+
+  // Reset input value when player changes
+  useEffect(() => {
+    setInputValue(
+      score?.directPoints !== null && score?.directPoints !== undefined 
+        ? String(score.directPoints) 
+        : ''
+    );
+    setShowDetailed(false);
+    setLeaderQuery('');
+    setIslandQuery('');
+  }, [playerId, score?.directPoints]);
+
+  // Keep detailedData in sync with what's in the scoring store for this player/category
+  useEffect(() => {
+    if (score?.detailedData && typeof score.detailedData === 'object') {
+      setDetailedData(score.detailedData);
+    } else {
+      setDetailedData({});
+    }
+  }, [playerId, category, score?.detailedData]);
+
+  // FIXED: Move all computed values after all hooks
+  const suggestions = leaderQuery.length >= 1 ? searchLeaders(leaderQuery, 8) : [];
+  const selectedLeaders: string[] = Array.isArray(detailedData.selectedLeaders) ? (detailedData.selectedLeaders as string[]) : [];
+  const totalDirectVP = sumImmediateVP(selectedLeaders);
+  
   const islandSuggestions = islandQuery.length >= 1 ? searchIslands(islandQuery, 8) : [];
   const selectedIslands: string[] = Array.isArray(detailedData.selectedIslands) ? detailedData.selectedIslands : [];
-  const islandsDirectVP = sumImmediateIslandVP(selectedIslands);  
+  const islandsDirectVP = sumImmediateIslandVP(selectedIslands);
 
   // Render detailed mode based on category
   const renderDetailedMode = () => {
@@ -894,9 +955,6 @@ export const CategoryCard = memo<CategoryCardProps>(({
         );
         
       case 'leaders':
-        const selectedLeaders = Array.isArray(detailedData.selectedLeaders) ? detailedData.selectedLeaders : [];
-        const totalDirectVP = sumImmediateVP(selectedLeaders);
-        
         return (
           <>
             <View style={styles.detailField}>
@@ -1091,7 +1149,7 @@ export const CategoryCard = memo<CategoryCardProps>(({
           </>
         );
         
-      case 'islands': {
+      case 'islands':
         return (
           <>
             <View style={styles.detailField}>
@@ -1139,7 +1197,7 @@ export const CategoryCard = memo<CategoryCardProps>(({
                 <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
                   {selectedIslands.map(name => {
                     const card = getIslandByName(name);
-                    const vp = card?.immediate?.vp ?? 0; // ONLY direct VP shown/applied now
+                    const vp = card?.immediate?.vp ?? 0;
                     return (
                       <View key={name} style={{
                         flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(16,185,129,0.18)',
@@ -1168,56 +1226,138 @@ export const CategoryCard = memo<CategoryCardProps>(({
             </View>
           </>
         );
-      }
-       
-      case 'edifice':
+
+      case 'edifice': {
+        const projByAge: Record<1|2|3, any> = {
+          1: edificeProjects?.age1 ? getProjectById(edificeProjects.age1) : null,
+          2: edificeProjects?.age2 ? getProjectById(edificeProjects.age2) : null,
+          3: edificeProjects?.age3 ? getProjectById(edificeProjects.age3) : null,
+        };
+        const ages: (1|2|3)[] = [1, 2, 3];
+
+        const StagePill = ({active, label, onPress}: any) => (
+          <TouchableOpacity
+            onPress={onPress}
+            style={{
+              paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8,
+              borderWidth: 1,
+              borderColor: active ? '#C4A24C' : 'rgba(196,162,76,0.2)',
+              backgroundColor: active ? 'rgba(196,162,76,0.15)' : 'transparent',
+              marginRight: 8,
+            }}
+          >
+            <Text style={{ color: '#F3E7D3', fontSize: 12 }}>{label}</Text>
+          </TouchableOpacity>
+        );
+
         return (
           <>
-            <View style={styles.detailField}>
-              <Text style={styles.detailLabel}>Completed Edifice Projects</Text>
-              <TextInput
-                style={styles.detailInput}
-                value={detailedData.completedProjects || ''}
-                onChangeText={(text) => updateDetailedField('completedProjects', text)}
-                placeholder="Enter project names"
-                placeholderTextColor="rgba(196, 162, 76, 0.3)"
-              />
+            <View style={[styles.detailField, { marginTop: 2 }]}>
+              <Text style={[styles.detailLabel, { fontStyle: 'italic' }]}>
+                Edifice effects fully apply only after all players update their contribution status.
+                Contributors get rewards only if the project is Complete; non-contributors take the
+                penalty only if it's Incomplete.
+              </Text>
             </View>
-            <View style={styles.detailField}>
-              <Text style={styles.detailLabel}>Contributed Projects (Wonder Stages)</Text>
-              <TextInput
-                style={styles.detailInput}
-                value={detailedData.contributedStages || ''}
-                onChangeText={(text) => updateDetailedField('contributedStages', text)}
-                placeholder="e.g., Age I-Stage 2, Age II-Stage 3"
-                placeholderTextColor="rgba(196, 162, 76, 0.3)"
-              />
-            </View>
-            <View style={styles.detailField}>
-              <Text style={styles.detailLabel}>Rewards Earned</Text>
-              <TextInput
-                style={styles.detailInput}
-                value={detailedData.rewards?.toString() || ''}
-                onChangeText={(text) => updateDetailedField('rewards', parseInt(text) || 0)}
-                keyboardType="number-pad"
-                placeholder="0"
-                placeholderTextColor="rgba(196, 162, 76, 0.3)"
-              />
-            </View>
-            <View style={styles.detailField}>
-              <Text style={styles.detailLabel}>Penalties Incurred</Text>
-              <TextInput
-                style={styles.detailInput}
-                value={detailedData.penalties?.toString() || ''}
-                onChangeText={(text) => updateDetailedField('penalties', parseInt(text) || 0)}
-                keyboardType="number-pad"
-                placeholder="0"
-                placeholderTextColor="rgba(196, 162, 76, 0.3)"
-              />
-            </View>
+
+            {ages.map((age) => {
+              const project = projByAge[age];
+              const contributed = !!detailedData[`contributedAge${age}`];
+              const stageKey = `contributedStageAge${age}`;
+              const stageVal = detailedData[stageKey] as 1 | 2 | 3 | undefined;
+
+              const complete = !!edificeCompletion.completeByAge[age];
+              const took = edificeCompletion.counts[age];
+              const req = edificeCompletion.required;
+              const outcome = edificeOutcome[age]; // 'reward' | 'penalty' | 'none'
+
+              return (
+                <View
+                  key={age}
+                  style={{
+                    marginTop: 12,
+                    padding: 12,
+                    borderRadius: 8,
+                    backgroundColor: 'rgba(31, 41, 55, 0.4)',
+                    borderWidth: 1,
+                    borderColor: 'rgba(196, 162, 76, 0.2)',
+                  }}
+                >
+                  <Text style={[styles.detailLabel, { fontWeight: '700' }]}>
+                    Age {age}: {project ? project.name : '— (no project selected in setup)'}
+                  </Text>
+
+                  {project && (
+                    <Text style={[styles.detailLabel, { fontSize: 11 }]}>
+                      Cost: {project.participationCostCoins} coins • Reward: {project.reward?.description || '—'} • Penalty: {project.penalty?.description || '—'}
+                    </Text>
+                  )}
+
+                  {/* Contribution checkbox */}
+                  <Checkbox
+                    checked={contributed}
+                    onToggle={() => setEdificeContribution(age, !contributed)}
+                    label="I contributed to this project"
+                  />
+
+                  {/* Status chips on their own row (no clipping, wraps neatly) */}
+                  <View style={styles.statusRow}>
+                    <View style={[styles.chip, complete ? styles.chipSuccess : styles.chipWarn]}>
+                      <Text style={styles.chipText}>
+                        {complete ? `Complete (${took}/${req})` : `Incomplete (${took}/${req})`}
+                      </Text>
+                    </View>
+
+                    <View
+                      style={[
+                        styles.chip,
+                        outcome === 'penalty'
+                          ? styles.chipDanger
+                          : outcome === 'reward'
+                          ? styles.chipSuccess
+                          : styles.chipNeutral,
+                      ]}
+                    >
+                      <Text style={styles.chipText}>
+                        {outcome === 'penalty'
+                          ? 'Penalty Applicable'
+                          : outcome === 'reward'
+                          ? 'Reward Granted'
+                          : 'No Effect'}
+                      </Text>
+                    </View>
+                  </View>
+
+                  {/* Optional: which Wonder stage was used to contribute */}
+                  {contributed && (
+                    <View style={{ marginTop: 8 }}>
+                      <Text style={styles.detailLabel}>Wonder Stage used to contribute (optional)</Text>
+                      <View style={{ flexDirection: 'row', marginTop: 6, flexWrap: 'wrap' }}>
+                        <StagePill
+                          active={stageVal === 1}
+                          label="Stage I"
+                          onPress={() => updateDetailedField(stageKey, stageVal === 1 ? undefined : 1)}
+                        />
+                        <StagePill
+                          active={stageVal === 2}
+                          label="Stage II"
+                          onPress={() => updateDetailedField(stageKey, stageVal === 2 ? undefined : 2)}
+                        />
+                        <StagePill
+                          active={stageVal === 3}
+                          label="Stage III"
+                          onPress={() => updateDetailedField(stageKey, stageVal === 3 ? undefined : 3)}
+                        />
+                      </View>
+                    </View>
+                  )}
+                </View>
+              );
+            })}
           </>
         );
-        
+      }
+
       default:
         return (
           <View style={styles.detailField}>
@@ -1280,7 +1420,11 @@ export const CategoryCard = memo<CategoryCardProps>(({
       </View>
       
       {showDetailed && (
-        <ScrollView style={styles.detailedContent} showsVerticalScrollIndicator={false}>
+        <ScrollView
+          style={styles.detailedContent}
+          contentContainerStyle={{ paddingBottom: 16 }}
+          showsVerticalScrollIndicator={false}
+        >
           {renderDetailedMode()}
         </ScrollView>
       )}
