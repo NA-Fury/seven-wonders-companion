@@ -607,7 +607,7 @@ export function getParticipationRequirement(playerCount: number): number {
 
 /**
  * FIXED: Count contributions and decide which Ages are completed.
- * Now properly handles the scoring store data structure and ensures real-time updates.
+ * Enhanced with detailed debugging and multiple data path attempts.
  */
 export function evaluateEdificeCompletion(
   playerIds: string[],
@@ -616,44 +616,49 @@ export function evaluateEdificeCompletion(
   completeByAge: Record<EdificeAge, boolean>;
   counts: Record<EdificeAge, number>;
   required: number;
-  debug?: any; // For troubleshooting
+  debug?: any;
 } {
   const required = getParticipationRequirement(playerIds.length);
   const counts: Record<EdificeAge, number> = { 1: 0, 2: 0, 3: 0 };
 
-  // DEBUG: Track what we're finding
+  // Enhanced debugging - capture everything
   const debugInfo: any = {
     playerIds,
     playerCount: playerIds.length,
     required,
     playerData: {},
+    rawScoreData: allScores,
   };
 
   playerIds.forEach(pid => {
-    // Try multiple possible data structures to ensure compatibility
     let detailedData = null;
+    let dataPath = 'not found';
     
-    // First try: direct path to edifice detailed data
+    // Try multiple possible data structures with detailed logging
     if (allScores?.[pid]?.categories?.edifice?.detailedData) {
       detailedData = allScores[pid].categories.edifice.detailedData;
-    }
-    // Second try: check if it's a different structure
-    else if (allScores?.[pid]?.edifice?.detailedData) {
+      dataPath = 'categories.edifice.detailedData';
+    } else if (allScores?.[pid]?.edifice?.detailedData) {
       detailedData = allScores[pid].edifice.detailedData;
-    }
-    // Third try: check if it's directly on the player
-    else if (allScores?.[pid]?.detailedData) {
+      dataPath = 'edifice.detailedData';
+    } else if (allScores?.[pid]?.detailedData) {
       detailedData = allScores[pid].detailedData;
+      dataPath = 'detailedData';
     }
 
+    // Even more detailed debugging
     debugInfo.playerData[pid] = {
       found: !!detailedData,
-      detailedData,
+      dataPath,
+      rawPlayerData: allScores?.[pid], // Include the raw player data
+      detailedData: detailedData ? { ...detailedData } : null,
       contributions: {
-        age1: detailedData?.contributedAge1,
-        age2: detailedData?.contributedAge2,
-        age3: detailedData?.contributedAge3,
-      }
+        age1: detailedData?.contributedAge1 || false,
+        age2: detailedData?.contributedAge2 || false,
+        age3: detailedData?.contributedAge3 || false,
+      },
+      // Check for any keys that might contain contribution info
+      allKeys: detailedData ? Object.keys(detailedData) : [],
     };
 
     if (detailedData) {
@@ -664,6 +669,11 @@ export function evaluateEdificeCompletion(
   });
 
   debugInfo.finalCounts = counts;
+  debugInfo.completionStatus = {
+    age1: counts[1] >= required,
+    age2: counts[2] >= required,
+    age3: counts[3] >= required,
+  };
 
   const result = {
     completeByAge: {
@@ -676,8 +686,22 @@ export function evaluateEdificeCompletion(
     debug: debugInfo,
   };
 
-  // Log for debugging if needed
-  console.log('Edifice Evaluation:', result);
+  // Enhanced logging
+  console.log('🔍 DETAILED Edifice Evaluation:');
+  console.log('📊 Player count:', playerIds.length, 'Required:', required);
+  console.log('📈 Final counts:', counts);
+  console.log('🎯 Completion status:', result.completeByAge);
+  
+  // Log each player's data in detail
+  playerIds.forEach(pid => {
+    const pData = debugInfo.playerData[pid];
+    console.log(`👤 Player ${pid.substr(-6)}:`, {
+      found: pData.found,
+      dataPath: pData.dataPath,
+      contributions: pData.contributions,
+      allKeys: pData.allKeys,
+    });
+  });
 
   return result;
 }
