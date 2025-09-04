@@ -5,6 +5,7 @@ import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 import { resolveMilitaryConflictsForAll, resolveNavalConflictsForAll } from '../data/conflicts';
 import { computeGuildsForAll } from '../data/guildsResolver';
+import { computeLeadersForAll } from '../data/leadersResolver';
 
 export type ScoringMode = 'direct' | 'detailed';
 
@@ -654,6 +655,69 @@ export const useScoringStore = create<ScoringState>()(
             }
           } catch (e) {
             console.warn('Recompute guilds failed:', e);
+          }
+        }
+
+        // Recompute Leaders indirect VP when affected categories change
+        const leadersAffected = (
+          category === 'leaders' ||
+          category === 'civil' ||
+          category === 'commercial' ||
+          category === 'military' ||
+          category === 'science' ||
+          category === 'cities' ||
+          category === 'treasury'
+        );
+        if (leadersAffected) {
+          try {
+            const setup = require('./setupStore');
+            const orderedPlayers: Array<{ id: string; name: string }> = setup.useSetupStore.getState().getOrderedPlayers();
+            const order = orderedPlayers.map((p: any) => p.id);
+
+            const getSnapshot = (pid: string) => {
+              const ps = state.playerScores[pid];
+              const dd = (k: CategoryKey) => ps?.categories?.[k]?.detailedData || {};
+              const analysis = state.analysisByPlayer[pid] || {};
+              const commercial = dd('commercial');
+              const civil = dd('civil');
+              const military = dd('military');
+              const science = dd('science');
+              const cities = dd('cities');
+              const treasury = dd('treasury');
+              return {
+                brown: analysis.brownCards,
+                grey: analysis.grayCards,
+                blue: civil.blueCardsCount,
+                yellow: (Array.isArray(commercial.selectedYellowCards) ? commercial.selectedYellowCards.length : commercial.yellowCardsCount) || 0,
+                red: military.redCardsCount,
+                green: science.greenCardsCount,
+                black: cities.blackCardsCount,
+                coins: treasury.coins,
+                mvTokensAge1: military.mvTokensAge1,
+                mvTokensAge2: military.mvTokensAge2,
+                mvTokensAge3: military.mvTokensAge3,
+                selectedLeaders: (Array.isArray(dd('leaders').selectedLeaders) ? dd('leaders').selectedLeaders : []),
+              };
+            };
+
+            const totals = computeLeadersForAll({ order, getSnapshot });
+            for (const pid of order) {
+              const indirect = totals[pid]?.totalIndirect ?? 0;
+              const existingDirect = state.playerScores[pid]?.categories?.leaders?.directPoints ?? 0;
+              if (state.playerScores[pid]) {
+                // Combine immediate + indirect into directPoints for computeTotal
+                state.playerScores[pid].categories.leaders.isDetailed = true;
+                state.playerScores[pid].categories.leaders.directPoints = (existingDirect || 0) + indirect;
+              }
+            }
+            // refresh totals
+            for (const pid of Object.keys(state.playerScores)) {
+              const ps = state.playerScores[pid];
+              ps.total = computeTotal(ps.categories);
+              ps.lastUpdated = new Date();
+            }
+          } catch (e) {
+            console.warn('Recompute leaders failed:', e);
           }
         }
 
