@@ -3,6 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { Draft } from 'immer';
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
+import { resolveMilitaryConflictsForAll, resolveNavalConflictsForAll } from '../data/conflicts';
 
 export type ScoringMode = 'direct' | 'detailed';
 
@@ -163,11 +164,11 @@ interface ScoringState {
     points: number | null,
     isDetailed?: boolean
   ) => void;
-  updateDetailedData: (
-    playerId: string,
-    category: CategoryKey,
-    data: Record<string, any>
-  ) => void;
+    updateDetailedData: (
+      playerId: string,
+      category: CategoryKey,
+      data: Record<string, any>
+    ) => void;
   calculateCategoryPoints: (playerId: string, category: CategoryKey) => number;
   batchUpdateScores: (
     updates: Array<{ playerId: string; category: CategoryKey; points: number }>
@@ -358,11 +359,61 @@ export const useScoringStore = create<ScoringState>()(
         } else if (category === 'treasury' && data) {
           calculatedPoints = calculateTreasuryPoints(data as TreasuryDetails);
         }
-        // Add more category calculations as needed
-        
+        // For categories requiring multi-player resolution, recompute globally below
         playerScore.categories[category].calculatedPoints = calculatedPoints;
-        
-        // Recalculate total
+
+        // Recompute conflicts if military/navy detailed data changed
+        const recalcConflicts = category === 'military' || category === 'navy';
+        if (recalcConflicts) {
+          try {
+            // Obtain seating order from setup store to determine adjacency
+            const setup = require('./setupStore');
+            const orderedPlayers: Array<{ id: string; name: string }> = setup.useSetupStore.getState().getOrderedPlayers();
+            const order = orderedPlayers.map((p: any) => p.id);
+
+            // Military
+            {
+              const byPlayer: Record<string, any> = {};
+              for (const pid of order) {
+                byPlayer[pid] = state.playerScores[pid]?.categories?.military?.detailedData || {};
+              }
+              const totals = resolveMilitaryConflictsForAll(order, byPlayer);
+              for (const pid of order) {
+                const pts = totals[pid]?.total ?? 0;
+                if (state.playerScores[pid]) {
+                  state.playerScores[pid].categories.military.isDetailed = true;
+                  state.playerScores[pid].categories.military.calculatedPoints = pts;
+                }
+              }
+            }
+
+            // Navy (only if Armada is active)
+            if (state.gameMetadata?.expansions?.armada) {
+              const byPlayer: Record<string, any> = {};
+              for (const pid of order) {
+                byPlayer[pid] = state.playerScores[pid]?.categories?.navy?.detailedData || {};
+              }
+              const totals = resolveNavalConflictsForAll(order, byPlayer);
+              for (const pid of order) {
+                const pts = totals[pid]?.total ?? 0;
+                if (state.playerScores[pid]) {
+                  state.playerScores[pid].categories.navy.isDetailed = true;
+                  state.playerScores[pid].categories.navy.calculatedPoints = pts;
+                }
+              }
+            }
+          } catch (e) {
+            console.warn('Recompute conflicts failed:', e);
+          }
+          // Recompute totals for all players after conflicts refresh
+          for (const pid of Object.keys(state.playerScores)) {
+            const ps = state.playerScores[pid];
+            ps.total = computeTotal(ps.categories);
+            ps.lastUpdated = new Date();
+          }
+        }
+
+        // Recalculate total for this player (and others below if needed)
         playerScore.total = computeTotal(playerScore.categories);
         playerScore.lastUpdated = new Date();
       });

@@ -248,6 +248,18 @@ const styles = StyleSheet.create({
   chipSuccess: { borderColor: 'rgba(34,197,94,0.35)', backgroundColor: 'rgba(34,197,94,0.10)' },
   chipWarn:    { borderColor: 'rgba(251,191,36,0.35)', backgroundColor: 'rgba(251,191,36,0.10)' },
   chipDanger:  { borderColor: 'rgba(239,68,68,0.35)', backgroundColor: 'rgba(239,68,68,0.10)' },
+
+  /* Added styles used by the military note section to avoid missing style errors */
+  noteCard: {
+    marginTop: 12,
+    backgroundColor: 'rgba(31, 41, 55, 0.15)',
+    padding: 10,
+    borderRadius: 8,
+  },
+  noteText: {
+    color: 'rgba(243, 231, 211, 0.7)',
+    fontSize: 12,
+  },
 });
 
 interface CategoryCardProps {
@@ -1529,11 +1541,91 @@ export const CategoryCard = memo<CategoryCardProps>(({
         );
       }
 
+      case 'military':
+        return (
+          <>
+            <View style={styles.detailField}>
+              <Text style={styles.detailLabel}>Strength by Age</Text>
+              <View style={styles.inlineInputs}>
+                <TextInput
+                  style={styles.smallInput}
+                  value={detailedData.ageI?.toString() || ''}
+                  onChangeText={(text) => updateDetailedField('ageI', parseInt(text) || 0)}
+                  keyboardType="number-pad"
+                  placeholder="Age I"
+                  placeholderTextColor="rgba(196, 162, 76, 0.3)"
+                />
+                <TextInput
+                  style={styles.smallInput}
+                  value={detailedData.ageII?.toString() || ''}
+                  onChangeText={(text) => updateDetailedField('ageII', parseInt(text) || 0)}
+                  keyboardType="number-pad"
+                  placeholder="Age II"
+                  placeholderTextColor="rgba(196, 162, 76, 0.3)"
+                />
+                <TextInput
+                  style={styles.smallInput}
+                  value={detailedData.ageIII?.toString() || ''}
+                  onChangeText={(text) => updateDetailedField('ageIII', parseInt(text) || 0)}
+                  keyboardType="number-pad"
+                  placeholder="Age III"
+                  placeholderTextColor="rgba(196, 162, 76, 0.3)"
+                />
+              </View>
+            </View>
+            <View style={styles.detailField}>
+              <Text style={styles.detailLabel}>Diplomacy (skip conflicts this Age)</Text>
+              <View style={styles.inlineInputs}>
+                <Checkbox
+                  checked={!!detailedData.doveAgeI}
+                  onToggle={() => updateDetailedField('doveAgeI', !detailedData.doveAgeI)}
+                  label="Age I"
+                />
+                <Checkbox
+                  checked={!!detailedData.doveAgeII}
+                  onToggle={() => updateDetailedField('doveAgeII', !detailedData.doveAgeII)}
+                  label="Age II"
+                />
+                <Checkbox
+                  checked={!!detailedData.doveAgeIII}
+                  onToggle={() => updateDetailedField('doveAgeIII', !detailedData.doveAgeIII)}
+                  label="Age III"
+                />
+              </View>
+            </View>
+            <View style={styles.detailField}>
+              <Text style={styles.detailLabel}>Boarding token cards (Armada)</Text>
+              <View style={styles.inlineInputs}>
+                <Checkbox
+                  checked={!!detailedData.playedPontoon}
+                  onToggle={() => updateDetailedField('playedPontoon', !detailedData.playedPontoon)}
+                  label="Pontoon (Age I)"
+                />
+                <Checkbox
+                  checked={!!detailedData.playedBallista}
+                  onToggle={() => updateDetailedField('playedBallista', !detailedData.playedBallista)}
+                  label="Ballista (Age II)"
+                />
+                <Checkbox
+                  checked={!!detailedData.playedPier}
+                  onToggle={() => updateDetailedField('playedPier', !detailedData.playedPier)}
+                  label="Pier (Age III)"
+                />
+              </View>
+            </View>
+            <View style={styles.noteCard}>
+              <Text style={styles.noteText}>
+                Military conflicts auto-score based on strengths and table seating. Diplomacy skips adjacency but Boarding still forces an extra conflict.
+              </Text>
+            </View>
+          </>
+        );
+
       default:
         return (
           <View style={styles.detailField}>
             <Text style={styles.detailLabel}>
-              Detailed entry for {config.name} coming soon! 
+              Detailed entry for {config.name} coming soon!
               Enter direct points above for now.
             </Text>
           </View>
