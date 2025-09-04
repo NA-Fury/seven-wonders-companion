@@ -610,15 +610,15 @@ export const CategoryCard = memo<CategoryCardProps>(({
                 </View>
               </>
             )}
-            {detailedData.coins > 0 && (
+            {(detailedData.coins !== undefined || detailedData.debtFromCards !== undefined || detailedData.debtFromTax !== undefined || detailedData.debtFromPiracy !== undefined || detailedData.commercialPotTaxes !== undefined) && (
               <View style={styles.calculatedScore}>
                 <Text style={styles.calculatedLabel}>Calculated Points</Text>
                 <Text style={styles.calculatedValue}>
-                  {Math.floor((detailedData.coins - 
-                    (detailedData.debtFromCards || 0) - 
-                    (detailedData.debtFromTax || 0) - 
-                    (detailedData.debtFromPiracy || 0) - 
-                    (detailedData.commercialPotTaxes || 0)) / 3)}
+                  {(Math.floor((detailedData.coins || 0) / 3)
+                    - ((detailedData.debtFromCards || 0)
+                    + (detailedData.debtFromTax || 0)
+                    + (detailedData.debtFromPiracy || 0)
+                    + (detailedData.commercialPotTaxes || 0)))}
                 </Text>
               </View>
             )}
@@ -746,30 +746,151 @@ export const CategoryCard = memo<CategoryCardProps>(({
               </View>
             </View>
             <View style={styles.detailField}>
-              <Text style={styles.detailLabel}>Bonus Symbols (from Wonders/Guilds/Leaders/Cities/Islands/etc)</Text>
+              <Text style={styles.detailLabel}>Wild/Choice Symbols (Scientists Guild, Babylon/Carthage, Golden Archipelago, Cities copy)</Text>
               <TextInput
                 style={styles.detailInput}
-                value={detailedData.bonusSymbols?.toString() || ''}
-                onChangeText={(text) => updateDetailedField('bonusSymbols', parseInt(text) || 0)}
+                value={detailedData.choiceTokens?.toString() || ''}
+                onChangeText={(text) => updateDetailedField('choiceTokens', parseInt(text) || 0)}
                 keyboardType="number-pad"
                 placeholder="0"
                 placeholderTextColor="rgba(196, 162, 76, 0.3)"
               />
             </View>
-            {(detailedData.gears > 0 || detailedData.compasses > 0 || detailedData.tablets > 0) && (
-              <View style={styles.calculatedScore}>
-                <Text style={styles.calculatedLabel}>Calculated Points</Text>
-                <Text style={styles.calculatedValue}>
-                  {(() => {
-                    const g = detailedData.gears || 0;
-                    const c = detailedData.compasses || 0;
-                    const t = detailedData.tablets || 0;
-                    const sets = Math.min(g, c, t);
-                    return g*g + c*c + t*t + sets*7;
-                  })()}
-                </Text>
+            <View style={styles.detailField}>
+              <Text style={styles.detailLabel}>Most-Common +1 Tokens (Armada, Emerald Archipelago)</Text>
+              <TextInput
+                style={styles.detailInput}
+                value={detailedData.mostCommonPlusTokens?.toString() || ''}
+                onChangeText={(text) => updateDetailedField('mostCommonPlusTokens', parseInt(text) || 0)}
+                keyboardType="number-pad"
+                placeholder="0"
+                placeholderTextColor="rgba(196, 162, 76, 0.3)"
+              />
+            </View>
+            <View style={styles.detailField}>
+              <Text style={styles.detailLabel}>Neighbor Copies (Cities: Pigeonhole/Band of Spies/Torture Chamber)</Text>
+              <TextInput
+                style={styles.detailInput}
+                value={detailedData.neighborCopies?.toString() || ''}
+                onChangeText={(text) => updateDetailedField('neighborCopies', parseInt(text) || 0)}
+                keyboardType="number-pad"
+                placeholder="0"
+                placeholderTextColor="rgba(196, 162, 76, 0.3)"
+              />
+            </View>
+            <View style={styles.detailField}>
+              <Text style={styles.detailLabel}>Replace One Symbol (Aganice)</Text>
+              <View style={styles.inlineInputs}>
+                <Checkbox
+                  checked={!!detailedData.replaceOneToken}
+                  onToggle={() => updateDetailedField('replaceOneToken', detailedData.replaceOneToken ? 0 : 1)}
+                  label="Use replace-one"
+                />
               </View>
-            )}
+            </View>
+            <View style={styles.detailField}>
+              <Text style={styles.detailLabel}>How many green Science cards did you play?</Text>
+              <TextInput
+                style={styles.detailInput}
+                value={detailedData.greenCardsCount?.toString() || ''}
+                onChangeText={(text) => updateDetailedField('greenCardsCount', parseInt(text) || 0)}
+                keyboardType="number-pad"
+                placeholder="0"
+                placeholderTextColor="rgba(196, 162, 76, 0.3)"
+              />
+            </View>
+            <View style={styles.detailField}>
+              <Text style={styles.detailLabel}>Chain links applied (Science)</Text>
+              <TextInput
+                style={styles.detailInput}
+                value={detailedData.chainLinksUsed?.toString() || ''}
+                onChangeText={(text) => updateDetailedField('chainLinksUsed', parseInt(text) || 0)}
+                keyboardType="number-pad"
+                placeholder="0"
+                placeholderTextColor="rgba(196, 162, 76, 0.3)"
+              />
+            </View>
+            <View style={styles.detailField}>
+              <Text style={styles.detailLabel}>Green cards that added symbols (optional)</Text>
+              <View style={styles.inlineInputs}>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.detailLabel, { fontSize: 10 }]}>+ Compass</Text>
+                  <TextInput
+                    style={styles.smallInput}
+                    value={detailedData.greenAddedCompass?.toString() || ''}
+                    onChangeText={(text) => updateDetailedField('greenAddedCompass', parseInt(text) || 0)}
+                    keyboardType="number-pad"
+                    placeholder="0"
+                    placeholderTextColor="rgba(196, 162, 76, 0.3)"
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.detailLabel, { fontSize: 10 }]}>+ Gear</Text>
+                  <TextInput
+                    style={styles.smallInput}
+                    value={detailedData.greenAddedGear?.toString() || ''}
+                    onChangeText={(text) => updateDetailedField('greenAddedGear', parseInt(text) || 0)}
+                    keyboardType="number-pad"
+                    placeholder="0"
+                    placeholderTextColor="rgba(196, 162, 76, 0.3)"
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.detailLabel, { fontSize: 10 }]}>+ Tablet</Text>
+                  <TextInput
+                    style={styles.smallInput}
+                    value={detailedData.greenAddedTablet?.toString() || ''}
+                    onChangeText={(text) => updateDetailedField('greenAddedTablet', parseInt(text) || 0)}
+                    keyboardType="number-pad"
+                    placeholder="0"
+                    placeholderTextColor="rgba(196, 162, 76, 0.3)"
+                  />
+                </View>
+              </View>
+            </View>
+            <View style={styles.detailField}>
+              <Text style={styles.detailLabel}>Other cards that added symbols (leaders/guilds/black/islands/wonders)</Text>
+              <View style={styles.inlineInputs}>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.detailLabel, { fontSize: 10 }]}>+ Compass</Text>
+                  <TextInput
+                    style={styles.smallInput}
+                    value={detailedData.otherAddedCompass?.toString() || ''}
+                    onChangeText={(text) => updateDetailedField('otherAddedCompass', parseInt(text) || 0)}
+                    keyboardType="number-pad"
+                    placeholder="0"
+                    placeholderTextColor="rgba(196, 162, 76, 0.3)"
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.detailLabel, { fontSize: 10 }]}>+ Gear</Text>
+                  <TextInput
+                    style={styles.smallInput}
+                    value={detailedData.otherAddedGear?.toString() || ''}
+                    onChangeText={(text) => updateDetailedField('otherAddedGear', parseInt(text) || 0)}
+                    keyboardType="number-pad"
+                    placeholder="0"
+                    placeholderTextColor="rgba(196, 162, 76, 0.3)"
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.detailLabel, { fontSize: 10 }]}>+ Tablet</Text>
+                  <TextInput
+                    style={styles.smallInput}
+                    value={detailedData.otherAddedTablet?.toString() || ''}
+                    onChangeText={(text) => updateDetailedField('otherAddedTablet', parseInt(text) || 0)}
+                    keyboardType="number-pad"
+                    placeholder="0"
+                    placeholderTextColor="rgba(196, 162, 76, 0.3)"
+                  />
+                </View>
+              </View>
+            </View>
+            <View style={styles.noteCard}>
+              <Text style={styles.noteText}>
+                Science points auto-calc: wilds balance sets first, most-common tokens add to your current max, and Aganice replaces one symbol if it improves your score.
+              </Text>
+            </View>
           </>
         );
         

@@ -68,9 +68,28 @@ export interface ScienceDetails {
   compasses: number;
   tablets: number;
   gears: number;
-  bonusSymbols: { type: 'compass' | 'tablet' | 'gear'; source: string }[];
-  greenCardsCount: number;
-  chainLinksUsed: number;
+  // Optional fixed bonuses by type (leaders, wonders, etc.)
+  fixedBonuses?: { compass?: number; tablet?: number; gear?: number };
+  // Legacy array support (we will count by type when present)
+  bonusSymbols?: { type: 'compass' | 'tablet' | 'gear'; source?: string }[];
+  // Wild tokens that can be assigned to any symbol at end of game (Scientists Guild, Babylon/Carthage stage, Golden Archipelago, neighbor-copy, etc.)
+  choiceTokens?: number;
+  // Tokens that add +1 to your most common symbol (Armada cards, Emerald Archipelago)
+  mostCommonPlusTokens?: number;
+  // Replace one existing symbol with any symbol (Aganice)
+  replaceOneToken?: number; // 0 or 1 typically
+  // Cities: copy neighbors' science symbol(s) at end of game (treated as choice tokens here)
+  neighborCopies?: number;
+  // Detailed breakdown inputs for better UI guidance (optional)
+  greenCardsCount?: number;
+  greenAddedCompass?: number;
+  greenAddedGear?: number;
+  greenAddedTablet?: number;
+  otherAddedCompass?: number;
+  otherAddedGear?: number;
+  otherAddedTablet?: number;
+  // Misc tracking (optional, not used in calc directly)
+  chainLinksUsed?: number;
   armadaShipPosition?: number;
 }
 
@@ -204,29 +223,77 @@ const CATEGORY_KEYS = [
 ] as const satisfies readonly CategoryKey[];
 
 /**
- * Calculate points for Science category based on detailed data
+ * Calculate points for Science with advanced modifiers.
  */
 const calculateSciencePoints = (details: ScienceDetails): number => {
-  const totalCompasses = details.compasses + details.bonusSymbols.filter(s => s.type === 'compass').length;
-  const totalTablets = details.tablets + details.bonusSymbols.filter(s => s.type === 'tablet').length;
-  const totalGears = details.gears + details.bonusSymbols.filter(s => s.type === 'gear').length;
-  
-  const sets = Math.min(totalCompasses, totalTablets, totalGears);
-  
-  return (totalCompasses * totalCompasses) + 
-         (totalTablets * totalTablets) + 
-         (totalGears * totalGears) + 
-         (sets * 7);
+  const bonusArray = Array.isArray(details.bonusSymbols) ? details.bonusSymbols : [];
+  const countFromBonusArray = (type: 'compass' | 'tablet' | 'gear') =>
+    bonusArray.filter((s) => s.type === type).length;
+
+  // Base counts
+  let a = (details.compasses || 0) + (details.fixedBonuses?.compass || 0) + countFromBonusArray('compass');
+  let b = (details.tablets || 0) + (details.fixedBonuses?.tablet || 0) + countFromBonusArray('tablet');
+  let c = (details.gears || 0) + (details.fixedBonuses?.gear || 0) + countFromBonusArray('gear');
+
+  // Apply additional contributions if provided
+  a += (details.greenAddedCompass || 0) + (details.otherAddedCompass || 0);
+  b += (details.greenAddedTablet || 0) + (details.otherAddedTablet || 0);
+  c += (details.greenAddedGear || 0) + (details.otherAddedGear || 0);
+
+  // Choice tokens (wilds), include neighbor copies as wilds too
+  let wild = (details.choiceTokens || 0) + (details.neighborCopies || 0);
+
+  // Greedy: assign wilds to raise the lowest counts first (maximize sets)
+  while (wild > 0) {
+    // Find the lowest among a,b,c; if tie, any is fine
+    if (a <= b && a <= c) a++;
+    else if (b <= a && b <= c) b++;
+    else c++;
+    wild--;
+  }
+
+  // Most-common-plus tokens: each adds 1 to the current highest symbol (ties allowed among highs)
+  let mcp = details.mostCommonPlusTokens || 0;
+  while (mcp > 0) {
+    // Identify current max; if ties, choose arbitrarily one of the max buckets
+    if (a >= b && a >= c) a++;
+    else if (b >= a && b >= c) b++;
+    else c++;
+    mcp--;
+  }
+
+  // Optionally apply one replace-one move if it improves score (Aganice)
+  const score = (x: number, y: number, z: number) => x * x + y * y + z * z + 7 * Math.min(x, y, z);
+  const baseScore = score(a, b, c);
+  if ((details.replaceOneToken || 0) > 0) {
+    let best = baseScore;
+    const vals = [a, b, c];
+    for (let from = 0; from < 3; from++) {
+      if (vals[from] <= 0) continue;
+      for (let to = 0; to < 3; to++) {
+        if (to === from) continue;
+        const next = [...vals] as number[];
+        next[from] -= 1;
+        next[to] += 1;
+        const cand = score(next[0], next[1], next[2]);
+        if (cand > best) best = cand;
+      }
+    }
+    return best;
+  }
+
+  return baseScore;
 };
 
 /**
  * Calculate points for Treasury based on detailed data
+ * VP = floor(coins / 3) - (sum of all debts/taxes)
  */
 const calculateTreasuryPoints = (details: TreasuryDetails): number => {
-  const totalDebt = details.debtFromCards + details.debtFromTax + 
-                    details.debtFromPiracy + details.commercialPotTaxes;
-  const netCoins = Math.max(0, details.coins - totalDebt);
-  return Math.floor(netCoins / 3);
+  const coins = Math.max(0, details.coins);
+  const totalDebt = (details.debtFromCards || 0) + (details.debtFromTax || 0) +
+                    (details.debtFromPiracy || 0) + (details.commercialPotTaxes || 0);
+  return Math.floor(coins / 3) - totalDebt;
 };
 
 /**
