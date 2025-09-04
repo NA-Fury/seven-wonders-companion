@@ -201,6 +201,26 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: '#C4A24C',
   },
+  shareBar: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: 'rgba(31, 41, 55, 0.6)',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(196, 162, 76, 0.2)'
+  },
+  shareText: { color: 'rgba(243,231,211,0.8)', fontSize: 12 },
+  shareButton: {
+    backgroundColor: '#C4A24C',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(196,162,76,0.4)'
+  },
+  shareButtonText: { color: '#111827', fontWeight: '800', fontSize: 12 },
   breakdownContainer: {
     marginTop: 12,
     paddingTop: 12,

@@ -11,6 +11,7 @@ import Animated, {
   withSpring,
 } from 'react-native-reanimated';
 import { SHIPYARDS_DATABASE, Wonder } from '../../data/wondersDatabase';
+import type { ArmadaShipyard } from '../../data/armadaDatabase';
 import { useSetupStore } from '../../store/setupStore';
 
 interface WonderAssignmentControlsProps {
@@ -391,7 +392,7 @@ export function ShipyardSelector({ players, onComplete, onBack }: ShipyardSelect
           </Text>
           
           <View style={{ flexDirection: 'row', gap: 8 }}>
-            {SHIPYARDS_DATABASE.map((shipyard) => {
+            {(SHIPYARDS_DATABASE as ArmadaShipyard[]).map((shipyard: ArmadaShipyard) => {
               const isSelected = (selectedShipyards[player.id] || wonders[player.id]?.shipyardId) === shipyard.id;
               
               return (
@@ -422,7 +423,7 @@ export function ShipyardSelector({ players, onComplete, onBack }: ShipyardSelect
                     fontSize: 10,
                     textAlign: 'center',
                   }}>
-                    {shipyard.description}
+                    Wonder track: {shipyard.wonderTrack.toUpperCase()}
                   </Text>
                 </Pressable>
               );

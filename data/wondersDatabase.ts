@@ -655,3 +655,6 @@ export function canParticipateAllAges(wonderId: string, side: 'day' | 'night'): 
   if (!meta) return true;
   return side === 'day' ? meta.canParticipateAllAgesDay : meta.canParticipateAllAgesNight;
 }
+
+// Shipyards (Armada) re-export for setup UI compatibility
+export { ARMADA_SHIPYARDS as SHIPYARDS_DATABASE } from './armadaDatabase';

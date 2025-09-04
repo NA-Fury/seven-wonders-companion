@@ -703,11 +703,10 @@ export const useScoringStore = create<ScoringState>()(
             const totals = computeLeadersForAll({ order, getSnapshot });
             for (const pid of order) {
               const indirect = totals[pid]?.totalIndirect ?? 0;
-              const existingDirect = state.playerScores[pid]?.categories?.leaders?.directPoints ?? 0;
               if (state.playerScores[pid]) {
-                // Combine immediate + indirect into directPoints for computeTotal
+                // Keep immediate VP in directPoints; put indirect into calculatedPoints
                 state.playerScores[pid].categories.leaders.isDetailed = true;
-                state.playerScores[pid].categories.leaders.directPoints = (existingDirect || 0) + indirect;
+                state.playerScores[pid].categories.leaders.calculatedPoints = indirect;
               }
             }
             // refresh totals
