@@ -8,12 +8,12 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
+import { searchBlackCards, sumBlackEndGameVP } from '../../data/blackCardsDatabase';
 import {
   edificeOutcomeForPlayer,
   evaluateEdificeCompletion,
   getProjectById
 } from '../../data/edificeDatabase';
-import { computeGuildsForAll } from '../../data/guildsResolver';
 import { getIslandByName, searchIslands, sumImmediateIslandVP } from '../../data/islandsDatabase';
 import { getLeaderByName, searchLeaders, sumImmediateVP } from '../../data/leadersDatabase';
 import { searchPurpleCards } from '../../data/purpleCardsDatabase';
@@ -347,6 +347,7 @@ export const CategoryCard = memo<CategoryCardProps>(({
   const [islandQuery, setIslandQuery] = useState<string>('');
   const [yellowQuery, setYellowQuery] = useState<string>('');
   const [purpleQuery, setPurpleQuery] = useState<string>('');
+  const [blackQuery, setBlackQuery] = useState<string>('');
   
   const config = CATEGORY_CONFIG[category];
   
@@ -497,6 +498,8 @@ export const CategoryCard = memo<CategoryCardProps>(({
   const selectedPurpleCards: string[] = Array.isArray(detailedData.selectedPurpleCards) ? detailedData.selectedPurpleCards : [];
   const yellowSuggestions = yellowQuery.length >= 1 ? searchYellowCards(yellowQuery, 8) : [];
   const selectedYellowCards: string[] = Array.isArray(detailedData.selectedYellowCards) ? detailedData.selectedYellowCards : [];
+  const blackSuggestions = blackQuery.length >= 1 ? searchBlackCards(blackQuery, 8) : [];
+  const selectedBlackCards: string[] = Array.isArray(detailedData.selectedBlackCards) ? detailedData.selectedBlackCards : [];
 
   // Auto-calc Yellow end-game VP when inputs change (uses Analysis Helpers for brown/grey)
   const analysisByPlayer = useScoringStore((s) => s.analysisByPlayer || {});
@@ -522,6 +525,22 @@ export const CategoryCard = memo<CategoryCardProps>(({
       updateCategoryScore(playerId, 'commercial', yellowComputed.total, true);
     }
   }, [category, playerId, yellowComputed.total, updateCategoryScore]);
+
+  // Auto-calc Black (Cities) end-game VP when inputs change
+  const blackCtx = useMemo(() => ({
+    ownBlackCount: (Array.isArray(detailedData.selectedBlackCards) ? detailedData.selectedBlackCards.length : detailedData.blackCardsCount) || 0,
+    mvTokensTotal: detailedData.mvTokensTotal,
+    mvTokensAge2: detailedData.mvTokensAge2,
+    mvTokensAge3: detailedData.mvTokensAge3,
+  }), [detailedData.selectedBlackCards, detailedData.blackCardsCount, detailedData.mvTokensTotal, detailedData.mvTokensAge2, detailedData.mvTokensAge3]);
+
+  const blackComputed = useMemo(() => sumBlackEndGameVP(selectedBlackCards, blackCtx), [selectedBlackCards, blackCtx]);
+
+  useEffect(() => {
+    if (category === 'cities') {
+      updateCategoryScore(playerId, 'cities', blackComputed.total, true);
+    }
+  }, [category, playerId, blackComputed.total, updateCategoryScore]);
 
   // Render detailed mode based on category
   const renderDetailedMode = () => {
@@ -1229,11 +1248,61 @@ export const CategoryCard = memo<CategoryCardProps>(({
       case 'cities':
         return (
           <>
+            {/* Black Cards Picker */}
+            <View style={styles.detailField}>
+              <Text style={styles.detailLabel}>Add a Black (Cities) card you built</Text>
+              <TextInput
+                style={styles.detailInput}
+                value={blackQuery}
+                onChangeText={setBlackQuery}
+                placeholder="Type a black card name (e.g., Secret Net...)"
+                placeholderTextColor="rgba(196, 162, 76, 0.3)"
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+              {blackSuggestions.length > 0 && (
+                <View style={{
+                  marginTop: 6, borderWidth: 1, borderColor: 'rgba(196,162,76,0.2)',
+                  borderRadius: 8, overflow: 'hidden', backgroundColor: 'rgba(28,26,26,0.6)', maxHeight: 220
+                }}>
+                  <ScrollView showsVerticalScrollIndicator={false}>
+                    {blackSuggestions.map((card: any) => (
+                      <TouchableOpacity key={card.id} onPress={() => {
+                        const current: string[] = Array.isArray(detailedData.selectedBlackCards) ? detailedData.selectedBlackCards : [];
+                        if (!current.some(n => n.toLowerCase() === card.name.toLowerCase())) {
+                          updateDetailedField('selectedBlackCards', [...current, card.name]);
+                        }
+                        setBlackQuery('');
+                      }}
+                        style={{ paddingHorizontal: 10, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: 'rgba(196,162,76,0.1)' }}>
+                        <Text style={{ color: '#F3E7D3', fontSize: 14 }}>{card.name} · Age {card.age}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                </View>
+              )}
+              {selectedBlackCards.length > 0 && (
+                <View style={{ marginTop: 8 }}>
+                  <Text style={[styles.detailLabel, { marginBottom: 4 }]}>Selected:</Text>
+                  {selectedBlackCards.map((name: string) => (
+                    <View key={name} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 4 }}>
+                      <Text style={{ color: '#F3E7D3' }}>{name}</Text>
+                      <TouchableOpacity onPress={() => {
+                        const current: string[] = Array.isArray(detailedData.selectedBlackCards) ? detailedData.selectedBlackCards : [];
+                        updateDetailedField('selectedBlackCards', current.filter(n => n.toLowerCase() !== name.toLowerCase()));
+                      }}>
+                        <Text style={{ color: '#EF4444', fontWeight: '600' }}>Remove</Text>
+                      </TouchableOpacity>
+                    </View>
+                  ))}
+                </View>
+              )}
+            </View>
             <View style={styles.detailField}>
               <Text style={styles.detailLabel}>Total Black Cards Played</Text>
               <TextInput
                 style={styles.detailInput}
-                value={detailedData.blackCardsCount?.toString() || ''}
+                value={(selectedBlackCards.length || detailedData.blackCardsCount || 0).toString()}
                 onChangeText={(text) => updateDetailedField('blackCardsCount', parseInt(text) || 0)}
                 keyboardType="number-pad"
                 placeholder="0"
@@ -1251,27 +1320,43 @@ export const CategoryCard = memo<CategoryCardProps>(({
                 placeholderTextColor="rgba(196, 162, 76, 0.3)"
               />
             </View>
+            {/* Tokens for MV-based black cards */}
             <View style={styles.detailField}>
-              <Text style={styles.detailLabel}>Cards Affecting Neighbors (Positive)</Text>
-              <TextInput
-                style={styles.detailInput}
-                value={detailedData.positiveNeighbor?.toString() || ''}
-                onChangeText={(text) => updateDetailedField('positiveNeighbor', parseInt(text) || 0)}
-                keyboardType="number-pad"
-                placeholder="0"
-                placeholderTextColor="rgba(196, 162, 76, 0.3)"
-              />
+              <Text style={styles.detailLabel}>Military Victory Tokens (for end-game VP)</Text>
+              <View style={styles.inlineInputs}>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.detailLabel, { fontSize: 10 }]}>Total</Text>
+                  <TextInput style={styles.smallInput} value={detailedData.mvTokensTotal?.toString() || ''}
+                    onChangeText={(t) => updateDetailedField('mvTokensTotal', parseInt(t) || 0)} keyboardType="number-pad"
+                    placeholder="0" placeholderTextColor="rgba(196, 162, 76, 0.3)" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.detailLabel, { fontSize: 10 }]}>Age II</Text>
+                  <TextInput style={styles.smallInput} value={detailedData.mvTokensAge2?.toString() || ''}
+                    onChangeText={(t) => updateDetailedField('mvTokensAge2', parseInt(t) || 0)} keyboardType="number-pad"
+                    placeholder="0" placeholderTextColor="rgba(196, 162, 76, 0.3)" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.detailLabel, { fontSize: 10 }]}>Age III</Text>
+                  <TextInput style={styles.smallInput} value={detailedData.mvTokensAge3?.toString() || ''}
+                    onChangeText={(t) => updateDetailedField('mvTokensAge3', parseInt(t) || 0)} keyboardType="number-pad"
+                    placeholder="0" placeholderTextColor="rgba(196, 162, 76, 0.3)" />
+                </View>
+              </View>
             </View>
-            <View style={styles.detailField}>
-              <Text style={styles.detailLabel}>Cards Affecting Neighbors (Negative/Tax)</Text>
-              <TextInput
-                style={styles.detailInput}
-                value={detailedData.negativeNeighbor?.toString() || ''}
-                onChangeText={(text) => updateDetailedField('negativeNeighbor', parseInt(text) || 0)}
-                keyboardType="number-pad"
-                placeholder="0"
-                placeholderTextColor="rgba(196, 162, 76, 0.3)"
-              />
+            {/* Calculated Black VP */}
+            <View style={styles.calculatedScore}>
+              <Text style={styles.calculatedLabel}>Calculated Black (Cities) VP</Text>
+              <Text style={styles.calculatedValue}>{blackComputed.total}</Text>
+              {blackComputed.breakdown.filter((b: any) => b.missing && b.missing.length).length > 0 && (
+                <View style={styles.noteCard}>
+                  {blackComputed.breakdown.filter((b: any) => b.missing && b.missing.length).map((b: any, i: number) => (
+                    <Text key={i} style={styles.noteText}>
+                      Note: cannot finalize "{b.name}" — missing {b.missing?.join(', ')}.
+                    </Text>
+                  ))}
+                </View>
+              )}
             </View>
           </>
         );
