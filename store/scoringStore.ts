@@ -4,6 +4,7 @@ import type { Draft } from 'immer';
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 import { resolveMilitaryConflictsForAll, resolveNavalConflictsForAll } from '../data/conflicts';
+import { computeGuildsForAll } from '../data/guildsResolver';
 
 export type ScoringMode = 'direct' | 'detailed';
 
@@ -168,6 +169,8 @@ interface ScoringState {
   gameMetadata: GameMetadata | null;
   playerScores: Record<string, PlayerScore>;
   currentPlayerId: string | null;
+  // Per-player analysis helpers data (e.g., resource card counts)
+  analysisByPlayer: Record<string, { brownCards?: number; greyCards?: number; [k: string]: any }>;
 
   // UI state
   isLoading: boolean;
@@ -177,6 +180,7 @@ interface ScoringState {
   // Actions
   initializeScoring: (playerIds: string[], expansions: any) => void;
   setCurrentPlayer: (playerId: string) => void;
+  updateAnalysisData: (playerId: string, data: Record<string, any>) => void;
   updateCategoryScore: (
     playerId: string,
     category: CategoryKey,
@@ -351,6 +355,7 @@ export const useScoringStore = create<ScoringState>()(
     isLoading: false,
     autoSave: true,
     gameCounter: 0,
+    analysisByPlayer: {},
 
     // Initialize scoring for all players
     initializeScoring: (playerIds: string[], expansions: any) => {
@@ -390,6 +395,83 @@ export const useScoringStore = create<ScoringState>()(
       set((state) => {
         if (state.playerScores[playerId]) {
           state.currentPlayerId = playerId;
+        }
+      });
+    },
+
+    // Update analysis helper data for a player
+    updateAnalysisData: (playerId, data) => {
+      set((state) => {
+        const prev = state.analysisByPlayer[playerId] || {};
+        state.analysisByPlayer[playerId] = { ...prev, ...data };
+
+        // Recompute guilds after analysis data update (affects neighbors' VP)
+        try {
+          const setup = require('./setupStore');
+          const orderedPlayers: Array<{ id: string; name: string }> = setup.useSetupStore.getState().getOrderedPlayers();
+          const order = orderedPlayers.map((p: any) => p.id);
+
+          const getSnapshot = (pid: string) => {
+            const ps = state.playerScores[pid];
+            const dd = (cat: CategoryKey) => ps?.categories?.[cat]?.detailedData || {};
+            const wonderStages = (() => {
+              const w = dd('wonder');
+              return Object.keys(w).filter(k => k.startsWith('stage') && w[k]).length;
+            })();
+            const leadersCount = (() => {
+              const l = dd('leaders');
+              const arr: string[] = Array.isArray(l.selectedLeaders) ? l.selectedLeaders : [];
+              return arr.length;
+            })();
+            const purpleCount = (() => {
+              const g = dd('guild');
+              const arr: string[] = Array.isArray(g.selectedPurpleCards) ? g.selectedPurpleCards : [];
+              return arr.length;
+            })();
+            const commercial = dd('commercial');
+            const civil = dd('civil');
+            const military = dd('military');
+            const science = dd('science');
+            const cities = dd('cities');
+            const treasury = dd('treasury');
+            const edifice = dd('edifice');
+            const analysis = state.analysisByPlayer[pid] || {};
+
+            return {
+              brown: analysis.brownCards,
+              grey: analysis.greyCards,
+              blue: civil.blueCardsCount,
+              yellow: (Array.isArray(commercial.selectedYellowCards) ? commercial.selectedYellowCards.length : commercial.yellowCardsCount) || 0,
+              red: military.redCardsCount,
+              green: science.greenCardsCount,
+              purple: purpleCount,
+              black: cities.blackCardsCount,
+              leaders: leadersCount,
+              wonderStagesBuilt: wonderStages,
+              coins: treasury.coins,
+              edificePawns: {
+                age1: !!edifice.contributedAge1,
+                age2: !!edifice.contributedAge2,
+                age3: !!edifice.contributedAge3,
+              },
+              selectedGuilds: (Array.isArray(dd('guild').selectedPurpleCards) ? dd('guild').selectedPurpleCards : []),
+            };
+          };
+
+          const totals = computeGuildsForAll({ order, getSnapshot });
+          for (const pid of order) {
+            if (state.playerScores[pid]) {
+              state.playerScores[pid].categories.guild.isDetailed = true;
+              state.playerScores[pid].categories.guild.calculatedPoints = totals[pid]?.total ?? 0;
+            }
+          }
+          for (const pid of Object.keys(state.playerScores)) {
+            const ps = state.playerScores[pid];
+            ps.total = computeTotal(ps.categories);
+            ps.lastUpdated = new Date();
+          }
+        } catch (e) {
+          console.warn('Recompute guilds (analysis update) failed:', e);
         }
       });
     },
@@ -477,6 +559,93 @@ export const useScoringStore = create<ScoringState>()(
             const ps = state.playerScores[pid];
             ps.total = computeTotal(ps.categories);
             ps.lastUpdated = new Date();
+          }
+        }
+
+        // Recompute Guilds when any relevant category changes (neighbors dependent)
+        const guildAffected = (
+          category === 'guild' ||
+          category === 'civil' ||
+          category === 'commercial' ||
+          category === 'military' ||
+          category === 'science' ||
+          category === 'cities' ||
+          category === 'leaders' ||
+          category === 'wonder' ||
+          category === 'treasury'
+        );
+        if (guildAffected) {
+          try {
+            const setup = require('./setupStore');
+            const orderedPlayers: Array<{ id: string; name: string }> = setup.useSetupStore.getState().getOrderedPlayers();
+            const order = orderedPlayers.map((p: any) => p.id);
+
+            const getSnapshot = (pid: string) => {
+              const ps = state.playerScores[pid];
+              const dd = (cat: CategoryKey) => ps?.categories?.[cat]?.detailedData || {};
+              const wonderStages = (() => {
+                const w = dd('wonder');
+                return Object.keys(w).filter(k => k.startsWith('stage') && w[k]).length;
+              })();
+              const leadersCount = (() => {
+                const l = dd('leaders');
+                const arr: string[] = Array.isArray(l.selectedLeaders) ? l.selectedLeaders : [];
+                return arr.length;
+              })();
+              const purpleCount = (() => {
+                const g = dd('guild');
+                const arr: string[] = Array.isArray(g.selectedPurpleCards) ? g.selectedPurpleCards : [];
+                return arr.length;
+              })();
+              const selectedGuilds: string[] = (() => {
+                const g = dd('guild');
+                return Array.isArray(g.selectedPurpleCards) ? g.selectedPurpleCards : [];
+              })();
+              const edifice = dd('edifice');
+              const cities = dd('cities');
+              const commercial = dd('commercial');
+              const civil = dd('civil');
+              const military = dd('military');
+              const science = dd('science');
+              const treasury = dd('treasury');
+
+              const analysis = state.analysisByPlayer[pid] || {};
+              return {
+                brown: analysis.brownCards,
+                grey: analysis.greyCards,
+                blue: civil.blueCardsCount,
+                yellow: (Array.isArray(commercial.selectedYellowCards) ? commercial.selectedYellowCards.length : commercial.yellowCardsCount) || 0,
+                red: military.redCardsCount,
+                green: science.greenCardsCount,
+                purple: purpleCount,
+                black: cities.blackCardsCount,
+                leaders: leadersCount,
+                wonderStagesBuilt: wonderStages,
+                coins: treasury.coins,
+                edificePawns: {
+                  age1: !!edifice.contributedAge1,
+                  age2: !!edifice.contributedAge2,
+                  age3: !!edifice.contributedAge3,
+                },
+                selectedGuilds,
+              };
+            };
+
+            const totals = computeGuildsForAll({ order, getSnapshot });
+            for (const pid of order) {
+              if (state.playerScores[pid]) {
+                state.playerScores[pid].categories.guild.isDetailed = true;
+                state.playerScores[pid].categories.guild.calculatedPoints = totals[pid]?.total ?? 0;
+              }
+            }
+            // After guild recompute, refresh overall totals
+            for (const pid of Object.keys(state.playerScores)) {
+              const ps = state.playerScores[pid];
+              ps.total = computeTotal(ps.categories);
+              ps.lastUpdated = new Date();
+            }
+          } catch (e) {
+            console.warn('Recompute guilds failed:', e);
           }
         }
 

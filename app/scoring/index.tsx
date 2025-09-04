@@ -447,8 +447,8 @@ export default function ScoringScreen() {
               playerId={currentPlayerId!}
               wonderData={wonderData}
               onDataUpdate={(data) => {
-                // Store analysis data for later calculations
-                console.log('Analysis data updated:', data);
+                // Persist analysis helper data per player to power yellow/purple/guild calculations
+                useScoringStore.getState().updateAnalysisData(currentPlayerId!, data);
               }}
             />
           </View>

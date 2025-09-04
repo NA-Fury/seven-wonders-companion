@@ -13,9 +13,11 @@ import {
   evaluateEdificeCompletion,
   getProjectById
 } from '../../data/edificeDatabase';
+import { computeGuildsForAll } from '../../data/guildsResolver';
 import { getIslandByName, searchIslands, sumImmediateIslandVP } from '../../data/islandsDatabase';
-import { searchYellowCards, getYellowByName, sumYellowEndGameVP } from '../../data/yellowCardsDatabase';
 import { getLeaderByName, searchLeaders, sumImmediateVP } from '../../data/leadersDatabase';
+import { searchPurpleCards } from '../../data/purpleCardsDatabase';
+import { searchYellowCards, sumYellowEndGameVP } from '../../data/yellowCardsDatabase';
 import { CategoryKey, CategoryScore, useScoringStore } from '../../store/scoringStore';
 import { useSetupStore } from '../../store/setupStore';
 
@@ -344,6 +346,7 @@ export const CategoryCard = memo<CategoryCardProps>(({
   const [leaderQuery, setLeaderQuery] = useState<string>('');
   const [islandQuery, setIslandQuery] = useState<string>('');
   const [yellowQuery, setYellowQuery] = useState<string>('');
+  const [purpleQuery, setPurpleQuery] = useState<string>('');
   
   const config = CATEGORY_CONFIG[category];
   
@@ -490,22 +493,27 @@ export const CategoryCard = memo<CategoryCardProps>(({
   const islandSuggestions = islandQuery.length >= 1 ? searchIslands(islandQuery, 8) : [];
   const selectedIslands: string[] = Array.isArray(detailedData.selectedIslands) ? detailedData.selectedIslands : [];
   const islandsDirectVP = sumImmediateIslandVP(selectedIslands);
+  const purpleSuggestions = purpleQuery.length >= 1 ? searchPurpleCards(purpleQuery, 8) : [];
+  const selectedPurpleCards: string[] = Array.isArray(detailedData.selectedPurpleCards) ? detailedData.selectedPurpleCards : [];
   const yellowSuggestions = yellowQuery.length >= 1 ? searchYellowCards(yellowQuery, 8) : [];
   const selectedYellowCards: string[] = Array.isArray(detailedData.selectedYellowCards) ? detailedData.selectedYellowCards : [];
 
-  // Auto-calc Yellow end-game VP when inputs change
+  // Auto-calc Yellow end-game VP when inputs change (uses Analysis Helpers for brown/grey)
+  const analysisByPlayer = useScoringStore((s) => s.analysisByPlayer || {});
   const yellowCtx = useMemo(() => {
     const wd = playerScores?.[playerId]?.categories?.wonder?.detailedData || {};
     const autoStages = Object.keys(wd).filter((k) => k.startsWith('stage') && wd[k]).length;
+    const analysis = analysisByPlayer[playerId] || {};
+    const redFromMilitary = playerScores?.[playerId]?.categories?.military?.detailedData?.redCardsCount;
     return {
       yellowCount: selectedYellowCards.length || detailedData.yellowCardsCount || 0,
-      brownCount: detailedData.brownCityCount,
-      greyCount: detailedData.greyCityCount,
-      redCount: detailedData.redCityCount,
-      wonderStagesBuilt: detailedData.wonderStagesBuilt ?? autoStages,
-      commercialLevel: detailedData.commercialLevel,
+      brownCount: (detailedData as any).brownCityCount ?? analysis.brownCards,
+      greyCount: (detailedData as any).greyCityCount ?? analysis.greyCards,
+      redCount: (detailedData as any).redCityCount ?? redFromMilitary,
+      wonderStagesBuilt: (detailedData as any).wonderStagesBuilt ?? autoStages,
+      commercialLevel: (detailedData as any).commercialLevel,
     };
-  }, [playerScores, playerId, selectedYellowCards, detailedData.brownCityCount, detailedData.greyCityCount, detailedData.redCityCount, detailedData.wonderStagesBuilt, detailedData.yellowCardsCount, detailedData.commercialLevel]);
+  }, [analysisByPlayer, playerScores, playerId, selectedYellowCards, detailedData]);
 
   const yellowComputed = useMemo(() => sumYellowEndGameVP(selectedYellowCards, yellowCtx), [selectedYellowCards, yellowCtx]);
 
@@ -1061,29 +1069,7 @@ export const CategoryCard = memo<CategoryCardProps>(({
                 placeholderTextColor="rgba(196, 162, 76, 0.3)"
               />
             </View>
-            <View style={styles.detailField}>
-              <Text style={styles.detailLabel}>Your City Card Counts (for end-game VP)</Text>
-              <View style={styles.inlineInputs}>
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.detailLabel, { fontSize: 10 }]}>Brown</Text>
-                  <TextInput style={styles.smallInput} value={detailedData.brownCityCount?.toString() || ''}
-                    onChangeText={(t) => updateDetailedField('brownCityCount', parseInt(t) || 0)} keyboardType="number-pad"
-                    placeholder="0" placeholderTextColor="rgba(196, 162, 76, 0.3)" />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.detailLabel, { fontSize: 10 }]}>Grey</Text>
-                  <TextInput style={styles.smallInput} value={detailedData.greyCityCount?.toString() || ''}
-                    onChangeText={(t) => updateDetailedField('greyCityCount', parseInt(t) || 0)} keyboardType="number-pad"
-                    placeholder="0" placeholderTextColor="rgba(196, 162, 76, 0.3)" />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.detailLabel, { fontSize: 10 }]}>Red</Text>
-                  <TextInput style={styles.smallInput} value={detailedData.redCityCount?.toString() || ''}
-                    onChangeText={(t) => updateDetailedField('redCityCount', parseInt(t) || 0)} keyboardType="number-pad"
-                    placeholder="0" placeholderTextColor="rgba(196, 162, 76, 0.3)" />
-                </View>
-              </View>
-            </View>
+            {/* Brown/Grey/Red now sourced from Analysis Helpers and other detailed categories */}
             <View style={styles.detailField}>
               <Text style={styles.detailLabel}>Wonder Stages Built (auto if Wonder detailed used)</Text>
               <TextInput
@@ -1172,25 +1158,131 @@ export const CategoryCard = memo<CategoryCardProps>(({
         return (
           <>
             <View style={styles.detailField}>
-              <Text style={styles.detailLabel}>Guild Cards Played (enter names)</Text>
+              <Text style={styles.detailLabel}>Add a Purple (Guild) card you built</Text>
               <TextInput
                 style={styles.detailInput}
-                value={detailedData.guildNames || ''}
-                onChangeText={(text) => updateDetailedField('guildNames', text)}
-                placeholder="e.g., Traders Guild, Builders Guild"
+                value={purpleQuery}
+                onChangeText={setPurpleQuery}
+                placeholder="Type a purple card name (e.g., Traders...)"
                 placeholderTextColor="rgba(196, 162, 76, 0.3)"
+                autoCapitalize="none"
+                autoCorrect={false}
               />
+              {purpleSuggestions.length > 0 && (
+                <View style={{
+                  marginTop: 6, borderWidth: 1, borderColor: 'rgba(196,162,76,0.2)',
+                  borderRadius: 8, overflow: 'hidden', backgroundColor: 'rgba(28,26,26,0.6)', maxHeight: 220
+                }}>
+                  <ScrollView showsVerticalScrollIndicator={false}>
+                    {purpleSuggestions.map(card => (
+                      <TouchableOpacity key={card.id} onPress={() => {
+                        const current: string[] = Array.isArray(detailedData.selectedPurpleCards) ? detailedData.selectedPurpleCards : [];
+                        if (!current.some(n => n.toLowerCase() === card.name.toLowerCase())) {
+                          updateDetailedField('selectedPurpleCards', [...current, card.name]);
+                        }
+                        setPurpleQuery('');
+                      }}
+                        style={{ paddingHorizontal: 10, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: 'rgba(196,162,76,0.1)' }}>
+                        <Text style={{ color: '#F3E7D3', fontSize: 14 }}>{card.name}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                </View>
+              )}
+              {selectedPurpleCards.length > 0 && (
+                <View style={{ marginTop: 8 }}>
+                  <Text style={[styles.detailLabel, { marginBottom: 4 }]}>Selected:</Text>
+                  {selectedPurpleCards.map((name: string) => (
+                    <View key={name} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 4 }}>
+                      <Text style={{ color: '#F3E7D3' }}>{name}</Text>
+                      <TouchableOpacity onPress={() => {
+                        const current: string[] = Array.isArray(detailedData.selectedPurpleCards) ? detailedData.selectedPurpleCards : [];
+                        updateDetailedField('selectedPurpleCards', current.filter(n => n.toLowerCase() !== name.toLowerCase()));
+                      }}>
+                        <Text style={{ color: '#EF4444', fontWeight: '600' }}>Remove</Text>
+                      </TouchableOpacity>
+                    </View>
+                  ))}
+                </View>
+              )}
             </View>
-            <View style={styles.detailField}>
-              <Text style={styles.detailLabel}>Total Points from Guild Cards</Text>
-              <TextInput
-                style={styles.detailInput}
-                value={detailedData.totalPoints?.toString() || ''}
-                onChangeText={(text) => updateDetailedField('totalPoints', parseInt(text) || 0)}
-                keyboardType="number-pad"
-                placeholder="0"
-                placeholderTextColor="rgba(196, 162, 76, 0.3)"
-              />
+            {selectedPurpleCards.some(n => n.toLowerCase() === 'scientists guild'.toLowerCase()) && (
+              <View style={styles.noteCard}>
+                <Text style={styles.noteText}>
+                  Scientists Guild adds 1 Science choice symbol (no direct VP). Update this under Science detailed mode.
+                </Text>
+              </View>
+            )}
+            {/* Calculated Guild VP and missing info */}
+            {(() => {
+              try {
+                const order = playerIds;
+                const getSnapshot = (pid: string) => {
+                  const ps = playerScores[pid];
+                  const dd = (k: CategoryKey) => (ps?.categories?.[k]?.detailedData) || {};
+                  const wonderStages = (() => {
+                    const w = dd('wonder');
+                    return Object.keys(w).filter(k => k.startsWith('stage') && w[k]).length;
+                  })();
+                  const leaders = (() => {
+                    const l = dd('leaders');
+                    const arr = Array.isArray(l.selectedLeaders) ? l.selectedLeaders : [];
+                    return arr.length;
+                  })();
+                  const purple = (() => {
+                    const g = dd('guild');
+                    const arr = Array.isArray(g.selectedPurpleCards) ? g.selectedPurpleCards : [];
+                    return arr.length;
+                  })();
+                  const commercial = dd('commercial');
+                  const civil = dd('civil');
+                  const military = dd('military');
+                  const science = dd('science');
+                  const cities = dd('cities');
+                  const treasury = dd('treasury');
+                  const edifice = dd('edifice');
+                  return {
+                    brown: commercial.brownCityCount,
+                    grey: commercial.greyCityCount,
+                    blue: civil.blueCardsCount,
+                    yellow: (Array.isArray(commercial.selectedYellowCards) ? commercial.selectedYellowCards.length : commercial.yellowCardsCount) || 0,
+                    red: military.redCardsCount,
+                    green: science.greenCardsCount,
+                    purple,
+                    black: cities.blackCardsCount,
+                    leaders,
+                    wonderStagesBuilt: wonderStages,
+                    coins: treasury.coins,
+                    edificePawns: { age1: !!edifice.contributedAge1, age2: !!edifice.contributedAge2, age3: !!edifice.contributedAge3 },
+                    selectedGuilds: (Array.isArray(dd('guild').selectedPurpleCards) ? dd('guild').selectedPurpleCards : []),
+                  };
+                };
+                const totals = computeGuildsForAll({ order, getSnapshot });
+                const myTotals = totals[playerId];
+                const missing = (myTotals?.breakdown || []).filter(b => b.missing && b.missing.length);
+                return (
+                  <View style={styles.calculatedScore}>
+                    <Text style={styles.calculatedLabel}>Calculated Guild VP</Text>
+                    <Text style={styles.calculatedValue}>{myTotals?.total ?? 0}</Text>
+                    {missing.length > 0 && (
+                      <View style={styles.noteCard}>
+                        {missing.map((b, i) => (
+                          <Text key={i} style={styles.noteText}>
+                            Note: cannot finalize "{b.name}" — missing {b.missing?.join(', ')}. Update these in relevant categories.
+                          </Text>
+                        ))}
+                      </View>
+                    )}
+                  </View>
+                );
+              } catch (e) {
+                return null;
+              }
+            })()}
+            <View style={styles.noteCard}>
+              <Text style={styles.noteText}>
+                Guild VP auto-updates when you or neighbors enter details (card counts, wonder stages, leaders, coins). Missing info per card will be flagged.
+              </Text>
             </View>
           </>
         );
