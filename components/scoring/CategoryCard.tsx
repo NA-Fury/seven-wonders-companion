@@ -14,6 +14,7 @@ import {
   getProjectById
 } from '../../data/edificeDatabase';
 import { getIslandByName, searchIslands, sumImmediateIslandVP } from '../../data/islandsDatabase';
+import { searchYellowCards, getYellowByName, sumYellowEndGameVP } from '../../data/yellowCardsDatabase';
 import { getLeaderByName, searchLeaders, sumImmediateVP } from '../../data/leadersDatabase';
 import { CategoryKey, CategoryScore, useScoringStore } from '../../store/scoringStore';
 import { useSetupStore } from '../../store/setupStore';
@@ -342,6 +343,7 @@ export const CategoryCard = memo<CategoryCardProps>(({
   const [detailedData, setDetailedData] = useState<Record<string, any>>({});
   const [leaderQuery, setLeaderQuery] = useState<string>('');
   const [islandQuery, setIslandQuery] = useState<string>('');
+  const [yellowQuery, setYellowQuery] = useState<string>('');
   
   const config = CATEGORY_CONFIG[category];
   
@@ -488,6 +490,30 @@ export const CategoryCard = memo<CategoryCardProps>(({
   const islandSuggestions = islandQuery.length >= 1 ? searchIslands(islandQuery, 8) : [];
   const selectedIslands: string[] = Array.isArray(detailedData.selectedIslands) ? detailedData.selectedIslands : [];
   const islandsDirectVP = sumImmediateIslandVP(selectedIslands);
+  const yellowSuggestions = yellowQuery.length >= 1 ? searchYellowCards(yellowQuery, 8) : [];
+  const selectedYellowCards: string[] = Array.isArray(detailedData.selectedYellowCards) ? detailedData.selectedYellowCards : [];
+
+  // Auto-calc Yellow end-game VP when inputs change
+  const yellowCtx = useMemo(() => {
+    const wd = playerScores?.[playerId]?.categories?.wonder?.detailedData || {};
+    const autoStages = Object.keys(wd).filter((k) => k.startsWith('stage') && wd[k]).length;
+    return {
+      yellowCount: selectedYellowCards.length || detailedData.yellowCardsCount || 0,
+      brownCount: detailedData.brownCityCount,
+      greyCount: detailedData.greyCityCount,
+      redCount: detailedData.redCityCount,
+      wonderStagesBuilt: detailedData.wonderStagesBuilt ?? autoStages,
+      commercialLevel: detailedData.commercialLevel,
+    };
+  }, [playerScores, playerId, selectedYellowCards, detailedData.brownCityCount, detailedData.greyCityCount, detailedData.redCityCount, detailedData.wonderStagesBuilt, detailedData.yellowCardsCount, detailedData.commercialLevel]);
+
+  const yellowComputed = useMemo(() => sumYellowEndGameVP(selectedYellowCards, yellowCtx), [selectedYellowCards, yellowCtx]);
+
+  useEffect(() => {
+    if (category === 'commercial') {
+      updateCategoryScore(playerId, 'commercial', yellowComputed.total, true);
+    }
+  }, [category, playerId, yellowComputed.total, updateCategoryScore]);
 
   // Render detailed mode based on category
   const renderDetailedMode = () => {
@@ -962,11 +988,62 @@ export const CategoryCard = memo<CategoryCardProps>(({
       case 'commercial':
         return (
           <>
+            {/* Yellow Cards Picker */}
+            <View style={styles.detailField}>
+              <Text style={styles.detailLabel}>Add a Yellow (Commercial) card you built</Text>
+              <TextInput
+                style={styles.detailInput}
+                value={yellowQuery}
+                onChangeText={setYellowQuery}
+                placeholder="Type a yellow card name (e.g., Light...)"
+                placeholderTextColor="rgba(196, 162, 76, 0.3)"
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+              {yellowSuggestions.length > 0 && (
+                <View style={{
+                  marginTop: 6, borderWidth: 1, borderColor: 'rgba(196,162,76,0.2)',
+                  borderRadius: 8, overflow: 'hidden', backgroundColor: 'rgba(28,26,26,0.6)', maxHeight: 220
+                }}>
+                  <ScrollView showsVerticalScrollIndicator={false}>
+                    {yellowSuggestions.map(card => (
+                      <TouchableOpacity key={card.id} onPress={() => {
+                        const current: string[] = Array.isArray(detailedData.selectedYellowCards) ? detailedData.selectedYellowCards : [];
+                        if (!current.some(n => n.toLowerCase() === card.name.toLowerCase())) {
+                          updateDetailedField('selectedYellowCards', [...current, card.name]);
+                        }
+                        setYellowQuery('');
+                      }}
+                        style={{ paddingHorizontal: 10, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: 'rgba(196,162,76,0.1)' }}>
+                        <Text style={{ color: '#F3E7D3', fontSize: 14 }}>{card.name} · Age {card.age}{card.endGameVP ? ' · end-game VP' : ''}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                </View>
+              )}
+              {selectedYellowCards.length > 0 && (
+                <View style={{ marginTop: 8 }}>
+                  <Text style={[styles.detailLabel, { marginBottom: 4 }]}>Selected:</Text>
+                  {selectedYellowCards.map((name: string) => (
+                    <View key={name} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 4 }}>
+                      <Text style={{ color: '#F3E7D3' }}>{name}</Text>
+                      <TouchableOpacity onPress={() => {
+                        const current: string[] = Array.isArray(detailedData.selectedYellowCards) ? detailedData.selectedYellowCards : [];
+                        updateDetailedField('selectedYellowCards', current.filter(n => n.toLowerCase() !== name.toLowerCase()));
+                      }}>
+                        <Text style={{ color: '#EF4444', fontWeight: '600' }}>Remove</Text>
+                      </TouchableOpacity>
+                    </View>
+                  ))}
+                </View>
+              )}
+            </View>
+
             <View style={styles.detailField}>
               <Text style={styles.detailLabel}>Total Yellow Cards Played</Text>
               <TextInput
                 style={styles.detailInput}
-                value={detailedData.yellowCardsCount?.toString() || ''}
+                value={(selectedYellowCards.length || detailedData.yellowCardsCount || 0).toString()}
                 onChangeText={(text) => updateDetailedField('yellowCardsCount', parseInt(text) || 0)}
                 keyboardType="number-pad"
                 placeholder="0"
@@ -984,6 +1061,57 @@ export const CategoryCard = memo<CategoryCardProps>(({
                 placeholderTextColor="rgba(196, 162, 76, 0.3)"
               />
             </View>
+            <View style={styles.detailField}>
+              <Text style={styles.detailLabel}>Your City Card Counts (for end-game VP)</Text>
+              <View style={styles.inlineInputs}>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.detailLabel, { fontSize: 10 }]}>Brown</Text>
+                  <TextInput style={styles.smallInput} value={detailedData.brownCityCount?.toString() || ''}
+                    onChangeText={(t) => updateDetailedField('brownCityCount', parseInt(t) || 0)} keyboardType="number-pad"
+                    placeholder="0" placeholderTextColor="rgba(196, 162, 76, 0.3)" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.detailLabel, { fontSize: 10 }]}>Grey</Text>
+                  <TextInput style={styles.smallInput} value={detailedData.greyCityCount?.toString() || ''}
+                    onChangeText={(t) => updateDetailedField('greyCityCount', parseInt(t) || 0)} keyboardType="number-pad"
+                    placeholder="0" placeholderTextColor="rgba(196, 162, 76, 0.3)" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.detailLabel, { fontSize: 10 }]}>Red</Text>
+                  <TextInput style={styles.smallInput} value={detailedData.redCityCount?.toString() || ''}
+                    onChangeText={(t) => updateDetailedField('redCityCount', parseInt(t) || 0)} keyboardType="number-pad"
+                    placeholder="0" placeholderTextColor="rgba(196, 162, 76, 0.3)" />
+                </View>
+              </View>
+            </View>
+            <View style={styles.detailField}>
+              <Text style={styles.detailLabel}>Wonder Stages Built (auto if Wonder detailed used)</Text>
+              <TextInput
+                style={styles.detailInput}
+                value={(() => {
+                  const wd = playerScores?.[playerId]?.categories?.wonder?.detailedData || {};
+                  const auto = Object.keys(wd).filter(k => k.startsWith('stage') && wd[k]).length;
+                  return (detailedData.wonderStagesBuilt ?? auto ?? 0).toString();
+                })()}
+                onChangeText={(text) => updateDetailedField('wonderStagesBuilt', parseInt(text) || 0)}
+                keyboardType="number-pad"
+                placeholder="0"
+                placeholderTextColor="rgba(196, 162, 76, 0.3)"
+              />
+            </View>
+            {expansions?.armada && (
+              <View style={styles.detailField}>
+                <Text style={styles.detailLabel}>Commercial Level (Yellow Naval Track)</Text>
+                <TextInput
+                  style={styles.detailInput}
+                  value={detailedData.commercialLevel?.toString() || ''}
+                  onChangeText={(text) => updateDetailedField('commercialLevel', parseInt(text) || 0)}
+                  keyboardType="number-pad"
+                  placeholder="0"
+                  placeholderTextColor="rgba(196, 162, 76, 0.3)"
+                />
+              </View>
+            )}
             {expansions?.armada && (
               <>
                 <View style={styles.detailField}>
@@ -1010,6 +1138,20 @@ export const CategoryCard = memo<CategoryCardProps>(({
                 </View>
               </>
             )}
+            {/* Auto-calc end-game VP for yellow cards */}
+            <View style={styles.calculatedScore}>
+              <Text style={styles.calculatedLabel}>Calculated Yellow VP</Text>
+              <Text style={styles.calculatedValue}>{yellowComputed.total}</Text>
+              {yellowComputed.breakdown.filter(b => b.missing && b.missing.length).length > 0 && (
+                <View style={styles.noteCard}>
+                  {yellowComputed.breakdown.filter(b => b.missing && b.missing.length).map((b, i) => (
+                    <Text key={i} style={styles.noteText}>
+                      Note: cannot finalize "{b.name}" — missing {b.missing?.join(', ')}. Update these in Analysis Helpers or fields above.
+                    </Text>
+                  ))}
+                </View>
+              )}
+            </View>
             {expansions?.cities && (
               <View style={styles.detailField}>
                 <Text style={styles.detailLabel}>Cities Expansion Cards</Text>
