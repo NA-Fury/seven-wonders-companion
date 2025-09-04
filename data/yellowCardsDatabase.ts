@@ -40,17 +40,17 @@ export const YELLOW_CARDS: YellowCard[] = [
   { id: 'vineyard', name: 'Vineyard', age: 1, notes: ['Coins by brown (you+neighbors)'] },
   { id: 'bazaar', name: 'Bazaar', age: 1, notes: ['Coins by grey (you+neighbors)'] },
   // End-game VP providers:
-  { id: 'lighthouse', name: 'Lighthouse', age: 2, endGameVP: true, notes: ['VP per yellow in your City'] },
-  { id: 'haven', name: 'Haven', age: 3, endGameVP: true, notes: ['VP per brown in your City'] },
-  { id: 'chamber_of_commerce', name: 'Chamber of Commerce', age: 3, endGameVP: true, notes: ['VP per grey in your City'] },
-  { id: 'ludus', name: 'Ludus', age: 3, endGameVP: true, notes: ['VP per red in your City'] },
-  { id: 'arena', name: 'Arena', age: 3, endGameVP: true, notes: ['VP per Wonder stage in your City'] },
+  { id: 'lighthouse', name: 'Lighthouse', age: 2, endGameVP: true, notes: ['1 VP per yellow in your City'] },
+  { id: 'haven', name: 'Haven', age: 3, endGameVP: true, notes: ['1 VP per brown in your City'] },
+  { id: 'chamber_of_commerce', name: 'Chamber of Commerce', age: 3, endGameVP: true, notes: ['2 VP per grey in your City'] },
+  { id: 'ludus', name: 'Ludus', age: 3, endGameVP: true, notes: ['1 VP per red in your City'] },
+  { id: 'arena', name: 'Arena', age: 3, endGameVP: true, notes: ['1 VP per Wonder stage in your City'] },
   // Armada (yellow) with end-game VP
-  { id: 'port_customs', name: 'Port Customs', age: 3, endGameVP: true, notes: ['VP = 2 x commercial level'] },
+  { id: 'port_customs', name: 'Port Customs', age: 3, endGameVP: true, notes: ['VP = 2 x commercial pot level'] },
+  { id: 'pirate_crew', name: 'Pirate Crew', age: 3, notes: ['Gain 4 VP. Coins, others lose coins by commercial level'] },
   // Armada coins/tax cards
   { id: 'pirate_hideout', name: 'Pirate Hideout', age: 1, notes: ['Coins, others lose coins by commercial level'] },
   { id: 'pirates_den', name: "Pirate's Den", age: 2, notes: ['Coins, others lose coins by commercial level'] },
-  { id: 'pirate_crew', name: 'Pirate Crew', age: 3, notes: ['Coins, others lose coins by commercial level'] },
   { id: 'eastern_emporium', name: 'Eastern Emporium', age: 2, notes: ['Discount'] },
   { id: 'western_emporium', name: 'Western Emporium', age: 3, notes: ['Discount'] },
 ];

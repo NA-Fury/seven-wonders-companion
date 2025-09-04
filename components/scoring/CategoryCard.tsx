@@ -1213,74 +1213,11 @@ export const CategoryCard = memo<CategoryCardProps>(({
                 </Text>
               </View>
             )}
-            {/* Calculated Guild VP and missing info */}
-            {(() => {
-              try {
-                const order = playerIds;
-                const getSnapshot = (pid: string) => {
-                  const ps = playerScores[pid];
-                  const dd = (k: CategoryKey) => (ps?.categories?.[k]?.detailedData) || {};
-                  const wonderStages = (() => {
-                    const w = dd('wonder');
-                    return Object.keys(w).filter(k => k.startsWith('stage') && w[k]).length;
-                  })();
-                  const leaders = (() => {
-                    const l = dd('leaders');
-                    const arr = Array.isArray(l.selectedLeaders) ? l.selectedLeaders : [];
-                    return arr.length;
-                  })();
-                  const purple = (() => {
-                    const g = dd('guild');
-                    if (typeof (g as any).purpleCardsCount === 'number') return (g as any).purpleCardsCount as number;
-                    const arr = Array.isArray((g as any).selectedPurpleCards) ? (g as any).selectedPurpleCards : [];
-                    return arr.length;
-                  })();
-                  const commercial = dd('commercial');
-                  const civil = dd('civil');
-                  const military = dd('military');
-                  const science = dd('science');
-                  const cities = dd('cities');
-                  const treasury = dd('treasury');
-                  const analysis = useScoringStore.getState().analysisByPlayer || {};
-                  const edifice = dd('edifice');
-                  return {
-                    brown: analysis[pid]?.brownCards,
-                    grey: analysis[pid]?.grayCards,
-                    blue: civil.blueCardsCount,
-                    yellow: (Array.isArray(commercial.selectedYellowCards) ? commercial.selectedYellowCards.length : commercial.yellowCardsCount) || 0,
-                    red: military.redCardsCount,
-                    green: science.greenCardsCount,
-                    purple,
-                    black: cities.blackCardsCount,
-                    leaders,
-                    wonderStagesBuilt: wonderStages,
-                    coins: treasury.coins,
-                    edificePawns: { age1: !!edifice.contributedAge1, age2: !!edifice.contributedAge2, age3: !!edifice.contributedAge3 },
-                    selectedGuilds: (Array.isArray(dd('guild').selectedPurpleCards) ? dd('guild').selectedPurpleCards : []),
-                  };
-                };
-                const totals = computeGuildsForAll({ order, getSnapshot });
-                const myTotals = totals[playerId];
-                const missing = (myTotals?.breakdown || []).filter(b => b.missing && b.missing.length);
-                return (
-                  <View style={styles.calculatedScore}>
-                    <Text style={styles.calculatedLabel}>Calculated Guild VP</Text>
-                    <Text style={styles.calculatedValue}>{myTotals?.total ?? 0}</Text>
-                    {missing.length > 0 && (
-                      <View style={styles.noteCard}>
-                        {missing.map((b, i) => (
-                          <Text key={i} style={styles.noteText}>
-                            Note: cannot finalize "{b.name}" — missing {b.missing?.join(', ')}. Update these in relevant categories.
-                          </Text>
-                        ))}
-                      </View>
-                    )}
-                  </View>
-                );
-              } catch (e) {
-                return null;
-              }
-            })()}
+            {/* Calculated Guild VP (store-sourced) */}
+            <View style={styles.calculatedScore}>
+              <Text style={styles.calculatedLabel}>Calculated Guild VP</Text>
+              <Text style={styles.calculatedValue}>{playerScores?.[playerId]?.categories?.guild?.calculatedPoints ?? 0}</Text>
+            </View>
             <View style={styles.noteCard}>
               <Text style={styles.noteText}>
                 Guild VP auto-updates when you or neighbors enter details (card counts, wonder stages, leaders, coins). Missing info per card will be flagged.
