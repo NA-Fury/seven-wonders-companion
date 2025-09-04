@@ -292,7 +292,8 @@ export const CategoryCard = memo<CategoryCardProps>(({
   
   // Setup info (players + selected Edifice projects) and all scores
   const { players, edificeProjects } = useSetupStore();
-  const { scores } = useScoringStore() as any;
+  // Use correct store key instead of a non-existent `scores`
+  const playerScores = useScoringStore((s) => s.playerScores);
 
   // FIXED: Move all memoized calculations here with better dependency tracking
   const playerIds = useMemo(() => (players || []).map((p: any) => p.id), [players]);
@@ -303,21 +304,21 @@ export const CategoryCard = memo<CategoryCardProps>(({
   const edificeCompletion = useMemo(
     () => {
       console.log('🔄 Recalculating edifice completion...', { playerIds: playerIds.length, refreshTrigger });
-      const result = evaluateEdificeCompletion(playerIds, scores);
+      const result = evaluateEdificeCompletion(playerIds, playerScores);
       console.log('📊 Edifice completion result:', result);
       return result;
     },
-    [playerIds, scores, refreshTrigger]
+    [playerIds, playerScores, refreshTrigger]
   );
   
   const edificeOutcome = useMemo(
     () => {
       console.log('🎯 Recalculating edifice outcome for player:', playerId);
-      const result = edificeOutcomeForPlayer(playerId, playerIds, scores);
+      const result = edificeOutcomeForPlayer(playerId, playerIds, playerScores);
       console.log('🎲 Edifice outcome result:', result);
       return result;
     },
-    [playerId, playerIds, scores, refreshTrigger]
+    [playerId, playerIds, playerScores, refreshTrigger]
   );
 
   // FIXED: All state hooks declared in consistent order
@@ -442,6 +443,8 @@ export const CategoryCard = memo<CategoryCardProps>(({
     if (!contributed) {
       updateDetailedField(`contributedStageAge${age}`, undefined);
     }
+    // Force recompute in case store selector memoization delays updates
+    setRefreshTrigger((prev) => prev + 1);
   }, [updateDetailedField]);
 
   // Reset input value when player changes
