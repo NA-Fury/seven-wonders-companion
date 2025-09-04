@@ -1,5 +1,5 @@
 // components/scoring/AnalysisHelpers.tsx - Helper categories for detailed calculations
-import React, { memo, useState } from 'react';
+import React, { memo, useEffect, useState } from 'react';
 import {
   StyleSheet,
   Text,
@@ -126,6 +126,22 @@ export const AnalysisHelpers = memo<AnalysisHelpersProps>(({
     grayCards: 0,
     customData: {},
   });
+
+  // Hydrate from store when switching players (per-player inputs)
+  useEffect(() => {
+    try {
+      const { useScoringStore } = require('../../store/scoringStore');
+      const saved = useScoringStore.getState().analysisByPlayer?.[playerId];
+      if (saved) {
+        setResourceData((prev) => ({
+          ...prev,
+          brownCards: typeof saved.brownCards === 'number' ? saved.brownCards : prev.brownCards,
+          grayCards: typeof saved.grayCards === 'number' ? saved.grayCards : prev.grayCards,
+          customData: saved.customData ?? prev.customData,
+        }));
+      }
+    } catch {}
+  }, [playerId]);
   
   const [showCustomQuestions, setShowCustomQuestions] = useState(false);
   const [customQuestions, setCustomQuestions] = useState<Array<{ id: string; question: string; value: string }>>([]);

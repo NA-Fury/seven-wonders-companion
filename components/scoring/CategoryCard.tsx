@@ -508,7 +508,7 @@ export const CategoryCard = memo<CategoryCardProps>(({
     return {
       yellowCount: selectedYellowCards.length || detailedData.yellowCardsCount || 0,
       brownCount: (detailedData as any).brownCityCount ?? analysis.brownCards,
-      greyCount: (detailedData as any).greyCityCount ?? analysis.greyCards,
+      greyCount: (detailedData as any).greyCityCount ?? analysis.grayCards,
       redCount: (detailedData as any).redCityCount ?? redFromMilitary,
       wonderStagesBuilt: (detailedData as any).wonderStagesBuilt ?? autoStages,
       commercialLevel: (detailedData as any).commercialLevel,
@@ -1231,7 +1231,8 @@ export const CategoryCard = memo<CategoryCardProps>(({
                   })();
                   const purple = (() => {
                     const g = dd('guild');
-                    const arr = Array.isArray(g.selectedPurpleCards) ? g.selectedPurpleCards : [];
+                    if (typeof (g as any).purpleCardsCount === 'number') return (g as any).purpleCardsCount as number;
+                    const arr = Array.isArray((g as any).selectedPurpleCards) ? (g as any).selectedPurpleCards : [];
                     return arr.length;
                   })();
                   const commercial = dd('commercial');
@@ -1240,10 +1241,11 @@ export const CategoryCard = memo<CategoryCardProps>(({
                   const science = dd('science');
                   const cities = dd('cities');
                   const treasury = dd('treasury');
+                  const analysis = useScoringStore.getState().analysisByPlayer || {};
                   const edifice = dd('edifice');
                   return {
-                    brown: commercial.brownCityCount,
-                    grey: commercial.greyCityCount,
+                    brown: analysis[pid]?.brownCards,
+                    grey: analysis[pid]?.grayCards,
                     blue: civil.blueCardsCount,
                     yellow: (Array.isArray(commercial.selectedYellowCards) ? commercial.selectedYellowCards.length : commercial.yellowCardsCount) || 0,
                     red: military.redCardsCount,

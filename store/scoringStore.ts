@@ -425,7 +425,8 @@ export const useScoringStore = create<ScoringState>()(
             })();
             const purpleCount = (() => {
               const g = dd('guild');
-              const arr: string[] = Array.isArray(g.selectedPurpleCards) ? g.selectedPurpleCards : [];
+              if (typeof (g as any).purpleCardsCount === 'number') return (g as any).purpleCardsCount as number;
+              const arr: string[] = Array.isArray((g as any).selectedPurpleCards) ? (g as any).selectedPurpleCards : [];
               return arr.length;
             })();
             const commercial = dd('commercial');
@@ -439,7 +440,7 @@ export const useScoringStore = create<ScoringState>()(
 
             return {
               brown: analysis.brownCards,
-              grey: analysis.greyCards,
+              grey: analysis.grayCards,
               blue: civil.blueCardsCount,
               yellow: (Array.isArray(commercial.selectedYellowCards) ? commercial.selectedYellowCards.length : commercial.yellowCardsCount) || 0,
               red: military.redCardsCount,
@@ -612,7 +613,7 @@ export const useScoringStore = create<ScoringState>()(
               const analysis = state.analysisByPlayer[pid] || {};
               return {
                 brown: analysis.brownCards,
-                grey: analysis.greyCards,
+                grey: analysis.grayCards,
                 blue: civil.blueCardsCount,
                 yellow: (Array.isArray(commercial.selectedYellowCards) ? commercial.selectedYellowCards.length : commercial.yellowCardsCount) || 0,
                 red: military.redCardsCount,
