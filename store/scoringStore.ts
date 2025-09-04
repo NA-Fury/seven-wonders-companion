@@ -529,7 +529,14 @@ export const useScoringStore = create<ScoringState>()(
               }
               const totals = resolveMilitaryConflictsForAll(order, byPlayer);
               for (const pid of order) {
-                const pts = totals[pid]?.total ?? 0;
+                let pts = totals[pid]?.total ?? 0;
+                // Add immediate bonuses from selected Black (Cities) cards that grant MV tokens
+                const citiesDD = state.playerScores[pid]?.categories?.cities?.detailedData || {};
+                const selected: string[] = Array.isArray(citiesDD.selectedBlackCards) ? citiesDD.selectedBlackCards : [];
+                const names = selected.map((n) => String(n).toLowerCase());
+                if (names.some(n => n === 'raider camp' || n === 'raider_camp')) pts += 1;
+                if (names.some(n => n === 'raider fort' || n === 'raider_fort')) pts += 3;
+                if (names.some(n => n === 'raider garrison' || n === 'raider_garrison')) pts += 5;
                 if (state.playerScores[pid]) {
                   state.playerScores[pid].categories.military.isDetailed = true;
                   state.playerScores[pid].categories.military.calculatedPoints = pts;

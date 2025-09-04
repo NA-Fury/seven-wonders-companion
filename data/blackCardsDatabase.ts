@@ -15,6 +15,7 @@ export interface BlackCard {
   // Non-VP end-game effects for synergy (not scored here):
   scienceNeighborCopy?: boolean; // Pigeonhole/Band of Spies/Torture Chamber
   diplomacy?: boolean;           // Residence/Consulate/Embassy (Age-based token, not scored here)
+  directVP?: number;             // printed immediate VP
   notes?: string[];
 }
 
@@ -33,45 +34,45 @@ export const BLACK_CARDS: BlackCard[] = [
   { id: 'west_clandestine_wharf', name: 'West Clandestine Wharf', age: 1 },
   { id: 'east_clandestine_wharf', name: 'East Clandestine Wharf', age: 1 },
   { id: 'secret_warehouse', name: 'Secret Warehouse', age: 1 },
-  { id: 'city_gates', name: 'City Gates', age: 1 },
-  { id: 'customs', name: 'Customs', age: 1 },
+  { id: 'city_gates', name: 'City Gates', age: 1, directVP: 4 },
+  { id: 'customs', name: 'Customs', age: 1, directVP: 4 },
   { id: 'dive', name: 'Dive', age: 1 },
   { id: 'opium_stash', name: 'Opium Stash', age: 1 },
-  { id: 'hideout', name: 'Hideout', age: 1 },
-  { id: 'raider_camp', name: 'Raider Camp', age: 1 },
+  { id: 'hideout', name: 'Hideout', age: 1, directVP: 2 },
+  { id: 'raider_camp', name: 'Raider Camp', age: 1 }, // Gain an Age I Military victory token. Your neighbors each take a Debt. (Here add 1 VP to the Detailed Military Score and make a note of it so user can see it being applied)
   { id: 'militia_black', name: 'Militia (Black)', age: 1 },
-  { id: 'residence', name: 'Residence', age: 1, diplomacy: true },
+  { id: 'residence', name: 'Residence', age: 1, diplomacy: true, directVP: 1 },
   { id: 'pigeonhole', name: 'Pigeonhole', age: 1, scienceNeighborCopy: true },
 
   // Age II
   { id: 'black_market', name: 'Black Market', age: 2 },
-  { id: 'architect_firm', name: 'Architect Firm', age: 2 },
-  { id: 'tabularium', name: 'Tabularium', age: 2 },
-  { id: 'trade_center', name: 'Trade Center', age: 2 },
+  { id: 'architect_firm', name: 'Architect Firm', age: 2, directVP: 2 },
+  { id: 'tabularium', name: 'Tabularium', age: 2, directVP: 6 },
+  { id: 'trade_center', name: 'Trade Center', age: 2, directVP: 6 },
   { id: 'gambling_den', name: 'Gambling Den', age: 2 },
   { id: 'opium_den', name: 'Opium Den', age: 2 },
-  { id: 'lair', name: 'Lair', age: 2 },
-  { id: 'sepulcher', name: 'Sepulcher', age: 2 },
-  { id: 'raider_fort', name: 'Raider Fort', age: 2 },
-  { id: 'guardhouse_black', name: 'Guardhouse (Black)', age: 2, endGame: { type: 'perMvTokensAge', age: 2 } },
+  { id: 'lair', name: 'Lair', age: 2, directVP: 3 },
+  { id: 'sepulcher', name: 'Sepulcher', age: 2 }, // Gain 4 VP. All players except you lose 1 Coin per Military Victory token they have.
+  { id: 'raider_fort', name: 'Raider Fort', age: 2 }, // Gain an Age II Military victory token. Your neighbors each take a Debt. (Here add 3 VP to the Detailed Military Score and make a note of it so user can see it being applied)
+  { id: 'guardhouse_black', name: 'Guardhouse (Black)', age: 2, endGame: { type: 'perMvTokensAge', age: 2 } }, // At game end, gain 3 VP for each Age II Military Victory token you have. (Syncronize with Military scoring and make a note of it so user can see it being applied as well as See if RAIDER FORT is selected and add 3 VP per token)
   { id: 'mercenaries_black', name: 'Mercenaries (Black)', age: 2 },
-  { id: 'consulate', name: 'Consulate', age: 2, diplomacy: true },
+  { id: 'consulate', name: 'Consulate', age: 2, diplomacy: true }, // Gain 2 VP. Take a Diplomacy token.
   { id: 'band_of_spies', name: 'Band of Spies', age: 2, scienceNeighborCopy: true },
   { id: 'forging_agency', name: 'Forging Agency', age: 2 },
 
   // Age III
-  { id: 'capitol_black', name: 'Capitol (Black)', age: 3 },
-  { id: 'mint_black', name: 'Mint (Black)', age: 3 },
+  { id: 'capitol_black', name: 'Capitol (Black)', age: 3, directVP: 8 },
+  { id: 'mint_black', name: 'Mint (Black)', age: 3, directVP: 8 },
   { id: 'opium_distillery', name: 'Opium Distillery', age: 3 },
-  { id: 'brotherhood', name: 'Brotherhood', age: 3 },
-  { id: 'chamber_of_builders', name: 'Chamber of Builders', age: 3 },
-  { id: 'cenotaph', name: 'Cenotaph', age: 3 },
-  { id: 'secret_network', name: 'Secret Network', age: 3, endGame: { type: 'perOwnBlack' } },
-  { id: 'slave_market', name: 'Slave Market', age: 3, endGame: { type: 'perMvTokensTotal' } },
-  { id: 'raider_garrison', name: 'Raider Garrison', age: 3 },
-  { id: 'prison', name: 'Prison', age: 3, endGame: { type: 'perMvTokensAge', age: 3 } },
+  { id: 'brotherhood', name: 'Brotherhood', age: 3, directVP: 4 },
+  { id: 'chamber_of_builders', name: 'Chamber of Builders', age: 3, directVP: 4 },
+  { id: 'cenotaph', name: 'Cenotaph', age: 3, directVP: 5 },
+  { id: 'secret_network', name: 'Secret Network', age: 3, endGame: { type: 'perOwnBlack' } }, // Gain 1 Coin for each black card in your City. At game end, Gain 1 VP for each black card in your City.
+  { id: 'slave_market', name: 'Slave Market', age: 3, endGame: { type: 'perMvTokensTotal' } }, // Gain 1 Coin for each Military Victory token you have. At game end, Gain 1 VP for each Military Victory token you have. (Syncronize with Military scoring and make a note of it so user can see it being applied as well)
+  { id: 'raider_garrison', name: 'Raider Garrison', age: 3 }, // // Gain an Age III Military victory token. Your neighbors each take a Debt. (Here add 5 VP to the Detailed Military Score and make a note of it so user can see it being applied)
+  { id: 'prison', name: 'Prison', age: 3, endGame: { type: 'perMvTokensAge', age: 3 } }, // At game end, gain 4 VP for each Age III Military Victory token you have. (Syncronize with Military scoring and make a note of it so user can see it being applied as well as See if RAIDER GARRISON is selected and add 3 VP per token)
   { id: 'contingient', name: 'Contingient', age: 3 },
-  { id: 'embassy_black', name: 'Embassy (Black)', age: 3, diplomacy: true },
+  { id: 'embassy_black', name: 'Embassy (Black)', age: 3, diplomacy: true, directVP: 2 },
   { id: 'memorial', name: 'Memorial', age: 3 },
   { id: 'torture_chamber', name: 'Torture Chamber', age: 3, scienceNeighborCopy: true },
 ];
@@ -103,10 +104,12 @@ export function sumBlackEndGameVP(selectedNames: string[], ctx: BlackScoringCont
   for (const name of selectedNames) {
     const card = getBlackByName(name);
     if (!card) continue;
-    if (!card.endGame) {
-      breakdown.push({ name: card.name, vp: 0 });
-      continue;
+    // Direct VP
+    if (typeof card.directVP === 'number') {
+      breakdown.push({ name: card.name, vp: card.directVP });
+      total += card.directVP;
     }
+    if (!card.endGame) continue;
     let vp = 0;
     const missing: string[] = [];
     switch (card.endGame.type) {
@@ -133,4 +136,3 @@ export function sumBlackEndGameVP(selectedNames: string[], ctx: BlackScoringCont
   }
   return { total, breakdown };
 }
-

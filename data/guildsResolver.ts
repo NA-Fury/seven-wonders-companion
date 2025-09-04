@@ -76,7 +76,7 @@ export function computeGuildsForAll(input: GuildResolverInput): Record<PlayerId,
       const m: string[] = [];
       if (left.grey == null) m.push('left.grey');
       if (right.grey == null) m.push('right.grey');
-      const vp = (left.grey || 0) + (right.grey || 0);
+      const vp = 2 * ((left.grey || 0) + (right.grey || 0));
       breakdown.push({ name: 'Craftsmens Guild', vp, missing: m.length ? m : undefined });
       total += vp;
     }
@@ -121,7 +121,7 @@ export function computeGuildsForAll(input: GuildResolverInput): Record<PlayerId,
       const m: string[] = [];
       if (left.purple == null) m.push('left.purple');
       if (right.purple == null) m.push('right.purple');
-      const vp = (left.purple || 0) + (right.purple || 0);
+      const vp = 3 * ((left.purple || 0) + (right.purple || 0));
       breakdown.push({ name: 'Architects Guild', vp, missing: m.length ? m : undefined });
       total += vp;
     }
@@ -171,7 +171,7 @@ export function computeGuildsForAll(input: GuildResolverInput): Record<PlayerId,
       const m: string[] = [];
       if (me.wonderStagesBuilt == null) m.push('self.wonderStagesBuilt');
       const allBuilt = (me.wonderStagesBuilt || 0) >= 3; // assume 3 total stages typical
-      const vp = allBuilt ? 1 : 0;
+      const vp = allBuilt ? 7 : 0;
       breakdown.push({ name: 'Decorators Guild', vp, missing: m.length ? m : undefined });
       total += vp;
     }
@@ -197,15 +197,15 @@ export function computeGuildsForAll(input: GuildResolverInput): Record<PlayerId,
       const m: string[] = [];
       if (!me.edificePawns) m.push('edifice.pawns (Age I/II/III)');
       const hasAll = !!(me.edificePawns?.age1 && me.edificePawns?.age2 && me.edificePawns?.age3);
-      const vp = hasAll ? 1 : 0;
+      const vp = hasAll ? 7 : 0;
       breakdown.push({ name: 'Engineers Guild', vp, missing: m.length ? m : undefined });
       total += vp;
     }
 
     // Forgers Guild: treat as +1 VP; (coins loss effect ignored here, handled in Treasury by user)
     if (has('Forgers Guild')) {
-      breakdown.push({ name: 'Forgers Guild', vp: 1 });
-      total += 1;
+      breakdown.push({ name: 'Forgers Guild', vp: 5 });
+      total += 5;
     }
 
     result[pid] = { total, breakdown };
@@ -213,4 +213,3 @@ export function computeGuildsForAll(input: GuildResolverInput): Record<PlayerId,
 
   return result;
 }
-

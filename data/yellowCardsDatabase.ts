@@ -94,7 +94,7 @@ export function yellowCardEndGameVP(card: YellowCard, ctx: YellowScoringContext)
       break;
     case 'chamber_of_commerce':
       if (ctx.greyCount == null) missing.push('greyCount');
-      vp = ctx.greyCount || 0;
+      vp = (ctx.greyCount || 0) * 2;
       break;
     case 'ludus':
       if (ctx.redCount == null) missing.push('redCount');
@@ -120,10 +120,14 @@ export function sumYellowEndGameVP(selectedNames: string[], ctx: YellowScoringCo
   for (const name of selectedNames) {
     const card = getYellowByName(name);
     if (!card) continue;
+    // Direct VP (e.g., Pirate Crew)
+    if (card.id === 'pirate_crew') {
+      breakdown.push({ name: card.name, vp: 4 });
+      total += 4;
+    }
     const b = yellowCardEndGameVP(card, ctx);
     breakdown.push(b);
     total += b.vp;
   }
   return { total, breakdown };
 }
-

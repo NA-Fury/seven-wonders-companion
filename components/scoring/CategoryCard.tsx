@@ -527,12 +527,22 @@ export const CategoryCard = memo<CategoryCardProps>(({
   }, [category, playerId, yellowComputed.total, updateCategoryScore]);
 
   // Auto-calc Black (Cities) end-game VP when inputs change
-  const blackCtx = useMemo(() => ({
-    ownBlackCount: (Array.isArray(detailedData.selectedBlackCards) ? detailedData.selectedBlackCards.length : detailedData.blackCardsCount) || 0,
-    mvTokensTotal: detailedData.mvTokensTotal,
-    mvTokensAge2: detailedData.mvTokensAge2,
-    mvTokensAge3: detailedData.mvTokensAge3,
-  }), [detailedData.selectedBlackCards, detailedData.blackCardsCount, detailedData.mvTokensTotal, detailedData.mvTokensAge2, detailedData.mvTokensAge3]);
+  const blackCtx = useMemo(() => {
+    const mdd = playerScores?.[playerId]?.categories?.military?.detailedData || {};
+    const age1 = detailedData.mvTokensAge1 ?? mdd.mvTokensAge1;
+    const age2 = detailedData.mvTokensAge2 ?? mdd.mvTokensAge2;
+    const age3 = detailedData.mvTokensAge3 ?? mdd.mvTokensAge3;
+    const totalFromMilitary =
+      (typeof age1 === 'number' ? age1 : 0) +
+      (typeof age2 === 'number' ? age2 : 0) +
+      (typeof age3 === 'number' ? age3 : 0);
+    return {
+      ownBlackCount: (Array.isArray(detailedData.selectedBlackCards) ? detailedData.selectedBlackCards.length : detailedData.blackCardsCount) || 0,
+      mvTokensTotal: detailedData.mvTokensTotal ?? totalFromMilitary,
+      mvTokensAge2: detailedData.mvTokensAge2 ?? age2,
+      mvTokensAge3: detailedData.mvTokensAge3 ?? age3,
+    };
+  }, [playerScores, playerId, detailedData.selectedBlackCards, detailedData.blackCardsCount, detailedData.mvTokensTotal, detailedData.mvTokensAge1, detailedData.mvTokensAge2, detailedData.mvTokensAge3]);
 
   const blackComputed = useMemo(() => sumBlackEndGameVP(selectedBlackCards, blackCtx), [selectedBlackCards, blackCtx]);
 
@@ -681,6 +691,35 @@ export const CategoryCard = memo<CategoryCardProps>(({
       case 'military':
         return (
           <>
+            <View style={styles.detailField}>
+              <Text style={styles.detailLabel}>Military Victory Tokens (by Age)</Text>
+              <View style={styles.inlineInputs}>
+                <TextInput
+                  style={styles.smallInput}
+                  value={detailedData.mvTokensAge1?.toString() || ''}
+                  onChangeText={(text) => updateDetailedField('mvTokensAge1', parseInt(text) || 0)}
+                  keyboardType="number-pad"
+                  placeholder="Age I"
+                  placeholderTextColor="rgba(196, 162, 76, 0.3)"
+                />
+                <TextInput
+                  style={styles.smallInput}
+                  value={detailedData.mvTokensAge2?.toString() || ''}
+                  onChangeText={(text) => updateDetailedField('mvTokensAge2', parseInt(text) || 0)}
+                  keyboardType="number-pad"
+                  placeholder="Age II"
+                  placeholderTextColor="rgba(196, 162, 76, 0.3)"
+                />
+                <TextInput
+                  style={styles.smallInput}
+                  value={detailedData.mvTokensAge3?.toString() || ''}
+                  onChangeText={(text) => updateDetailedField('mvTokensAge3', parseInt(text) || 0)}
+                  keyboardType="number-pad"
+                  placeholder="Age III"
+                  placeholderTextColor="rgba(196, 162, 76, 0.3)"
+                />
+              </View>
+            </View>
             <View style={styles.detailField}>
               <Text style={styles.detailLabel}>Military Strength by Age</Text>
               <View style={styles.inlineInputs}>
