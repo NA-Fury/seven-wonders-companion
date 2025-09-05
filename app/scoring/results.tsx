@@ -1,5 +1,5 @@
 // app/scoring/results.tsx - Minimal results screen (restored) with header and proportional podium
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { Alert, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, UIManager, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useScoringStore } from '../../store/scoringStore';

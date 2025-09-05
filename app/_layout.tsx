@@ -10,20 +10,25 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect } from 'react';
 import { useScoringStore } from '../store/scoringStore';
 
-useEffect(() => {
-  (async () => {
-    const raw = await AsyncStorage.getItem('gameCounter');
-    const value = raw ? parseInt(raw, 10) : 0;
-    useScoringStore.setState({ gameCounter: value });
-  })();
-}, []);
-
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
   const [loaded] = useFonts({
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
   });
+
+  // Initialize gameCounter from AsyncStorage once on mount
+  useEffect(() => {
+    (async () => {
+      try {
+        const raw = await AsyncStorage.getItem('gameCounter');
+        const value = raw ? parseInt(raw, 10) : 0;
+        useScoringStore.setState({ gameCounter: value });
+      } catch {
+        // no-op: ignore storage read errors
+      }
+    })();
+  }, []);
 
   if (!loaded) {
     return null;

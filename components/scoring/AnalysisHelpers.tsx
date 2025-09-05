@@ -116,11 +116,11 @@ interface AnalysisHelpersProps {
   onDataUpdate: (data: ResourceData) => void;
 }
 
-export const AnalysisHelpers = memo<AnalysisHelpersProps>(({
+export const AnalysisHelpers = memo(function AnalysisHelpers({
   playerId,
   wonderData,
   onDataUpdate,
-}) => {
+}: AnalysisHelpersProps) {
   const [resourceData, setResourceData] = useState<ResourceData>({
     brownCards: 0,
     grayCards: 0,

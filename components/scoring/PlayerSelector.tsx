@@ -66,12 +66,12 @@ interface PlayerSelectorProps {
   scores: Record<string, number>;
 }
 
-export const PlayerSelector = memo<PlayerSelectorProps>(({
+export const PlayerSelector = memo(function PlayerSelector({
   players,
   currentPlayerId,
   onPlayerSelect,
   scores,
-}) => {
+}: PlayerSelectorProps) {
   const listRef = useRef<FlatList>(null);
   
   const renderPlayer = ({ item }: { item: Player }) => {

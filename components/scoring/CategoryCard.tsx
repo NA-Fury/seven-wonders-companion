@@ -296,13 +296,13 @@ const Checkbox = ({ checked, onToggle, label }: { checked: boolean; onToggle: ()
   </TouchableOpacity>
 );
 
-export const CategoryCard = memo<CategoryCardProps>(({
+export const CategoryCard = memo(function CategoryCard({
   category,
   score,
   playerId,
   wonderData,
   expansions,
-}) => {
+}: CategoryCardProps) {
   const { updateCategoryScore, updateDetailedData } = useScoringStore();
   
   // Setup info (players + selected Edifice projects) and all scores
@@ -1188,11 +1188,11 @@ export const CategoryCard = memo<CategoryCardProps>(({
               <Text style={styles.calculatedValue}>{yellowComputed.total}</Text>
               {yellowComputed.breakdown.filter(b => b.missing && b.missing.length).length > 0 && (
                 <View style={styles.noteCard}>
-                  {yellowComputed.breakdown.filter(b => b.missing && b.missing.length).map((b, i) => (
-                    <Text key={i} style={styles.noteText}>
-                      Note: cannot finalize "{b.name}" — missing {b.missing?.join(', ')}. Update these in Analysis Helpers or fields above.
-                    </Text>
-                  ))}
+              {yellowComputed.breakdown.filter(b => b.missing && b.missing.length).map((b, i) => (
+                <Text key={i} style={styles.noteText}>
+                  Note: cannot finalize &quot;{b.name}&quot; - missing {b.missing?.join(', ')}. Update these in Analysis Helpers or fields above.
+                </Text>
+              ))}
                 </View>
               )}
             </View>
@@ -1389,11 +1389,11 @@ export const CategoryCard = memo<CategoryCardProps>(({
               <Text style={styles.calculatedValue}>{blackComputed.total}</Text>
               {blackComputed.breakdown.filter((b: any) => b.missing && b.missing.length).length > 0 && (
                 <View style={styles.noteCard}>
-                  {blackComputed.breakdown.filter((b: any) => b.missing && b.missing.length).map((b: any, i: number) => (
-                    <Text key={i} style={styles.noteText}>
-                      Note: cannot finalize "{b.name}" — missing {b.missing?.join(', ')}.
-                    </Text>
-                  ))}
+              {blackComputed.breakdown.filter((b: any) => b.missing && b.missing.length).map((b: any, i: number) => (
+                <Text key={i} style={styles.noteText}>
+                  Note: cannot finalize &quot;{b.name}&quot; - missing {b.missing?.join(', ')}.
+                </Text>
+              ))}
                 </View>
               )}
             </View>
@@ -1958,86 +1958,6 @@ export const CategoryCard = memo<CategoryCardProps>(({
           </>
         );
       }
-
-      case 'military':
-        return (
-          <>
-            <View style={styles.detailField}>
-              <Text style={styles.detailLabel}>Strength by Age</Text>
-              <View style={styles.inlineInputs}>
-                <TextInput
-                  style={styles.smallInput}
-                  value={detailedData.ageI?.toString() || ''}
-                  onChangeText={(text) => updateDetailedField('ageI', parseInt(text) || 0)}
-                  keyboardType="number-pad"
-                  placeholder="Age I"
-                  placeholderTextColor="rgba(196, 162, 76, 0.3)"
-                />
-                <TextInput
-                  style={styles.smallInput}
-                  value={detailedData.ageII?.toString() || ''}
-                  onChangeText={(text) => updateDetailedField('ageII', parseInt(text) || 0)}
-                  keyboardType="number-pad"
-                  placeholder="Age II"
-                  placeholderTextColor="rgba(196, 162, 76, 0.3)"
-                />
-                <TextInput
-                  style={styles.smallInput}
-                  value={detailedData.ageIII?.toString() || ''}
-                  onChangeText={(text) => updateDetailedField('ageIII', parseInt(text) || 0)}
-                  keyboardType="number-pad"
-                  placeholder="Age III"
-                  placeholderTextColor="rgba(196, 162, 76, 0.3)"
-                />
-              </View>
-            </View>
-            <View style={styles.detailField}>
-              <Text style={styles.detailLabel}>Diplomacy (skip conflicts this Age)</Text>
-              <View style={styles.inlineInputs}>
-                <Checkbox
-                  checked={!!detailedData.doveAgeI}
-                  onToggle={() => updateDetailedField('doveAgeI', !detailedData.doveAgeI)}
-                  label="Age I"
-                />
-                <Checkbox
-                  checked={!!detailedData.doveAgeII}
-                  onToggle={() => updateDetailedField('doveAgeII', !detailedData.doveAgeII)}
-                  label="Age II"
-                />
-                <Checkbox
-                  checked={!!detailedData.doveAgeIII}
-                  onToggle={() => updateDetailedField('doveAgeIII', !detailedData.doveAgeIII)}
-                  label="Age III"
-                />
-              </View>
-            </View>
-            <View style={styles.detailField}>
-              <Text style={styles.detailLabel}>Boarding token cards (Armada)</Text>
-              <View style={styles.inlineInputs}>
-                <Checkbox
-                  checked={!!detailedData.playedPontoon}
-                  onToggle={() => updateDetailedField('playedPontoon', !detailedData.playedPontoon)}
-                  label="Pontoon (Age I)"
-                />
-                <Checkbox
-                  checked={!!detailedData.playedBallista}
-                  onToggle={() => updateDetailedField('playedBallista', !detailedData.playedBallista)}
-                  label="Ballista (Age II)"
-                />
-                <Checkbox
-                  checked={!!detailedData.playedPier}
-                  onToggle={() => updateDetailedField('playedPier', !detailedData.playedPier)}
-                  label="Pier (Age III)"
-                />
-              </View>
-            </View>
-            <View style={styles.noteCard}>
-              <Text style={styles.noteText}>
-                Military conflicts auto-score based on strengths and table seating. Diplomacy skips adjacency but Boarding still forces an extra conflict.
-              </Text>
-            </View>
-          </>
-        );
 
       default:
         return (
