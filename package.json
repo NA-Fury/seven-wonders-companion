@@ -98,5 +98,14 @@
   "private": true,
   "engines": {
     "node": ">=20 <21"
+  },
+  "expo": {
+    "doctor": {
+      "reactNativeDirectoryCheck": {
+        "exclude": [
+          "immer"
+        ]
+      }
+    }
   }
 }
