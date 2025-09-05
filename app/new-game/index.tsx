@@ -20,6 +20,9 @@ export default function NewGameScreen() {
   const handleStart = () => {
     const ids = selectedForGame;
     if (ids.length === 0) return;
+    // Reset any previous seating/wonders/edifice and clear prior players
+    const setup = useSetupStore.getState();
+    setup.resetGame();
     clearPlayers();
     ids.forEach((id) => {
       const p = usePlayerStore.getState().profiles[id];
@@ -134,6 +137,13 @@ export default function NewGameScreen() {
           </View>
         )}
       />
+
+      {/* Manage Players quick link */}
+      <View style={{ paddingHorizontal: 20, paddingBottom: 12 }}>
+        <Pressable onPress={() => router.push('/players')} style={({ pressed }) => ({ alignSelf: 'flex-start', opacity: pressed ? 0.8 : 1 })}>
+          <Text style={{ color: '#C4A24C' }}>Manage Players →</Text>
+        </Pressable>
+      </View>
 
       <View
         style={{

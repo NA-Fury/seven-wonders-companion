@@ -1,15 +1,26 @@
-import React from 'react';
-import { FlatList, Pressable, Text, View } from 'react-native';
+import React, { useMemo, useState } from 'react';
+import { FlatList, Pressable, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { usePlayerStore } from '../../store/playerStore';
+import { router } from 'expo-router';
 
 export default function PlayersScreen() {
-  const { getAllProfiles, addProfile, removeProfile } = usePlayerStore();
-  const data = getAllProfiles();
+  const profilesMap = usePlayerStore((s) => s.profiles);
+  const addProfile = usePlayerStore((s) => s.addProfile);
+  const removeProfile = usePlayerStore((s) => s.removeProfile);
+  const [query, setQuery] = useState('');
+  const data = useMemo(() => {
+    const list = Object.values(profilesMap).sort((a, b) => a.name.localeCompare(b.name));
+    if (!query.trim()) return list;
+    const q = query.trim().toLowerCase();
+    return list.filter((p) => p.name.toLowerCase().includes(q));
+  }, [profilesMap, query]);
 
   const handleQuickAdd = async () => {
-    const name = `Player ${data.length + 1}`;
+    const name = query.trim() || `Player ${Object.keys(profilesMap).length + 1}`;
+    if (!name) return;
     addProfile(name);
+    setQuery('');
   };
 
   return (
@@ -18,13 +29,40 @@ export default function PlayersScreen() {
         <Text style={{ color: '#C4A24C', fontSize: 22, fontWeight: '800' }}>Players</Text>
         <Text style={{ color: 'rgba(243,231,211,0.7)' }}>Profiles, performance, and badges.</Text>
       </View>
+      <View style={{ paddingHorizontal: 20, paddingTop: 12 }}>
+        <View style={{ flexDirection: 'row', gap: 8 }}>
+          <View style={{ flex: 1 }}>
+            <TextInput
+              value={query}
+              onChangeText={setQuery}
+              placeholder="Search or add player…"
+              placeholderTextColor="#F3E7D380"
+              style={{
+                backgroundColor: 'rgba(28,26,26,0.6)',
+                color: '#F3E7D3',
+                borderRadius: 12,
+                paddingHorizontal: 14,
+                paddingVertical: 10,
+                borderWidth: 1,
+                borderColor: 'rgba(196,162,76,0.25)'
+              }}
+              returnKeyType="done"
+              onSubmitEditing={handleQuickAdd}
+            />
+          </View>
+          <Pressable onPress={handleQuickAdd} style={({ pressed }) => ({ backgroundColor: pressed ? 'rgba(196,162,76,0.8)' : '#C4A24C', borderRadius: 12, paddingHorizontal: 16, alignItems: 'center', justifyContent: 'center' })}>
+            <Text style={{ color: '#1C1A1A', fontWeight: '800' }}>Add</Text>
+          </Pressable>
+        </View>
+      </View>
+
       <FlatList
         data={data}
         keyExtractor={(p) => p.id}
         contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 120 }}
         ItemSeparatorComponent={() => <View style={{ height: 8 }} />}
         renderItem={({ item }) => (
-          <View
+          <Pressable onPress={() => router.push(`/players/${item.id}`)}
             style={{
               backgroundColor: 'rgba(31,41,55,0.5)',
               borderWidth: 1,
@@ -57,7 +95,7 @@ export default function PlayersScreen() {
                 ))}
               </View>
             )}
-          </View>
+          </Pressable>
         )}
         ListEmptyComponent={() => (
           <View style={{ paddingHorizontal: 20, paddingTop: 20 }}>
@@ -65,21 +103,7 @@ export default function PlayersScreen() {
           </View>
         )}
       />
-
-      <View style={{ position: 'absolute', left: 0, right: 0, bottom: 0, padding: 16, backgroundColor: '#1C1A1A', borderTopWidth: 1, borderTopColor: 'rgba(196,162,76,0.25)' }}>
-        <Pressable
-          onPress={handleQuickAdd}
-          style={({ pressed }) => ({
-            borderRadius: 14,
-            paddingVertical: 12,
-            alignItems: 'center',
-            backgroundColor: pressed ? 'rgba(196,162,76,0.8)' : '#C4A24C',
-          })}
-        >
-          <Text style={{ color: '#1C1A1A', fontWeight: '800' }}>Add Sample Player</Text>
-        </Pressable>
-      </View>
+      
     </SafeAreaView>
   );
 }
-
