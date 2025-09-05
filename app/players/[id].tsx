@@ -1,200 +1,282 @@
+import { router, useLocalSearchParams } from 'expo-router';
 import React, { useMemo, useState } from 'react';
-import { useLocalSearchParams } from 'expo-router';
+import { FlatList, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Alert, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
-import { usePlayerStore } from '../../store/playerStore';
-import { useSetupStore } from '../../store/setupStore';
+import { usePlayerStore, type PlayerProfile } from '../../store/playerStore';
 import { WONDERS_DATABASE } from '../../data/wondersDatabase';
 
-export default function PlayerProfileScreen() {
+export default function PlayerDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const profile = usePlayerStore((s) => (id ? s.profiles[id] : undefined));
-  const profilesMap = usePlayerStore((s) => s.profiles);
+  const profiles = usePlayerStore((s) => s.profiles);
   const updateProfile = usePlayerStore((s) => s.updateProfile);
-  const gameHistory = useSetupStore((s) => s.gameHistory);
+  const removeProfile = usePlayerStore((s) => s.removeProfile);
+
+  const profile: PlayerProfile | undefined = profiles[id!];
   const [name, setName] = useState(profile?.name || '');
+
+  const allProfilesArray = useMemo(
+    () => Object.values(profiles),
+    [profiles]
+  );
+
+  const neighborsList = useMemo(() => {
+    const counts = profile?.stats.neighborCounts || {};
+    const entries = Object.entries(counts)
+      .filter(([pid]) => pid !== profile?.id)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([pid, count]) => ({
+        id: pid,
+        name: profiles[pid]?.name || 'Unknown',
+        count,
+      }));
+    return entries;
+  }, [profile?.stats.neighborCounts, profile?.id, profiles]);
+
+  const wondersPlayed = useMemo(() => {
+    const played = profile?.stats.wondersPlayed || {};
+    const playedArr = Object.entries(played)
+      .map(([wid, data]) => ({
+        id: wid,
+        name: WONDERS_DATABASE.find((w) => w.id === wid)?.name || wid,
+        day: data.day || 0,
+        night: data.night || 0,
+        total: data.total || 0,
+      }))
+      .sort((a, b) => b.total - a.total);
+    const notPlayed = WONDERS_DATABASE
+      .filter((w) => !played[w.id])
+      .map((w) => w.name)
+      .sort((a, b) => a.localeCompare(b));
+    const favorite = playedArr[0];
+    return { playedArr, notPlayed, favorite };
+  }, [profile?.stats.wondersPlayed]);
+
+  const categories = useMemo(() => {
+    const avg = profile?.stats.categoryAverages || {};
+    const entries = Object.entries(avg).filter(([, v]) => typeof v === 'number') as [string, number][];
+    const sorted = [...entries].sort((a, b) => b[1] - a[1]);
+    const strongest = sorted.slice(0, 3);
+    const weakest = sorted.slice(-3).reverse();
+    return { strongest, weakest, all: sorted };
+  }, [profile?.stats.categoryAverages]);
+
+  const expansionsUsage = useMemo(() => {
+    const e = profile?.stats.expansionsUseCounts || { leaders: 0, cities: 0, armada: 0, edifice: 0, baseOnly: 0 };
+    return [
+      { key: 'Base', value: e.baseOnly || 0 },
+      { key: 'Leaders', value: e.leaders || 0 },
+      { key: 'Cities', value: e.cities || 0 },
+      { key: 'Armada', value: e.armada || 0 },
+      { key: 'Edifice', value: e.edifice || 0 },
+    ];
+  }, [profile?.stats.expansionsUseCounts]);
 
   if (!profile) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: '#1C1A1A', alignItems: 'center', justifyContent: 'center' }}>
+      <SafeAreaView style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#1C1A1A' }}>
         <Text style={{ color: '#FEF3C7' }}>Profile not found.</Text>
       </SafeAreaView>
     );
   }
 
-  const stats = profile.stats;
-  const favoriteWonder = useMemo(() => {
-    let best: { id: string; total: number } | null = null;
-    Object.entries(stats.wondersPlayed).forEach(([wid, val]) => {
-      if (!best || val.total > best.total) best = { id: wid, total: val.total };
-    });
-    return best?.id || '—';
-  }, [stats.wondersPlayed]);
-
-  const strongest = useMemo(() => {
-    const entries = Object.entries(stats.categoryAverages || {});
-    return entries.sort((a, b) => (b[1] || 0) - (a[1] || 0)).slice(0, 2);
-  }, [stats.categoryAverages]);
-
-  const weakest = useMemo(() => {
-    const entries = Object.entries(stats.categoryAverages || {});
-    return entries.sort((a, b) => (a[1] || 0) - (b[1] || 0)).slice(0, 2);
-  }, [stats.categoryAverages]);
-
-  const favoriteNeighbors = useMemo(() => {
-    const arr = Object.entries(stats.neighborCounts || {}).sort((a, b) => (b[1] || 0) - (a[1] || 0)).slice(0, 3);
-    return arr.map(([pid, count]) => ({ id: pid, name: profilesMap[pid]?.name || pid, count }));
-  }, [stats.neighborCounts, profilesMap]);
-
-  const notPlayedWonders = useMemo(() => {
-    const playedIds = new Set(Object.keys(stats.wondersPlayed || {}));
-    const all = (WONDERS_DATABASE || []).map((w: any) => w.id);
-    return all.filter((wid) => !playedIds.has(wid)).slice(0, 12);
-  }, [stats.wondersPlayed]);
-
-  const winRateRank = useMemo(() => {
-    const all = Object.values(profilesMap);
-    if (all.length === 0) return null;
-    const sorted = all.slice().sort((a, b) => (b.stats.winRate || 0) - (a.stats.winRate || 0));
-    const rank = Math.max(1, sorted.findIndex((p) => p.id === profile.id) + 1);
-    return { rank, total: all.length };
-  }, [profilesMap, profile.id]);
-
-  const saveName = () => {
-    const n = name.trim();
-    if (!n) return Alert.alert('Name required');
-    updateProfile(profile.id, { name: n });
-    Alert.alert('Updated', 'Profile name updated.');
+  const saveRename = () => {
+    const trimmed = name.trim();
+    if (!trimmed || trimmed === profile.name) return;
+    updateProfile(profile.id, { name: trimmed });
   };
 
-  const findGameById = (gid?: string) => gameHistory.find((g) => g.id === gid);
+  const StatsRow = ({ label, value }: { label: string; value: string | number }) => (
+    <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
+      <Text style={{ color: 'rgba(243,231,211,0.7)' }}>{label}</Text>
+      <Text style={{ color: '#C4A24C', fontWeight: '600' }}>{`${value}`}</Text>
+    </View>
+  );
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#1C1A1A' }}>
-      <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 40 }}>
-        <View style={{ marginBottom: 12 }}>
+      <ScrollView contentContainerStyle={{ paddingBottom: 40 }}>
+        {/* Header + rename */}
+        <View style={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 8 }}>
+          <Pressable onPress={() => router.back()} style={({ pressed }) => ({ alignSelf: 'flex-start', opacity: pressed ? 0.8 : 1, marginBottom: 8 })}>
+            <Text style={{ color: '#C4A24C' }}>← Back</Text>
+          </Pressable>
           <Text style={{ color: '#C4A24C', fontSize: 22, fontWeight: '800' }}>Player Profile</Text>
+          <Text style={{ color: 'rgba(243,231,211,0.7)', marginTop: 2 }}>Edit name and review performance.</Text>
         </View>
 
-        {/* Edit name */}
-        <View style={{ backgroundColor: 'rgba(31,41,55,0.5)', borderRadius: 16, borderWidth: 1, borderColor: 'rgba(196,162,76,0.25)', padding: 14, marginBottom: 12 }}>
-          <Text style={{ color: 'rgba(243,231,211,0.8)', marginBottom: 6 }}>Name</Text>
-          <View style={{ flexDirection: 'row', gap: 8 }}>
-            <View style={{ flex: 1 }}>
-              <TextInput
-                value={name}
-                onChangeText={setName}
-                placeholder="Player name"
-                placeholderTextColor="#F3E7D380"
-                style={{ backgroundColor: 'rgba(28,26,26,0.6)', color: '#F3E7D3', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10, borderWidth: 1, borderColor: 'rgba(196,162,76,0.25)' }}
-              />
+        <View style={{ paddingHorizontal: 20 }}>
+          <View style={{ backgroundColor: 'rgba(31,41,55,0.5)', borderRadius: 16, padding: 14, borderWidth: 1, borderColor: 'rgba(196,162,76,0.25)' }}>
+            <Text style={{ color: 'rgba(243,231,211,0.8)', marginBottom: 6 }}>Name</Text>
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              <View style={{ flex: 1 }}>
+                <TextInput
+                  value={name}
+                  onChangeText={setName}
+                  placeholder="Player name"
+                  placeholderTextColor="#F3E7D380"
+                  style={{
+                    backgroundColor: 'rgba(28,26,26,0.6)',
+                    color: '#F3E7D3',
+                    borderRadius: 12,
+                    paddingHorizontal: 14,
+                    paddingVertical: 10,
+                    borderWidth: 1,
+                    borderColor: 'rgba(196,162,76,0.25)'
+                  }}
+                  returnKeyType="done"
+                  onSubmitEditing={saveRename}
+                />
+              </View>
+              <Pressable onPress={saveRename} style={({ pressed }) => ({ backgroundColor: pressed ? 'rgba(196,162,76,0.8)' : '#C4A24C', borderRadius: 12, paddingHorizontal: 16, alignItems: 'center', justifyContent: 'center' })}>
+                <Text style={{ color: '#1C1A1A', fontWeight: '800' }}>Save</Text>
+              </Pressable>
             </View>
-            <Pressable onPress={saveName} style={({ pressed }) => ({ backgroundColor: pressed ? 'rgba(196,162,76,0.8)' : '#C4A24C', borderRadius: 12, paddingHorizontal: 16, alignItems: 'center', justifyContent: 'center' })}>
-              <Text style={{ color: '#1C1A1A', fontWeight: '800' }}>Save</Text>
-            </Pressable>
           </View>
         </View>
 
-        {/* Summary stats */}
-        <View style={{ backgroundColor: 'rgba(31,41,55,0.5)', borderRadius: 16, borderWidth: 1, borderColor: 'rgba(196,162,76,0.25)', padding: 14, marginBottom: 12 }}>
-          <Text style={{ color: '#FEF3C7', fontWeight: '700', marginBottom: 6 }}>Overview</Text>
-          <Text style={{ color: 'rgba(243,231,211,0.8)' }}>Games: {stats.gamesPlayed}</Text>
-          <Text style={{ color: 'rgba(243,231,211,0.8)' }}>Wins: {stats.wins}  •  Win% {Math.round((stats.winRate || 0) * 100)}%</Text>
-          <Text style={{ color: 'rgba(243,231,211,0.8)' }}>Runner Up: {stats.runnerUp}  •  Third: {stats.thirdPlace}</Text>
-          <Text style={{ color: 'rgba(243,231,211,0.8)' }}>Average: {stats.averageScore}</Text>
-        </View>
-
-        {/* High/Low */}
-        <View style={{ backgroundColor: 'rgba(31,41,55,0.5)', borderRadius: 16, borderWidth: 1, borderColor: 'rgba(196,162,76,0.25)', padding: 14, marginBottom: 12 }}>
-          <Text style={{ color: '#FEF3C7', fontWeight: '700', marginBottom: 6 }}>Highs & Lows</Text>
-          <Text style={{ color: '#C4A24C' }}>Highest: {stats.highestScore?.score ?? '—'}</Text>
-          {stats.highestScore && (
-            <Text style={{ color: 'rgba(243,231,211,0.7)', fontSize: 12 }}>Game ID: {stats.highestScore.gameId}{findGameById(stats.highestScore.gameId) ? '' : ' (not in history)'}
-            </Text>
-          )}
-          <View style={{ height: 8 }} />
-          <Text style={{ color: '#C4A24C' }}>Lowest: {stats.lowestScore?.score ?? '—'}</Text>
-          {stats.lowestScore && (
-            <Text style={{ color: 'rgba(243,231,211,0.7)', fontSize: 12 }}>Game ID: {stats.lowestScore.gameId}{findGameById(stats.lowestScore.gameId) ? '' : ' (not in history)'}
-            </Text>
-          )}
+        {/* Summary metrics */}
+        <View style={{ paddingHorizontal: 20, marginTop: 12 }}>
+          <View style={{ backgroundColor: 'rgba(99,102,241,0.1)', borderRadius: 12, padding: 16, borderWidth: 1, borderColor: 'rgba(99,102,241,0.3)' }}>
+            <Text style={{ color: '#818CF8', fontSize: 16, fontWeight: 'bold', marginBottom: 8 }}>Summary</Text>
+            <StatsRow label="Games Played" value={profile.stats.gamesPlayed} />
+            <StatsRow label="Wins" value={profile.stats.wins} />
+            <StatsRow label="Runner Up" value={profile.stats.runnerUp ?? 0} />
+            <StatsRow label="Third Place" value={profile.stats.thirdPlace ?? 0} />
+            <StatsRow label="Win %" value={`${Math.round((profile.stats.winRate || 0) * 100)}%`} />
+            <StatsRow label="Average" value={profile.stats.averageScore} />
+            {profile.stats.highestScore && (
+              <StatsRow label="High Score" value={`${profile.stats.highestScore.score} (Game ${profile.stats.highestScore.gameId})`} />
+            )}
+            {profile.stats.lowestScore && (
+              <StatsRow label="Low Score" value={`${profile.stats.lowestScore.score} (Game ${profile.stats.lowestScore.gameId})`} />
+            )}
+          </View>
         </View>
 
         {/* Wonders played */}
-        <View style={{ backgroundColor: 'rgba(31,41,55,0.5)', borderRadius: 16, borderWidth: 1, borderColor: 'rgba(196,162,76,0.25)', padding: 14, marginBottom: 12 }}>
-          <Text style={{ color: '#FEF3C7', fontWeight: '700', marginBottom: 6 }}>Wonders Played</Text>
-          {Object.keys(stats.wondersPlayed).length === 0 && (
-            <Text style={{ color: 'rgba(243,231,211,0.7)' }}>No data yet.</Text>
-          )}
-          {Object.entries(stats.wondersPlayed).map(([wid, v]) => (
-            <Text key={wid} style={{ color: 'rgba(243,231,211,0.8)' }}>{wid}: Day {v.day} / Night {v.night} (Total {v.total})</Text>
-          ))}
-          <View style={{ height: 8 }} />
-          <Text style={{ color: '#C4A24C' }}>Favorite Wonder: {favoriteWonder}</Text>
-          {notPlayedWonders.length > 0 && (
-            <>
-              <View style={{ height: 6 }} />
-              <Text style={{ color: 'rgba(243,231,211,0.8)' }}>Not yet played: {notPlayedWonders.join(', ')}</Text>
-            </>
-          )}
+        <View style={{ paddingHorizontal: 20, marginTop: 12 }}>
+          <View style={{ backgroundColor: 'rgba(196,162,76,0.1)', borderRadius: 12, padding: 16, borderWidth: 1, borderColor: 'rgba(196,162,76,0.3)' }}>
+            <Text style={{ color: '#C4A24C', fontSize: 16, fontWeight: 'bold', marginBottom: 8 }}>Wonders Played</Text>
+            {wondersPlayed.favorite && (
+              <Text style={{ color: 'rgba(243,231,211,0.9)', marginBottom: 6 }}>Favorite: {wondersPlayed.favorite.name} ({wondersPlayed.favorite.total})</Text>
+            )}
+            {wondersPlayed.playedArr.length > 0 ? (
+              <View>
+                {wondersPlayed.playedArr.map((w) => (
+                  <View key={w.id} style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
+                    <Text style={{ color: '#FEF3C7' }}>{w.name}</Text>
+                    <Text style={{ color: 'rgba(243,231,211,0.8)' }}>Day {w.day} · Night {w.night} · Total {w.total}</Text>
+                  </View>
+                ))}
+              </View>
+            ) : (
+              <Text style={{ color: 'rgba(243,231,211,0.7)' }}>No wonders played yet.</Text>
+            )}
+            {wondersPlayed.notPlayed.length > 0 && (
+              <View style={{ marginTop: 8 }}>
+                <Text style={{ color: 'rgba(243,231,211,0.7)', marginBottom: 4 }}>Not yet played:</Text>
+                <Text style={{ color: 'rgba(243,231,211,0.7)' }}>{wondersPlayed.notPlayed.join(', ')}</Text>
+              </View>
+            )}
+          </View>
         </View>
 
-        {/* Strategies */}
-        <View style={{ backgroundColor: 'rgba(31,41,55,0.5)', borderRadius: 16, borderWidth: 1, borderColor: 'rgba(196,162,76,0.25)', padding: 14, marginBottom: 12 }}>
-          <Text style={{ color: '#FEF3C7', fontWeight: '700', marginBottom: 6 }}>Strategies</Text>
-          <Text style={{ color: 'rgba(243,231,211,0.8)' }}>Strongest: {strongest.map(([k]) => k).join(', ') || '—'}</Text>
-          <Text style={{ color: 'rgba(243,231,211,0.8)' }}>Weakest: {weakest.map(([k]) => k).join(', ') || '—'}</Text>
+        {/* Strategy profile */}
+        <View style={{ paddingHorizontal: 20, marginTop: 12 }}>
+          <View style={{ backgroundColor: 'rgba(34,197,94,0.08)', borderRadius: 12, padding: 16, borderWidth: 1, borderColor: 'rgba(34,197,94,0.25)' }}>
+            <Text style={{ color: '#86EFAC', fontSize: 16, fontWeight: 'bold', marginBottom: 8 }}>Strategy Profile</Text>
+            {categories.all.length > 0 ? (
+              <>
+                <Text style={{ color: 'rgba(243,231,211,0.8)', marginBottom: 6 }}>Strongest:</Text>
+                {categories.strongest.map(([k, v]) => (
+                  <Text key={k} style={{ color: '#FEF3C7' }}>• {capitalize(k)}: {v}</Text>
+                ))}
+                <View style={{ height: 8 }} />
+                <Text style={{ color: 'rgba(243,231,211,0.8)', marginBottom: 6 }}>Weakest:</Text>
+                {categories.weakest.map(([k, v]) => (
+                  <Text key={k} style={{ color: 'rgba(243,231,211,0.7)' }}>• {capitalize(k)}: {v}</Text>
+                ))}
+              </>
+            ) : (
+              <Text style={{ color: 'rgba(243,231,211,0.7)' }}>No category data yet.</Text>
+            )}
+          </View>
         </View>
 
         {/* Neighbors */}
-        <View style={{ backgroundColor: 'rgba(31,41,55,0.5)', borderRadius: 16, borderWidth: 1, borderColor: 'rgba(196,162,76,0.25)', padding: 14, marginBottom: 12 }}>
-          <Text style={{ color: '#FEF3C7', fontWeight: '700', marginBottom: 6 }}>Neighbors</Text>
-          {favoriteNeighbors.length === 0 && (
-            <Text style={{ color: 'rgba(243,231,211,0.7)' }}>No data yet.</Text>
-          )}
-          {favoriteNeighbors.map((n) => (
-            <Text key={n.id} style={{ color: 'rgba(243,231,211,0.8)' }}>{n.name} • {n.count} times</Text>
-          ))}
+        <View style={{ paddingHorizontal: 20, marginTop: 12 }}>
+          <View style={{ backgroundColor: 'rgba(244,63,94,0.08)', borderRadius: 12, padding: 16, borderWidth: 1, borderColor: 'rgba(244,63,94,0.25)' }}>
+            <Text style={{ color: '#F87171', fontSize: 16, fontWeight: 'bold', marginBottom: 8 }}>Frequent Neighbors</Text>
+            {neighborsList.length > 0 ? neighborsList.map((n) => (
+              <Pressable key={n.id} onPress={() => router.push(`/players/${n.id}`)} style={({ pressed }) => ({ paddingVertical: 6, opacity: pressed ? 0.7 : 1 })}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                  <Text style={{ color: '#FEF3C7' }}>{n.name}</Text>
+                  <Text style={{ color: 'rgba(243,231,211,0.8)' }}>{n.count}x</Text>
+                </View>
+              </Pressable>
+            )) : (
+              <Text style={{ color: 'rgba(243,231,211,0.7)' }}>No neighbor data yet.</Text>
+            )}
+          </View>
         </View>
 
-        {/* Expansion usage */}
-        <View style={{ backgroundColor: 'rgba(31,41,55,0.5)', borderRadius: 16, borderWidth: 1, borderColor: 'rgba(196,162,76,0.25)', padding: 14, marginBottom: 12 }}>
-          <Text style={{ color: '#FEF3C7', fontWeight: '700', marginBottom: 6 }}>Expansions</Text>
-          {(() => {
-            const ex = stats.expansionsUseCounts;
-            const line = (label: string, v: number) => (
-              <Text key={label} style={{ color: v > 0 ? 'rgba(243,231,211,0.9)' : 'rgba(243,231,211,0.4)' }}>{label}: {v}</Text>
-            );
-            return (
-              <>
-                {line('Base only', ex.baseOnly)}
-                {line('Leaders', ex.leaders)}
-                {line('Cities', ex.cities)}
-                {line('Armada', ex.armada)}
-                {line('Edifice', ex.edifice)}
-              </>
-            );
-          })()}
-          {winRateRank && (
-            <Text style={{ color: '#C4A24C', marginTop: 8 }}>Win rate rank: {winRateRank.rank}/{winRateRank.total}</Text>
-          )}
+        {/* Expansions usage */}
+        <View style={{ paddingHorizontal: 20, marginTop: 12 }}>
+          <View style={{ backgroundColor: 'rgba(250,204,21,0.08)', borderRadius: 12, padding: 16, borderWidth: 1, borderColor: 'rgba(250,204,21,0.25)' }}>
+            <Text style={{ color: '#FACC15', fontSize: 16, fontWeight: 'bold', marginBottom: 8 }}>Expansions Usage</Text>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+              {expansionsUsage.map((e) => (
+                <View key={e.key} style={{
+                  backgroundColor: e.value === 0 ? 'rgba(243,231,211,0.06)' : 'rgba(196,162,76,0.2)',
+                  borderWidth: 1,
+                  borderColor: e.value === 0 ? 'rgba(243,231,211,0.1)' : 'rgba(196,162,76,0.35)',
+                  borderRadius: 12,
+                  paddingVertical: 6,
+                  paddingHorizontal: 10,
+                }}>
+                  <Text style={{ color: e.value === 0 ? 'rgba(243,231,211,0.5)' : '#C4A24C' }}>{e.key}: {e.value}</Text>
+                </View>
+              ))}
+            </View>
+          </View>
         </View>
 
         {/* Badges */}
-        <View style={{ backgroundColor: 'rgba(31,41,55,0.5)', borderRadius: 16, borderWidth: 1, borderColor: 'rgba(196,162,76,0.25)', padding: 14 }}>
-          <Text style={{ color: '#FEF3C7', fontWeight: '700', marginBottom: 6 }}>Badges ({profile.badges.length})</Text>
-          {profile.badges.length === 0 && (
-            <Text style={{ color: 'rgba(243,231,211,0.7)' }}>No badges yet.</Text>
-          )}
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
-            {profile.badges.map((b) => (
-              <View key={b.id} style={{ backgroundColor: 'rgba(99,102,241,0.2)', borderRadius: 12, paddingVertical: 2, paddingHorizontal: 8, borderWidth: 1, borderColor: 'rgba(99,102,241,0.3)' }}>
-                <Text style={{ color: '#818CF8', fontSize: 11, fontWeight: '600' }}>{b.id}</Text>
+        <View style={{ paddingHorizontal: 20, marginTop: 12 }}>
+          <View style={{ backgroundColor: 'rgba(99,102,241,0.1)', borderRadius: 12, padding: 16, borderWidth: 1, borderColor: 'rgba(99,102,241,0.3)' }}>
+            <Text style={{ color: '#818CF8', fontSize: 16, fontWeight: 'bold', marginBottom: 8 }}>Badges ({profile.badges.length})</Text>
+            {profile.badges.length > 0 ? (
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                {profile.badges.map((b) => (
+                  <View key={b.id} style={{
+                    backgroundColor: 'rgba(99,102,241,0.2)', borderRadius: 12, paddingVertical: 4, paddingHorizontal: 10,
+                    borderWidth: 1, borderColor: 'rgba(99,102,241,0.3)'
+                  }}>
+                    <Text style={{ color: '#818CF8', fontWeight: '600' }}>{b.id}</Text>
+                  </View>
+                ))}
               </View>
-            ))}
+            ) : (
+              <Text style={{ color: 'rgba(243,231,211,0.7)' }}>No badges yet.</Text>
+            )}
           </View>
+        </View>
+
+        {/* Danger zone */}
+        <View style={{ paddingHorizontal: 20, marginTop: 12, marginBottom: 24 }}>
+          <Pressable onPress={() => { removeProfile(profile.id); router.back(); }}
+            style={({ pressed }) => ({ backgroundColor: pressed ? 'rgba(239,68,68,0.8)' : 'rgba(239,68,68,1)', borderRadius: 12, paddingVertical: 12, alignItems: 'center' })}
+          >
+            <Text style={{ color: '#1C1A1A', fontWeight: '800' }}>Remove Player</Text>
+          </Pressable>
         </View>
       </ScrollView>
     </SafeAreaView>
   );
 }
+
+function capitalize(s: string) {
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
