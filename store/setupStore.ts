@@ -78,6 +78,7 @@ type SetupActions = {
   
   // Player management
   addPlayer: (name: string) => void;
+  addExistingPlayer: (player: { id: string; name: string; avatar?: string }) => void;
   removePlayer: (id: string) => void;
   updatePlayer: (id: string, updates: Partial<SetupPlayer>) => void;
   updatePlayerStats: (id: string, stats: Partial<PlayerStats>) => void;
@@ -202,6 +203,33 @@ export const useSetupStore = create<SetupState & SetupActions>()(
         set(state => ({ 
           players: [...state.players, newPlayer] 
         }));
+      },
+
+      // Add a player using an existing persistent profile id
+      addExistingPlayer: (player) => {
+        const trimmedName = player.name.trim();
+        if (!trimmedName) return;
+
+        const state = get();
+        // Prevent duplicates by id or name
+        if (state.players.some(p => p.id === player.id || p.name.toLowerCase() === trimmedName.toLowerCase())) {
+          return;
+        }
+        if (state.players.length >= state.gameConfiguration.maxPlayers) {
+          throw new Error(`Maximum ${state.gameConfiguration.maxPlayers} players allowed`);
+        }
+        const newPlayer: SetupPlayer = {
+          id: player.id, // preserve profile id for post-game analytics
+          name: trimmedName,
+          avatar: player.avatar,
+          stats: {
+            gamesPlayed: 0,
+            wins: 0,
+            averageScore: 0,
+            highestScore: 0,
+          }
+        };
+        set(state => ({ players: [...state.players, newPlayer] }));
       },
 
       removePlayer: (id) =>

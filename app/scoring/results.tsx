@@ -1,6 +1,8 @@
 // app/scoring/results.tsx - Minimal results screen (restored) with header and proportional podium
 import React, { useEffect, useMemo } from 'react';
 import { Alert, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, UIManager, View } from 'react-native';
+import { router } from 'expo-router';
+import { usePlayerStore } from '../../store/playerStore';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useScoringStore } from '../../store/scoringStore';
 import { useSetupStore } from '../../store/setupStore';
@@ -50,6 +52,59 @@ export default function ResultsScreen() {
 
   const leaderboard = useMemo(() => getLeaderboard(), [getLeaderboard]);
   const winner = leaderboard[0];
+
+  const handleSave = () => {
+    try {
+      // Persist game to history
+      const setup = useSetupStore.getState();
+      const totals = getAllTotals();
+      const ranks: Record<string, number> = {};
+      leaderboard.forEach((e) => (ranks[e.playerId] = e.rank));
+      const scores: Record<string, number> = {};
+      Object.entries(totals).forEach(([pid, total]) => (scores[pid] = total));
+
+      // Build history entry
+      const historyEntry = {
+        date: new Date(),
+        players: players.map((p) => p.name),
+        expansions: setup.expansions,
+        winner: winner?.playerId,
+        scores,
+        duration: gameMetadata?.endTime && gameMetadata?.startTime
+          ? Math.round(((new Date(gameMetadata.endTime).getTime() - new Date(gameMetadata.startTime).getTime()) / 1000) / 60)
+          : undefined,
+      } as const;
+      setup.addGameToHistory(historyEntry);
+
+      // Post-game analytics into Player DB
+      const order = setup.getOrderedPlayers().map((p) => p.id);
+      const wonders = setup.getAssignedWonders();
+      const categoryBreakdowns: Record<string, any> = {};
+      players.forEach((p) => { categoryBreakdowns[p.id] = getCategoryBreakdown(p.id); });
+
+      usePlayerStore.getState().recordGameResult({
+        gameId: `${gameMetadata?.gameNumber ?? Date.now()}`,
+        date: new Date().toISOString(),
+        playerOrder: order,
+        scores,
+        ranks,
+        expansions: setup.expansions,
+        wonders,
+        categoryBreakdowns,
+      });
+
+      completeScoring();
+      Alert.alert('Saved', 'Game results saved. Returning to Home.', [
+        { text: 'OK', onPress: () => router.replace('/') },
+      ]);
+    } catch (e: any) {
+      Alert.alert('Error', e?.message || 'Failed to save results.');
+    }
+  };
+
+  const handleShare = () => {
+    Alert.alert('Share', 'Sharing coming soon.');
+  };
 
   const header = (() => {
     if (!winner) return null;
@@ -103,13 +158,7 @@ export default function ResultsScreen() {
     return { average, highest, lowest, spread, durationMin };
   }, [getAllTotals, gameMetadata?.startTime, gameMetadata?.endTime]);
 
-  const handleShare = () => Alert.alert('Share Results', 'Coming soon');
-  const handleSave = async () => {
-    try {
-      completeScoring();
-      Alert.alert('Saved', 'Scores saved locally');
-    } catch {}
-  };
+  // Note: handleSave and handleShare are defined earlier; remove duplicates here.
 
   return (
     <SafeAreaView style={styles.container}>
