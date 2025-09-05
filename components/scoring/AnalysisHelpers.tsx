@@ -129,22 +129,23 @@ export const AnalysisHelpers = memo(function AnalysisHelpers({
 
   // Hydrate from store when switching players (per-player inputs)
   useEffect(() => {
-    try {
-      const { useScoringStore } = require('../../store/scoringStore');
-      const saved = useScoringStore.getState().analysisByPlayer?.[playerId];
-      if (saved) {
-        setResourceData((prev) => ({
-          ...prev,
-          brownCards: typeof saved.brownCards === 'number' ? saved.brownCards : prev.brownCards,
-          grayCards: typeof saved.grayCards === 'number' ? saved.grayCards : prev.grayCards,
-          customData: saved.customData ?? prev.customData,
-        }));
-      }
-    } catch {}
+    (async () => {
+      try {
+        const { useScoringStore } = await import('../../store/scoringStore');
+        const saved = useScoringStore.getState().analysisByPlayer?.[playerId];
+        if (saved) {
+          setResourceData((prev) => ({
+            ...prev,
+            brownCards: typeof saved.brownCards === 'number' ? saved.brownCards : prev.brownCards,
+            grayCards: typeof saved.grayCards === 'number' ? saved.grayCards : prev.grayCards,
+            customData: saved.customData ?? prev.customData,
+          }));
+        }
+      } catch {}
+    })();
   }, [playerId]);
   
-  const [showCustomQuestions, setShowCustomQuestions] = useState(false);
-  const [customQuestions, setCustomQuestions] = useState<Array<{ id: string; question: string; value: string }>>([]);
+  const [customQuestions, setCustomQuestions] = useState<{ id: string; question: string; value: string }[]>([]);
   
   const updateField = (field: keyof ResourceData, value: number) => {
     const newData = { ...resourceData, [field]: value };

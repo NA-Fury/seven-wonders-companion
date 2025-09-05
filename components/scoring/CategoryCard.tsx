@@ -20,12 +20,12 @@ import { searchPurpleCards } from '../../data/purpleCardsDatabase';
 import { searchYellowCards, sumYellowEndGameVP } from '../../data/yellowCardsDatabase';
 import { CategoryKey, CategoryScore, useScoringStore } from '../../store/scoringStore';
 import { useSetupStore } from '../../store/setupStore';
+import { getWonderById, getWonderSide } from '../../data/wondersDatabase';
 
 // Get actual wonder stages from the database
 function getWonderStagesData(playerId: string): { stages: any[], wonderName: string } | null {
   try {
-    const { players, wonders } = require('../../store/setupStore').useSetupStore.getState();
-    const { getWonderById, getWonderSide } = require('../../data/wondersDatabase');
+    const { wonders } = useSetupStore.getState();
     
     const playerWonder = wonders[playerId];
     if (!playerWonder?.boardId || !playerWonder?.side) {
@@ -304,7 +304,7 @@ export const CategoryCard = memo(function CategoryCard({
   expansions,
 }: CategoryCardProps) {
   const { updateCategoryScore, updateDetailedData } = useScoringStore();
-  
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
   // Setup info (players + selected Edifice projects) and all scores
   const { players, edificeProjects } = useSetupStore();
   // Use correct store key instead of a non-existent `scores`
@@ -314,7 +314,7 @@ export const CategoryCard = memo(function CategoryCard({
   const playerIds = useMemo(() => (players || []).map((p: any) => p.id), [players]);
   
   // Add a refresh trigger to force re-evaluation
-  const [refreshTrigger, setRefreshTrigger] = useState(0);
+  
   
   const edificeCompletion = useMemo(
     () => {
@@ -333,7 +333,7 @@ export const CategoryCard = memo(function CategoryCard({
       console.log('🎲 Edifice outcome result:', result);
       return result;
     },
-    [playerId, playerIds, playerScores, refreshTrigger]
+    [playerId, playerIds, playerScores]
   );
 
   // FIXED: All state hooks declared in consistent order
@@ -461,8 +461,6 @@ export const CategoryCard = memo(function CategoryCard({
     if (!contributed) {
       updateDetailedField(`contributedStageAge${age}`, undefined);
     }
-    // Force recompute in case store selector memoization delays updates
-    setRefreshTrigger((prev) => prev + 1);
   }, [updateDetailedField]);
 
   // Reset input value when player changes
@@ -497,9 +495,13 @@ export const CategoryCard = memo(function CategoryCard({
   const purpleSuggestions = purpleQuery.length >= 1 ? searchPurpleCards(purpleQuery, 8) : [];
   const selectedPurpleCards: string[] = Array.isArray(detailedData.selectedPurpleCards) ? detailedData.selectedPurpleCards : [];
   const yellowSuggestions = yellowQuery.length >= 1 ? searchYellowCards(yellowQuery, 8) : [];
-  const selectedYellowCards: string[] = Array.isArray(detailedData.selectedYellowCards) ? detailedData.selectedYellowCards : [];
+  const selectedYellowCards: string[] = useMemo(() => (
+    Array.isArray(detailedData.selectedYellowCards) ? detailedData.selectedYellowCards as string[] : []
+  ), [detailedData.selectedYellowCards]);
   const blackSuggestions = blackQuery.length >= 1 ? searchBlackCards(blackQuery, 8) : [];
-  const selectedBlackCards: string[] = Array.isArray(detailedData.selectedBlackCards) ? detailedData.selectedBlackCards : [];
+  const selectedBlackCards: string[] = useMemo(() => (
+    Array.isArray(detailedData.selectedBlackCards) ? detailedData.selectedBlackCards as string[] : []
+  ), [detailedData.selectedBlackCards]);
 
   // Auto-calc Yellow end-game VP when inputs change (uses Analysis Helpers for brown/grey)
   const analysisByPlayer = useScoringStore((s) => s.analysisByPlayer || {});
@@ -1682,7 +1684,6 @@ export const CategoryCard = memo(function CategoryCard({
         const ages: (1|2|3)[] = [1, 2, 3];
 
         // Calculate total effects for this player
-        let totalEdificePoints = 0;
         let totalCoinsDelta = 0;
         let totalMilitaryTokensII = 0;
         let totalMilitaryTokensIII = 0;
@@ -1694,8 +1695,6 @@ export const CategoryCard = memo(function CategoryCard({
           const project = projByAge[age];
           if (!project) return;
 
-          const contributed = !!detailedData[`contributedAge${age}`];
-          const complete = !!edificeCompletion.completeByAge[age];
           const outcome = edificeOutcome[age];
 
           if (outcome === 'reward' && project.reward) {

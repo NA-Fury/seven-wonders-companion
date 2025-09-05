@@ -101,7 +101,7 @@ export default function ResultsScreen() {
       ? Math.round((new Date(gameMetadata.endTime).getTime() - new Date(gameMetadata.startTime).getTime()) / 60000)
       : null;
     return { average, highest, lowest, spread, durationMin };
-  }, [getAllTotals]);
+  }, [getAllTotals, gameMetadata?.startTime, gameMetadata?.endTime]);
 
   const handleShare = () => Alert.alert('Share Results', 'Coming soon');
   const handleSave = async () => {

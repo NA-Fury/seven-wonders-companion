@@ -4,7 +4,6 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Animated,
-  Dimensions,
   ScrollView,
   StyleSheet,
   Text,
@@ -20,7 +19,7 @@ import { WONDERS_DATABASE } from '../../data/wondersDatabase';
 import { CategoryKey, useScoringStore } from '../../store/scoringStore';
 import { useSetupStore } from '../../store/setupStore';
 
-const { width: screenWidth } = Dimensions.get('window');
+// screen width not used here
 
 const styles = StyleSheet.create({
   container: {
@@ -182,7 +181,7 @@ export default function ScoringScreen() {
         useNativeDriver: true,
       }).start();
     }
-  }, [players, seating, expansions, isInitialized]);
+  }, [players, seating, expansions, isInitialized, initializeScoring, fadeAnim]);
   
   // Memoized current player data
   const currentPlayer = useMemo(() => {
@@ -244,9 +243,7 @@ export default function ScoringScreen() {
   const currentScore = currentPlayerId ? getPlayerScore(currentPlayerId) : null;
   
   // Calculate overall progress
-  const completionProgress = useMemo(() => {
-    return getCompletionProgress();
-  }, [playerScores, gameMetadata]);
+  const completionProgress = useMemo(() => getCompletionProgress(), [getCompletionProgress]);
   
   // Count completed categories across all players
   const completedCategoriesInfo = useMemo(() => {

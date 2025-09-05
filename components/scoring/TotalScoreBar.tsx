@@ -56,7 +56,7 @@ export const TotalScoreBar = memo<TotalScoreBarProps>(function TotalScoreBar({
 
   // Get actual readiness based on players having at least 3 categories with points
   const { players } = useSetupStore();
-  const { getCategoryBreakdown, playerScores } = useScoringStore();
+  const { playerScores } = useScoringStore();
 
   const readiness = useMemo(() => {
     if (!players?.length) return { progress: 0, ready: false, incompleteNames: [] as string[] };
@@ -112,7 +112,7 @@ export const TotalScoreBar = memo<TotalScoreBarProps>(function TotalScoreBar({
       duration: 400, 
       useNativeDriver: false 
     }).start();
-  }, [effectiveProgress]);
+  }, [effectiveProgress, progressAnim]);
 
   const handlePress = () => {
     if (!ready) return;

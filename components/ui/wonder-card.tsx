@@ -240,15 +240,7 @@ interface WonderCardSideProps {
   isSelected: boolean;
 }
 
-function renderCost(cost: any) {
-  if (Array.isArray(cost)) {
-    return cost.map((c, i) => <Text key={i} style={{ color: '#F3E7D3' }}>{c}</Text>);
-  }
-  if (cost && typeof cost === 'object' && typeof cost.coins === 'number') {
-    return <Text style={{ color: '#F3E7D3' }}>{cost.coins} coins</Text>;
-  }
-  return <Text style={{ color: '#9CA3AF' }}>—</Text>;
-}
+// renderCost removed (unused)
 
 function WonderCardSide({ wonder, side, sideType, isSelected }: WonderCardSideProps) {
   const isDayMode = sideType === 'day';

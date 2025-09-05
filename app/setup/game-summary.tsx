@@ -234,7 +234,6 @@ const styles = StyleSheet.create({
 export default function GameSummaryScreen() {
   const { players, seating, expansions, wonders, edificeProjects } = useSetupStore();
   const { initializeScoring } = useScoringStore();
-  const [isInitialized, setIsInitialized] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
   // Get ordered players based on seating
@@ -317,10 +316,9 @@ export default function GameSummaryScreen() {
     
     // Small delay to ensure state updates
     setTimeout(() => {
-      setIsInitialized(true);
       router.push('/scoring');
     }, 100);
-  }, [isReadyToPlay, orderedPlayers, initializeScoring]);
+  }, [isReadyToPlay, orderedPlayers, initializeScoring, expansions]);
 
   // Navigate back
   const handleBack = () => {
