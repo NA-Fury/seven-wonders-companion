@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useScoringStore } from '../../store/scoringStore';
 import { useSetupStore } from '../../store/setupStore';
 import { WONDERS_DATABASE } from '../../data/wondersDatabase';
+import { evaluateBadgesForContext } from '../../data/badges';
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0F0E1A' },
@@ -69,6 +70,22 @@ export default function ResultsScreen() {
       const perPlayerBreakdowns: Record<string, any> = {};
       players.forEach((p) => { perPlayerBreakdowns[p.id] = getCategoryBreakdown(p.id); });
 
+      // Compute per-player badges (for analytics/history)
+      const badgesAwarded: Record<string, string[]> = {};
+      players.forEach((p) => {
+        const w = wondersForHistory[p.id];
+        const ctx = {
+          playerId: p.id,
+          rank: ranks[p.id] || 0,
+          score: scores[p.id] || 0,
+          breakdown: perPlayerBreakdowns[p.id] || {},
+          expansions: setup.expansions,
+          wonderBoardId: w?.boardId,
+          playerCount: players.length,
+        } as const;
+        badgesAwarded[p.id] = evaluateBadgesForContext(ctx).map((b) => b.id);
+      });
+
       const historyEntry = {
         date: new Date(),
         players: players.map((p) => p.name),
@@ -79,6 +96,7 @@ export default function ResultsScreen() {
         ranks,
         wonders: wondersForHistory,
         categoryBreakdowns: perPlayerBreakdowns,
+        badgesAwarded,
         edificeProjects: setup.edificeProjects,
         duration: gameMetadata?.endTime && gameMetadata?.startTime
           ? Math.round(((new Date(gameMetadata.endTime).getTime() - new Date(gameMetadata.startTime).getTime()) / 1000) / 60)
@@ -236,7 +254,18 @@ export default function ResultsScreen() {
         {/* Rankings */}
         <View style={styles.rankingsContainer}>
           {leaderboard.map((e) => {
-            const breakdown = getCategoryBreakdown(e.playerId);
+            const breakdown = getCategoryBreakdown(e.playerId) as any;
+            const setup = useSetupStore.getState();
+            const playerWonder = setup.wonders?.[e.playerId];
+            const ctx = {
+              playerId: e.playerId,
+              rank: e.rank,
+              score: e.total,
+              breakdown,
+              expansions: setup.expansions,
+              wonderBoardId: playerWonder?.boardId,
+              playerCount: players.length,
+            } as const;
             // Simple badge set (display only)
             const BADGES = {
               warmonger: { icon: '⚔️', name: 'Warmonger', condition: (b: any) => (b.military || 0) >= 20 },
@@ -248,9 +277,7 @@ export default function ResultsScreen() {
               perfectScore: { icon: '💯', name: 'Century Club', condition: (_: any) => e.total >= 100 },
               underdog: { icon: '🐺', name: 'Underdog', condition: (_: any) => e.rank === 1 && e.total < 60 },
             } as const;
-            const badges = Object.entries(BADGES)
-              .filter(([_, v]) => v.condition(breakdown))
-              .map(([key, v]) => ({ key, icon: v.icon, name: v.name }));
+            const badges = evaluateBadgesForContext(ctx);
             return (
               <View key={e.playerId} style={styles.rankingCard}>
                 <View style={styles.rankingHeader}>
@@ -263,7 +290,7 @@ export default function ResultsScreen() {
                 {badges.length > 0 && (
                   <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
                     {badges.slice(0, 6).map(b => (
-                      <View key={b.key} style={{
+                      <View key={b.id} style={{
                         backgroundColor: 'rgba(99,102,241,0.2)', borderRadius: 12, paddingVertical: 2, paddingHorizontal: 8,
                         borderWidth: 1, borderColor: 'rgba(99,102,241,0.3)'
                       }}>

@@ -26,7 +26,9 @@ export default function BadgesScreen() {
         columnWrapperStyle={{ gap: 8 }}
         renderItem={({ item }) => (
           <View style={{ flex: 1, backgroundColor: 'rgba(31,41,55,0.5)', borderWidth: 1, borderColor: item.unlocked ? 'rgba(196,162,76,0.6)' : 'rgba(196,162,76,0.2)', borderRadius: 16, padding: 12, marginTop: 8, opacity: item.unlocked ? 1 : 0.5 }}>
-            <Text style={{ fontSize: 24, marginBottom: 4 }}>{item.icon}</Text>
+            <View style={{ width: 40, height: 40, alignItems: 'center', justifyContent: 'center', marginBottom: 6 }}>
+              <Text style={{ fontSize: 28, lineHeight: 40 }}>{item.icon}</Text>
+            </View>
             <Text style={{ color: '#FEF3C7', fontWeight: '700' }}>{item.name}</Text>
             <Text style={{ color: 'rgba(243,231,211,0.7)', marginTop: 2, fontSize: 12 }}>{item.description}</Text>
           </View>
@@ -35,4 +37,3 @@ export default function BadgesScreen() {
     </SafeAreaView>
   );
 }
-

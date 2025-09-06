@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import type { CategoryKey } from './scoringStore';
+import { evaluateBadgeIdsForContext } from '../data/badges';
 
 export type WonderSide = 'day' | 'night';
 
@@ -158,6 +159,9 @@ export const usePlayerStore = create<PlayerDBState & PlayerDBActions>()(
           const playerCount = playerIds.length;
           const isBaseOnly = !input.expansions.leaders && !input.expansions.cities && !input.expansions.armada && !input.expansions.edifice;
 
+          // compute previous global high score (for Record Holder)
+          const prevGlobalHigh = Object.values(updated).reduce((m, p) => Math.max(m, p.stats.highestScore?.score || 0), 0);
+
           // Neighbor map: use table order, circular
           const leftOf = (idx: number) => (idx === 0 ? playerCount - 1 : idx - 1);
           const rightOf = (idx: number) => (idx === playerCount - 1 ? 0 : idx + 1);
@@ -226,17 +230,36 @@ export const usePlayerStore = create<PlayerDBState & PlayerDBActions>()(
               stats.categoryAverages[cat] = Math.round(newAvg * 10) / 10;
             });
 
-            // Assign simple badges inline (more in data/badges can be processed later)
-            const badges = new Set(profile.badges.map((b) => b.id));
-            if (rank === 1) badges.add(`wonder_victor_${w?.boardId || 'any'}`);
-            if (score >= 100) badges.add('century_club');
-            if ((breakdown['military'] || 0) >= 20) badges.add('warmonger');
-            if ((breakdown['science'] || 0) >= 25) badges.add('great_scientist');
+            // Centralized badge evaluation
+            const existing = new Set(profile.badges.map((b) => b.id));
+            const ctx = {
+              playerId: pid,
+              rank,
+              score,
+              breakdown: breakdown as any,
+              expansions: input.expansions,
+              wonderBoardId: w?.boardId,
+              playerCount,
+            };
+            const newlyEarned = new Set(evaluateBadgeIdsForContext(ctx));
+
+            // Record Holder (global highest) — add if this score beats previous global record
+            if (score > prevGlobalHigh) {
+              newlyEarned.add('record_holder');
+            }
+
+            // Merge badges without duplicating previously unlocked ones
+            const merged = [
+              ...profile.badges,
+              ...Array.from(newlyEarned)
+                .filter((id) => !existing.has(id))
+                .map((id) => ({ id, unlockedAt: input.date })),
+            ];
 
             updated[pid] = {
               ...profile,
               stats,
-              badges: Array.from(badges).map((id) => ({ id, unlockedAt: input.date })),
+              badges: merged,
               updatedAt: new Date().toISOString(),
             };
           }
@@ -256,4 +279,3 @@ export const usePlayerStore = create<PlayerDBState & PlayerDBActions>()(
 // Helpers for selection
 export const selectProfiles = () => usePlayerStore.getState().getAllProfiles();
 export const getSelectedIds = () => usePlayerStore.getState().selectedForGame;
-

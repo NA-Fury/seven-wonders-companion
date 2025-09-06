@@ -18,6 +18,7 @@ export type GameHistoryEntry = {
   ranks?: Record<string, number>; // profileId -> 1..n
   wonders?: Record<string, WonderAssignment>; // profileId -> wonder assignment (includes side/shipyard)
   categoryBreakdowns?: Record<string, CategoryBreakdown>; // profileId -> category breakdown
+  badgesAwarded?: Record<string, string[]>; // profileId -> badge ids awarded this game
   edificeProjects?: EdificeProjects; // selected edifice projects for this game
   duration?: number; // minutes
   metadata?: { gameNumber?: number };
