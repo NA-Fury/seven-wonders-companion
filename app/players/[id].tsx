@@ -4,6 +4,7 @@ import { FlatList, Pressable, ScrollView, Text, TextInput, View } from 'react-na
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { usePlayerStore, type PlayerProfile } from '../../store/playerStore';
 import { WONDERS_DATABASE } from '../../data/wondersDatabase';
+import { getBadgeById } from '../../data/badges';
 
 export default function PlayerDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -92,6 +93,30 @@ export default function PlayerDetailScreen() {
       <Text style={{ color: '#C4A24C', fontWeight: '600' }}>{`${value}`}</Text>
     </View>
   );
+
+  // Resolve badge display data (emoji + proper name)
+  const displayBadges = useMemo(() => {
+    const resolveName = (id: string) => {
+      const fromDb = getBadgeById(id);
+      if (fromDb) return { name: fromDb.name, icon: fromDb.icon };
+      // Fallback: humanize ids and map wonder_victor_* to Wonder name if possible
+      if (id.startsWith('wonder_victor_')) {
+        const wid = id.replace('wonder_victor_', '');
+        const w = WONDERS_DATABASE.find((x) => x.id.toLowerCase() === wid.toLowerCase());
+        if (w) return { name: `${w.name} Victor`, icon: '🏛️' };
+      }
+      const human = id
+        .split('_')
+        .map((s) => (s.length ? s.charAt(0).toUpperCase() + s.slice(1) : s))
+        .join(' ');
+      return { name: human, icon: '🏅' };
+    };
+
+    return (profile.badges || []).map((b) => {
+      const { name, icon } = resolveName(b.id);
+      return { id: b.id, name, icon, unlockedAt: b.unlockedAt };
+    });
+  }, [profile.badges]);
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#1C1A1A' }}>
@@ -245,15 +270,24 @@ export default function PlayerDetailScreen() {
         {/* Badges */}
         <View style={{ paddingHorizontal: 20, marginTop: 12 }}>
           <View style={{ backgroundColor: 'rgba(99,102,241,0.1)', borderRadius: 12, padding: 16, borderWidth: 1, borderColor: 'rgba(99,102,241,0.3)' }}>
-            <Text style={{ color: '#818CF8', fontSize: 16, fontWeight: 'bold', marginBottom: 8 }}>Badges ({profile.badges.length})</Text>
-            {profile.badges.length > 0 ? (
+            <Text style={{ color: '#818CF8', fontSize: 16, fontWeight: 'bold', marginBottom: 8 }}>Badges ({displayBadges.length})</Text>
+            {displayBadges.length > 0 ? (
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-                {profile.badges.map((b) => (
-                  <View key={b.id} style={{
-                    backgroundColor: 'rgba(99,102,241,0.2)', borderRadius: 12, paddingVertical: 4, paddingHorizontal: 10,
-                    borderWidth: 1, borderColor: 'rgba(99,102,241,0.3)'
-                  }}>
-                    <Text style={{ color: '#818CF8', fontWeight: '600' }}>{b.id}</Text>
+                {displayBadges.map((b) => (
+                  <View
+                    key={b.id}
+                    style={{
+                      backgroundColor: 'rgba(99,102,241,0.2)',
+                      borderRadius: 12,
+                      paddingVertical: 4,
+                      paddingHorizontal: 10,
+                      borderWidth: 1,
+                      borderColor: 'rgba(99,102,241,0.3)'
+                    }}
+                  >
+                    <Text style={{ color: '#818CF8', fontWeight: '600' }}>
+                      {b.icon} {b.name}
+                    </Text>
                   </View>
                 ))}
               </View>
@@ -279,4 +313,3 @@ export default function PlayerDetailScreen() {
 function capitalize(s: string) {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
-
