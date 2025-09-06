@@ -105,7 +105,7 @@ export default function SeatingScreen() {
           <View style={{ flexDirection: 'row' }}>
             <View style={{ flex: 1, marginRight: 12 }}>
               <Button
-                title="Back to Players"
+                title="Back to Expansions"
                 variant="ghost"
                 onPress={() => router.back()}
                 className="w-full"

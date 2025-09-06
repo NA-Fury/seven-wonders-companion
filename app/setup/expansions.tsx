@@ -1,4 +1,4 @@
-// app/setup/expansions.tsx - FIXED: Navigate to players first
+// app/setup/expansions.tsx - Navigate to seating after selecting expansions
 import { router } from 'expo-router';
 import React, { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
@@ -10,8 +10,8 @@ export default function ExpansionsScreen() {
   const { expansions, toggleExpansion } = useSetupStore();
 
   const handleContinue = () => {
-    // Use absolute path
-    router.push('/setup/players');
+    // Proceed directly to seating now that players are loaded from profiles
+    router.push('/setup/seating');
   };
 
   const handleBack = () => {
@@ -36,7 +36,7 @@ export default function ExpansionsScreen() {
           </View>
           <View style={{ flex: 1 }}>
             <Button
-              title="Continue to Players"
+              title="Continue to Seating"
               onPress={handleContinue}
               className="w-full"
             />
