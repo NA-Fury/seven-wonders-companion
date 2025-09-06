@@ -23,24 +23,26 @@ import { useSetupStore } from '../../store/setupStore';
 import { getWonderById, getWonderSide } from '../../data/wondersDatabase';
 
 // Get actual wonder stages from the database
-function getWonderStagesData(playerId: string): { stages: any[], wonderName: string } | null {
+function getWonderStagesData(playerId: string): { stages: any[]; wonderName: string; wonderId: string; side: 'day' | 'night' } | null {
   try {
     const { wonders } = useSetupStore.getState();
-    
+
     const playerWonder = wonders[playerId];
     if (!playerWonder?.boardId || !playerWonder?.side) {
       return null;
     }
-    
+
     const wonder = getWonderById(playerWonder.boardId);
     if (!wonder) return null;
-    
+
     const wonderSide = getWonderSide(playerWonder.boardId, playerWonder.side);
     if (!wonderSide) return null;
-    
+
     return {
       stages: wonderSide.stages || [],
-      wonderName: wonder.name
+      wonderName: wonder.name,
+      wonderId: wonder.id,
+      side: playerWonder.side,
     };
   } catch (error) {
     console.warn('Could not load wonder data:', error);
@@ -348,6 +350,8 @@ export const CategoryCard = memo(function CategoryCard({
   const [yellowQuery, setYellowQuery] = useState<string>('');
   const [purpleQuery, setPurpleQuery] = useState<string>('');
   const [blackQuery, setBlackQuery] = useState<string>('');
+  // Wonder-specific quick inputs (avoid reusing leaders' search box)
+  const [wonderLeaderQueries, setWonderLeaderQueries] = useState<Record<string, string>>({});
   
   const config = CATEGORY_CONFIG[category];
   
@@ -373,19 +377,92 @@ export const CategoryCard = memo(function CategoryCard({
     const newData: Record<string, any> = { ...detailedData, [field]: value };
     setDetailedData(newData);
     updateDetailedData(playerId, category, newData);
-    
+
     // Auto-calculate wonder points when stages are toggled
-    if (category === 'wonder' && field.startsWith('stage')) {
+    if (category === 'wonder' && (field.startsWith('stage') || field.includes('Choice') || field.includes('BuriedLeader'))) {
       const wonderStagesData = getWonderStagesData(playerId);
       if (wonderStagesData) {
+        const { wonderId } = wonderStagesData;
+        // Compute base stage points with Carthage overrides and Abu Simbel extras
         let totalPoints = 0;
         wonderStagesData.stages.forEach((stage, index) => {
           const stageKey = `stage${index + 1}`;
-          if (newData[stageKey] && stage.points) {
-            totalPoints += stage.points;
+          const isChecked = !!newData[stageKey];
+          if (!isChecked) return;
+
+          // Default: add fixed stage points if any
+          let stagePts = stage.points || 0;
+
+          // Special-case: Carthage stages with left/right choices where VP depends on the choice
+          if (wonderId === 'carthage') {
+            const choice = newData[`${stageKey}Choice`]; // 'left' | 'right'
+            const desc: string = stage?.effect?.description || '';
+            // Day stage 2: 'Choose: 7 coins OR +1 Military + 2 VP' -> BOTH choices grant +2 VP
+            // Night stage 1: 'LEFT: 7 coins + 4 VP; RIGHT: +2 Military' -> VP only on LEFT
+            if (/Choose: Gain 7 Coins OR \+1 Military Strength \+ 2 VP/i.test(desc)) {
+              stagePts = 2;
+            }
+            if (/LEFT: Gain 7 Coins \+ 4 VP; RIGHT: \+2 Military Strength/i.test(desc)) {
+              // When LEFT, 4 VP; when RIGHT, 0 VP
+              stagePts = choice === 'left' ? 4 : 0;
+            }
           }
+
+          totalPoints += stagePts;
         });
+
+        // Abu Simbel: add 2x buried leader cost per burial
+        if (wonderId === 'abu_simbel') {
+          const addBurialScore = (slotIdx: number) => {
+            const sk = `stage${slotIdx}`;
+            if (!newData[sk]) return 0; // must be built
+            const name = newData[`${sk}BuriedLeaderName`];
+            if (!name) return 0;
+            const leader = getLeaderByName(name);
+            if (!leader) return 0;
+            let costPaid = leader.cost;
+            if (leader.costType === 'age') {
+              const age = parseInt(String(newData[`${sk}BuriedLeaderAge`] || ''), 10);
+              if (!age || age < 1 || age > 3) return 0; // need age to evaluate cost
+              costPaid = age; // age coins
+            }
+            return (costPaid || 0) * 2;
+          };
+
+          // Check up to first 3 stages for burial tags (Day has burial on stage 3; Night on stages 1 & 2)
+          totalPoints += addBurialScore(1);
+          totalPoints += addBurialScore(2);
+          totalPoints += addBurialScore(3);
+        }
+
         updateCategoryScore(playerId, category, totalPoints, true);
+
+        // Carthage Night Stage 2: RIGHT choice grants a Science wild symbol at end game
+        if (wonderStagesData.wonderId === 'carthage') {
+          wonderStagesData.stages.forEach((stage, index) => {
+            const stageKey = `stage${index + 1}`;
+            const isChecked = !!newData[stageKey];
+            if (!isChecked) return;
+            const desc: string = stage?.effect?.description || '';
+            if (/Endgame Science symbol of your choice/i.test(desc)) {
+              const choice = newData[`${stageKey}Choice`];
+              // Only apply on RIGHT
+              if (choice === 'right' && !newData[`${stageKey}ChoiceSciApplied`]) {
+                try {
+                  const current = (useScoringStore.getState().playerScores?.[playerId]?.categories?.science?.detailedData || {}) as Record<string, any>;
+                  const currentWild = parseInt(String(current.choiceTokens || 0), 10) || 0;
+                  useScoringStore.getState().updateDetailedData(playerId, 'science', { ...current, choiceTokens: currentWild + 1 });
+                  // Mark applied to avoid double-adding if user toggles choices
+                  const marked = { ...newData, [`${stageKey}ChoiceSciApplied`]: true };
+                  setDetailedData(marked);
+                  updateDetailedData(playerId, category, marked);
+                } catch (e) {
+                  console.warn('Failed to propagate Carthage science bonus:', e);
+                }
+              }
+            }
+          });
+        }
       }
     }
     
@@ -473,6 +550,7 @@ export const CategoryCard = memo(function CategoryCard({
     setShowDetailed(false);
     setLeaderQuery('');
     setIslandQuery('');
+    setWonderLeaderQueries({});
   }, [playerId, score?.directPoints]);
 
   // Keep detailedData in sync with what's in the scoring store for this player/category
@@ -485,7 +563,7 @@ export const CategoryCard = memo(function CategoryCard({
   }, [playerId, category, score?.detailedData]);
 
   // FIXED: Move all computed values after all hooks
-  const suggestions = leaderQuery.length >= 1 ? searchLeaders(leaderQuery, 8) : [];
+  const suggestions = leaderQuery.length >= 1 ? searchLeaders(leaderQuery, 8).map((l:any) => l.name) : [];
   const selectedLeaders: string[] = Array.isArray(detailedData.selectedLeaders) ? (detailedData.selectedLeaders as string[]) : [];
   const totalDirectVP = sumImmediateVP(selectedLeaders);
   
@@ -587,26 +665,192 @@ export const CategoryCard = memo(function CategoryCard({
                 const stageKey = `stage${stageNumber}`;
                 const points = stage.points || 0;
                 const effectDescription = stage.effect?.description || 'Special effect';
-                
+                const isCarthage = wonderStagesData.wonderId === 'carthage';
+                const isAbu = wonderStagesData.wonderId === 'abu_simbel';
+                const choiceKey = `${stageKey}Choice` as const;
+                const buriedNameKey = `${stageKey}BuriedLeaderName` as const;
+                const buriedAgeKey = `${stageKey}BuriedLeaderAge` as const;
+                const hasLeftRight = isCarthage && (/Choose:/i.test(effectDescription) || /LEFT:/i.test(effectDescription));
+                const hasBurial = isAbu && /Bury 1 recruited Leader/i.test(effectDescription);
+
                 return (
-                  <Checkbox
-                    key={stageKey}
-                    checked={detailedData[stageKey] || false}
-                    onToggle={() => updateDetailedField(stageKey, !detailedData[stageKey])}
-                    label={`Stage ${stageNumber}: ${effectDescription}${points > 0 ? ` (+${points} VP)` : ''}`}
-                  />
+                  <View key={stageKey}>
+                    <Checkbox
+                      checked={detailedData[stageKey] || false}
+                      onToggle={() => updateDetailedField(stageKey, !detailedData[stageKey])}
+                      label={`Stage ${stageNumber}: ${effectDescription}${(() => {
+                        if (hasLeftRight) {
+                          const choice = detailedData[choiceKey];
+                          if (/Choose: Gain 7 Coins OR \+1 Military Strength \+ 2 VP/i.test(effectDescription)) {
+                            // Day Stage 2: both choices grant +2 VP
+                            return ' (+2 VP)';
+                          }
+                          if (/LEFT: Gain 7 Coins \+ 4 VP; RIGHT: \+2 Military Strength/i.test(effectDescription)) {
+                            return choice === 'left' ? ' (+4 VP)' : '';
+                          }
+                        }
+                        return points > 0 ? ` (+${points} VP)` : '';
+                      })()}`}
+                    />
+
+                    {/* Carthage: ask for LEFT/RIGHT when applicable */}
+                    {(detailedData[stageKey] && hasLeftRight) && (
+                      <View style={{ marginLeft: 28, marginTop: 6 }}>
+                        <Text style={styles.detailLabel}>Which effect did you choose?</Text>
+                        <View style={{ flexDirection: 'row', gap: 8 }}>
+                          <TouchableOpacity
+                            style={[styles.detailButton, detailedData[choiceKey] === 'left' && styles.detailButtonActive]}
+                            onPress={() => updateDetailedField(choiceKey, 'left')}
+                          >
+                            <Text style={styles.detailButtonText}>Left</Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            style={[styles.detailButton, detailedData[choiceKey] === 'right' && styles.detailButtonActive]}
+                            onPress={() => updateDetailedField(choiceKey, 'right')}
+                          >
+                            <Text style={styles.detailButtonText}>Right</Text>
+                          </TouchableOpacity>
+                        </View>
+
+                        {/* Small hints based on the specific stage */}
+                        {/Choose: Gain 7 Coins OR \+1 Military Strength \+ 2 VP/i.test(effectDescription) && (
+                          <Text style={styles.noteText}>
+                            Both choices grant +2 VP. Left: +7 coins (add to Treasury). Right: +1 shield (adjust Military).
+                          </Text>
+                        )}
+                        {/LEFT: Gain 7 Coins \+ 4 VP; RIGHT: \+2 Military Strength/i.test(effectDescription) && (
+                          <Text style={styles.noteText}>
+                            Left: +7 coins and +4 VP. Right: +2 shields (adjust Military strength accordingly).
+                          </Text>
+                        )}
+                        {/Endgame Science symbol of your choice/i.test(effectDescription) && (
+                          <Text style={styles.noteText}>
+                            Right: Adds 1 science wild token; auto-applied to Science when selected.
+                          </Text>
+                        )}
+                      </View>
+                    )}
+
+                    {/* Abu Simbel: pick buried leader when stage is built */}
+                    {(detailedData[stageKey] && hasBurial && expansions?.leaders) && (
+                      <View style={{ marginLeft: 28, marginTop: 10 }}>
+                        <Text style={styles.detailLabel}>Which Leader did you bury?</Text>
+                        <TextInput
+                          style={styles.detailInput}
+                          value={wonderLeaderQueries[stageKey] || ''}
+                          onChangeText={(text) => setWonderLeaderQueries((q) => ({ ...q, [stageKey]: text }))}
+                          placeholder="Type a leader name..."
+                          placeholderTextColor="rgba(196, 162, 76, 0.3)"
+                        />
+                        {/* Suggestions */}
+                        {(wonderLeaderQueries[stageKey]?.length || 0) >= 1 && (
+                          <ScrollView style={{ maxHeight: 120, marginTop: 6 }}>
+                            {searchLeaders(wonderLeaderQueries[stageKey] || '', 8).map((leaderObj) => (
+                              <TouchableOpacity
+                                key={`${stageKey}-${leaderObj.id}`}
+                                style={{ paddingVertical: 6 }}
+                                onPress={() => {
+                                  setWonderLeaderQueries((q) => ({ ...q, [stageKey]: '' }));
+                                  updateDetailedField(buriedNameKey, leaderObj.name);
+                                }}
+                              >
+                                <Text style={{ color: '#F3E7D3', fontSize: 12 }}>{leaderObj.name}</Text>
+                              </TouchableOpacity>
+                            ))}
+                          </ScrollView>
+                        )}
+
+                        {/* Selected leader + age (if needed) */}
+                        {detailedData[buriedNameKey] && (
+                          <View style={{ marginTop: 8 }}>
+                            <Text style={styles.detailLabel}>Buried: {String(detailedData[buriedNameKey])}</Text>
+                            {(() => {
+                              const L = getLeaderByName(String(detailedData[buriedNameKey]));
+                              if (!L) return null;
+                              const baseCost = L.costType === 'age' ? undefined : L.cost;
+                              return (
+                                <>
+                                  {L.costType === 'age' && (
+                                    <View style={{ marginTop: 6 }}>
+                                      <Text style={styles.detailLabel}>At which Age was this Leader recruited? (1–3)</Text>
+                                      <TextInput
+                                        style={styles.detailInput}
+                                        value={detailedData[buriedAgeKey]?.toString() || ''}
+                                        onChangeText={(text) => updateDetailedField(buriedAgeKey, parseInt(text) || '')}
+                                        keyboardType="number-pad"
+                                        placeholder="1..3"
+                                        placeholderTextColor="rgba(196, 162, 76, 0.3)"
+                                      />
+                                    </View>
+                                  )}
+                                  <View style={styles.calculatedScore}>
+                                    <Text style={styles.calculatedLabel}>Burial Points</Text>
+                                    <Text style={styles.calculatedValue}>
+                                      {(() => {
+                                        let paid = baseCost ?? 0;
+                                        if (L.costType === 'age') {
+                                          const age = parseInt(String(detailedData[buriedAgeKey] || ''), 10);
+                                          paid = age && age >= 1 && age <= 3 ? age : 0;
+                                        }
+                                        return paid * 2;
+                                      })()}
+                                    </Text>
+                                  </View>
+                                </>
+                              );
+                            })()}
+                          </View>
+                        )}
+                      </View>
+                    )}
+                  </View>
                 );
               })}
             </View>
-            
+
             {Object.keys(detailedData).some(key => key.startsWith('stage') && detailedData[key]) && (
               <View style={styles.calculatedScore}>
                 <Text style={styles.calculatedLabel}>Calculated Points</Text>
                 <Text style={styles.calculatedValue}>
-                  {wonderStagesData.stages.reduce((total, stage, index) => {
-                    const stageKey = `stage${index + 1}`;
-                    return total + (detailedData[stageKey] && stage.points ? stage.points : 0);
-                  }, 0)}
+                  {(() => {
+                    // Display current computed total using the same logic as updateDetailedField
+                    let total = 0;
+                    wonderStagesData.stages.forEach((stage, index) => {
+                      const stageKey = `stage${index + 1}`;
+                      if (!detailedData[stageKey]) return;
+                      let pts = stage.points || 0;
+                      if (wonderStagesData.wonderId === 'carthage') {
+                        const choice = detailedData[`${stageKey}Choice`];
+                        const desc: string = stage?.effect?.description || '';
+                        if (/Choose: Gain 7 Coins OR \+1 Military Strength \+ 2 VP/i.test(desc)) {
+                          // Day Stage 2: both choices grant 2 VP
+                          pts = 2;
+                        }
+                        if (/LEFT: Gain 7 Coins \+ 4 VP; RIGHT: \+2 Military Strength/i.test(desc)) {
+                          pts = choice === 'left' ? 4 : 0;
+                        }
+                      }
+                      total += pts;
+                    });
+                    if (wonderStagesData.wonderId === 'abu_simbel') {
+                      const add = (idx: number) => {
+                        const sk = `stage${idx}`;
+                        if (!detailedData[sk]) return 0;
+                        const name = detailedData[`${sk}BuriedLeaderName`];
+                        if (!name) return 0;
+                        const L = getLeaderByName(String(name));
+                        if (!L) return 0;
+                        let paid = L.cost;
+                        if (L.costType === 'age') {
+                          const age = parseInt(String(detailedData[`${sk}BuriedLeaderAge`] || ''), 10);
+                          paid = age && age >= 1 && age <= 3 ? age : 0;
+                        }
+                        return (paid || 0) * 2;
+                      };
+                      total += add(1) + add(2) + add(3);
+                    }
+                    return total;
+                  })()}
                 </Text>
               </View>
             )}
@@ -1462,7 +1706,7 @@ export const CategoryCard = memo(function CategoryCard({
               )}
             </View>
 
-            {/* Selected leaders list as removable chips */}
+            {/* Selected leaders list as removable chips + leader-specific prompts */}
             {selectedLeaders.length > 0 && (
               <View style={styles.detailField}>
                 <Text style={styles.detailLabel}>Recruited Leaders ({selectedLeaders.length})</Text>
@@ -1488,11 +1732,32 @@ export const CategoryCard = memo(function CategoryCard({
                         }}>
                           {name}{vp ? ` (+${vp} VP)` : ''}
                         </Text>
+                        {/* Agrippina: quick confirmation toggle */}
+                        {name.toLowerCase() === 'agrippina' && (
+                          <View style={{ flexDirection:'row', alignItems:'center', marginLeft:8, gap:6 }}>
+                            <Text style={{ color:'#C4A24C', fontSize:11 }}>Only face-up Leader?</Text>
+                            <TouchableOpacity
+                              onPress={() => updateDetailedField('agrippinaOnly', !detailedData.agrippinaOnly)}
+                              style={{
+                                paddingHorizontal:8,
+                                paddingVertical:3,
+                                borderRadius:10,
+                                borderWidth:1,
+                                borderColor: detailedData.agrippinaOnly ? '#10B981' : 'rgba(196,162,76,0.3)',
+                                backgroundColor: detailedData.agrippinaOnly ? 'rgba(16,185,129,0.25)' : 'transparent'
+                              }}
+                            >
+                              <Text style={{ color: detailedData.agrippinaOnly ? '#10B981' : 'rgba(243,231,211,0.6)', fontSize:11 }}>
+                                {detailedData.agrippinaOnly ? 'True' : 'False'}
+                              </Text>
+                            </TouchableOpacity>
+                          </View>
+                        )}
                         <TouchableOpacity 
                           onPress={() => removeLeader(name)} 
                           style={{ marginLeft:8 }}
                         >
-                          <Text style={{ color:'#818CF8', fontSize:12 }}>✕</Text>
+                          <Text style={{ color:'#818CF8', fontSize:12 }}>?</Text>
                         </TouchableOpacity>
                       </View>
                     );
@@ -1514,7 +1779,7 @@ export const CategoryCard = memo(function CategoryCard({
             <View style={styles.detailField}>
               <Text style={styles.detailLabel}>
                 Leaders with immediate VP (Sappho, Zenobia, Nefertiti, Cleopatra, Aspasia) are auto-scored. 
-                Coins, military, diplomacy, and end-game effects are stored for future analysis.
+                Coins, military, diplomacy, and end-game effects are integrated into detailed scoring where applicable. Nearly all leaders that provide points have been attempted to register for scoring; please provide feedback if something is missing or wrong.
               </Text>
             </View>
           </>

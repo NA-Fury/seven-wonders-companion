@@ -1,0 +1,250 @@
+        })}
+      </View>
+    );
+  }
+
+  return (
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <View style={{ gap: 6 }}>
+        {playerIds.map((playerId, index) => {
+          const neighbors = getNeighbors(playerId);
+          const isDragging = draggedIndex === index;
+          const isHovering = hoverIndex === index && draggedIndex !== index;
+          
+          return (
+            <DragDropPlayerItem
+              key={`${playerId}-${index}`}
+              playerId={playerId}
+              playerName={getPlayerName(playerId)}
+              position={index + 1}
+              neighbors={neighbors}
+              isDragging={isDragging}
+              isHovering={isHovering}
+              onDragStart={() => setDraggedIndex(index)}
+              onDragEnd={(finalIndex) => {
+                if (finalIndex !== null && finalIndex !== index) {
+                  movePlayer(index, finalIndex);
+                }
+                setDraggedIndex(null);
+                setHoverIndex(null);
+              }}
+              onHover={(newHoverIndex) => setHoverIndex(newHoverIndex)}
+              currentIndex={index}
+              totalItems={playerIds.length}
+            />
+          );
+        })}
+      </View>
+    </GestureHandlerRootView>
+  );
+}
+
+interface DragDropPlayerItemProps {
+  playerId: string;
+  playerName: string;
+  position: number;
+  neighbors: { left: string; right: string };
+  isDragging: boolean;
+  isHovering: boolean;
+  onDragStart: () => void;
+  onDragEnd: (finalIndex: number | null) => void;
+  onHover: (index: number | null) => void;
+  currentIndex: number;
+  totalItems: number;
+}
+
+function DragDropPlayerItem({ 
+  playerName, 
+  position, 
+  neighbors, 
+  isDragging,
+  isHovering,
+  onDragStart,
+  onDragEnd,
+  onHover,
+  currentIndex,
+  totalItems
+}: DragDropPlayerItemProps) {
+  const translateY = useSharedValue(0);
+  const scale = useSharedValue(1);
+  const opacity = useSharedValue(1);
+  const spacerHeight = useSharedValue(0);
+
+  const ITEM_HEIGHT = 80;
+
+  useEffect(() => {
+    // Your animation logic
+  }, [scale]);
+
+  useEffect(() => {
+    // Your spacer logic
+  }, [spacerHeight]);
+
+  React.useEffect(() => {
+    spacerHeight.value = withSpring(isHovering ? ITEM_HEIGHT : 0);
+  }, [isHovering, spacerHeight, ITEM_HEIGHT]);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [
+      { translateY: translateY.value },
+      { scale: scale.value }
+    ],
+    opacity: opacity.value,
+    zIndex: isDragging ? 1000 : 1,
+  }));
+
+  const spacerStyle = useAnimatedStyle(() => ({
+    height: spacerHeight.value,
+  }));
+
+  const panGesture = Gesture.Pan()
+    .onStart(() => {
+      runOnJS(onDragStart)();
+      scale.value = withSpring(1.05);
+      opacity.value = withTiming(0.9);
+    })
+    .onUpdate((event) => {
+      translateY.value = event.translationY;
+      
+      const moveAmount = Math.round(event.translationY / ITEM_HEIGHT);
+      const newHoverIndex = currentIndex + moveAmount;
+      
+      if (newHoverIndex >= 0 && newHoverIndex < totalItems && newHoverIndex !== currentIndex) {
+        runOnJS(onHover)(newHoverIndex);
+      } else {
+        runOnJS(onHover)(null);
+      }
+    })
+    .onEnd((event) => {
+      const moveAmount = Math.round(event.translationY / ITEM_HEIGHT);
+      const finalIndex = currentIndex + moveAmount;
+      
+      translateY.value = withSpring(0);
+      scale.value = withSpring(1);
+      opacity.value = withTiming(1);
+      
+      if (finalIndex >= 0 && finalIndex < totalItems && finalIndex !== currentIndex) {
+        runOnJS(onDragEnd)(finalIndex);
+      } else {
+        runOnJS(onDragEnd)(null);
+      }
+    });
+
+  return (
+    <>
+      <Animated.View style={spacerStyle} />
+      
+      <GestureDetector gesture={panGesture}>
+        <Animated.View style={[{
+          backgroundColor: isDragging ? 'rgba(19, 92, 102, 0.5)' : 'rgba(19, 92, 102, 0.3)',
+          borderRadius: 12,
+          padding: 14,
+          marginBottom: 6,
+          borderWidth: 1,
+          borderColor: isDragging ? 'rgba(196, 162, 76, 0.6)' : 'rgba(243, 231, 211, 0.1)',
+          minHeight: ITEM_HEIGHT,
+        }, animatedStyle]}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+            <View style={{
+              backgroundColor: isDragging ? 'rgba(196, 162, 76, 0.4)' : 'rgba(196, 162, 76, 0.2)',
+              borderRadius: 8,
+              paddingHorizontal: 8,
+              paddingVertical: 12,
+              marginRight: 12,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}>
+              <Text style={{ 
+                color: isDragging ? '#C4A24C' : 'rgba(196, 162, 76, 0.8)', 
+                fontSize: 14 
+              }}>⋮⋮</Text>
+            </View>
+
+            <View style={{ flex: 1 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
+                <View style={{
+                  width: 26,
+                  height: 26,
+                  borderRadius: 13,
+                  backgroundColor: '#C4A24C',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginRight: 12,
+                }}>
+                  <Text style={{ color: '#1C1A1A', fontSize: 13, fontWeight: 'bold' }}>
+                    {position}
+                  </Text>
+                </View>
+                <Text style={{ 
+                  color: isDragging ? '#C4A24C' : '#F3E7D3', 
+                  fontSize: 16, 
+                  fontWeight: 'bold' 
+                }}>
+                  {playerName}
+                </Text>
+              </View>
+              
+              <View style={{ marginLeft: 38 }}>
+                <Text style={{ color: 'rgba(243, 231, 211, 0.6)', fontSize: 10, marginBottom: 1 }}>
+                  Trading Partners:
+                </Text>
+                <Text style={{ color: 'rgba(243, 231, 211, 0.8)', fontSize: 11 }}>
+                  ← {neighbors.left} • {neighbors.right} →
+                </Text>
+              </View>
+            </View>
+          </View>
+        </Animated.View>
+      </GestureDetector>
+    </>
+  );
+}
+
+// Import missing components
+function Card({ children, ...props }: any) {
+  return (
+    <View style={{
+      backgroundColor: 'rgba(243, 231, 211, 0.05)',
+      borderRadius: 16,
+      padding: 20,
+      marginBottom: 16,
+      borderWidth: 1,
+      borderColor: 'rgba(243, 231, 211, 0.1)',
+    }} {...props}>
+      {children}
+    </View>
+  );
+}
+
+function H2({ children, ...props }: any) {
+  return (
+    <Text style={{
+      fontSize: 24,
+      fontWeight: 'bold',
+      color: '#F3E7D3',
+      marginBottom: 12,
+    }} {...props}>
+      {children}
+    </Text>
+  );
+}
+
+function P({ children, className, style, ...props }: PProps) {
+  const baseStyle: TextStyle = {
+    fontSize: 16,
+    color: '#F3E7D3',
+    lineHeight: 24,
+  };
+
+  const additionalStyle: Partial<TextStyle> = {};
+  if (className?.includes('mb-4')) additionalStyle.marginBottom = 16;
+  if (className?.includes('mb-3')) additionalStyle.marginBottom = 12;
+  if (className?.includes('text-parchment/70')) additionalStyle.color = 'rgba(243, 231, 211, 0.7)';
+  if (className?.includes('text-sm')) additionalStyle.fontSize = 14;
+
+  return (
+    <Text style={[baseStyle, additionalStyle, style]} {...props}>
+      {children}
+    </Text>
+  );
+}

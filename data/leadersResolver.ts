@@ -22,11 +22,19 @@ export interface PlayerCitySnapshot {
   yellow?: number;
   red?: number;
   green?: number;
+  purple?: number;
   black?: number;
   coins?: number;
+  // Science symbols for Aristotle
+  compasses?: number;
+  tablets?: number;
+  gears?: number;
   mvTokensAge1?: number;
   mvTokensAge2?: number;
   mvTokensAge3?: number;
+  wonderStagesBuilt?: number;
+  // UI confirmations
+  agrippinaOnly?: boolean;
   selectedLeaders?: string[]; // names
 }
 
@@ -65,6 +73,31 @@ export function computeLeadersForAll(input: LeadersResolverInput): Record<Player
     if (has('Praxiteles')) {
       const vp = (me.grey || 0) * 2;
       breakdown.push({ name: 'Praxiteles', vp });
+      total += vp;
+    }
+    if (has('Nebuchadnezzar')) {
+      const vp = (me.blue || 0) * 1;
+      breakdown.push({ name: 'Nebuchadnezzar', vp });
+      total += vp;
+    }
+    if (has('Varro')) {
+      const vp = (me.yellow || 0) * 1;
+      breakdown.push({ name: 'Varro', vp });
+      total += vp;
+    }
+    if (has('Pericles')) {
+      const vp = (me.red || 0) * 2;
+      breakdown.push({ name: 'Pericles', vp });
+      total += vp;
+    }
+    if (has('Hypatia')) {
+      const vp = (me.green || 0) * 1;
+      breakdown.push({ name: 'Hypatia', vp });
+      total += vp;
+    }
+    if (has('Hiram')) {
+      const vp = (me.purple || 0) * 2;
+      breakdown.push({ name: 'Hiram', vp });
       total += vp;
     }
     if (has('Darius')) {
@@ -118,9 +151,85 @@ export function computeLeadersForAll(input: LeadersResolverInput): Record<Player
       total += vp;
     }
 
+    // Set-collection leaders
+    if (has('Justinian')) {
+      const sets = Math.min(
+        me.blue || 0,
+        me.red || 0,
+        me.green || 0,
+      );
+      const vp = Math.max(0, sets) * 3;
+      breakdown.push({ name: 'Justinian', vp });
+      total += vp;
+    }
+    if (has('Plato')) {
+      const sets = Math.min(
+        me.brown || 0,
+        me.grey || 0,
+        me.blue || 0,
+        me.yellow || 0,
+        me.red || 0,
+        me.green || 0,
+        me.purple || 0,
+      );
+      const vp = Math.max(0, sets) * 7;
+      breakdown.push({ name: 'Plato', vp });
+      total += vp;
+    }
+    if (has('Aristotle')) {
+      const sets = Math.min(
+        me.compasses || 0,
+        me.tablets || 0,
+        me.gears || 0,
+      );
+      const vp = Math.max(0, sets) * 3;
+      breakdown.push({ name: 'Aristotle', vp });
+      total += vp;
+    }
+
+    // Coins / Wonder / MV token based
+    if (has('Midas')) {
+      const vp = Math.floor((me.coins || 0) / 3);
+      breakdown.push({ name: 'Midas', vp });
+      total += vp;
+    }
+    if (has('Amytis')) {
+      const vp = ((me.wonderStagesBuilt || 0) * 2);
+      breakdown.push({ name: 'Amytis', vp });
+      total += vp;
+    }
+    if (has('Alexander')) {
+      const totalTokens = (me.mvTokensAge1 || 0) + (me.mvTokensAge2 || 0) + (me.mvTokensAge3 || 0);
+      const vp = totalTokens * 1;
+      breakdown.push({ name: 'Alexander', vp });
+      total += vp;
+    }
+
+    // Cynisca: +6 VP if you have no Military Defeat tokens.
+    // Per user request, require explicit 0/0/0 MV tokens entered as a check.
+    if (has('Cynisca')) {
+      const missing: string[] = [];
+      const a1 = me.mvTokensAge1;
+      const a2 = me.mvTokensAge2;
+      const a3 = me.mvTokensAge3;
+      if (a1 == null) missing.push('mvTokensAge1');
+      if (a2 == null) missing.push('mvTokensAge2');
+      if (a3 == null) missing.push('mvTokensAge3');
+      const ok = missing.length === 0 && a1 === 0 && a2 === 0 && a3 === 0;
+      const vp = ok ? 6 : 0;
+      breakdown.push({ name: 'Cynisca', vp, ...(missing.length ? { missing } : {}) });
+      total += vp;
+    }
+
+    // Agrippina: award +7 only if user confirmed (UI flag)
+    if (has('Agrippina')) {
+      const vp = me.agrippinaOnly ? 7 : 0;
+      breakdown.push({ name: 'Agrippina', vp });
+      total += vp;
+    }
+
     result[pid] = { totalIndirect: total, breakdown };
   }
 
   return result;
 }
-

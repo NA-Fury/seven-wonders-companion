@@ -666,7 +666,9 @@ export const useScoringStore = create<ScoringState>()(
           category === 'military' ||
           category === 'science' ||
           category === 'cities' ||
-          category === 'treasury'
+          category === 'treasury' ||
+          category === 'guild' ||
+          category === 'wonder'
         );
         if (leadersAffected) {
           try {
@@ -684,6 +686,19 @@ export const useScoringStore = create<ScoringState>()(
               const science = dd('science');
               const cities = dd('cities');
               const treasury = dd('treasury');
+              const guild = dd('guild');
+              const wonder = dd('wonder');
+
+              const wonderStagesBuilt = (() => {
+                const keys = Object.keys(wonder);
+                return keys.filter(k => k.startsWith('stage') && wonder[k]).length;
+              })();
+              const purple = (() => {
+                const selected: string[] = Array.isArray((guild as any).selectedPurpleCards) ? (guild as any).selectedPurpleCards : [];
+                if (typeof (guild as any).purpleCardsCount === 'number') return (guild as any).purpleCardsCount as number;
+                return selected.length;
+              })();
+
               return {
                 brown: analysis.brownCards,
                 grey: analysis.grayCards,
@@ -692,11 +707,17 @@ export const useScoringStore = create<ScoringState>()(
                 red: military.redCardsCount,
                 green: science.greenCardsCount,
                 black: cities.blackCardsCount,
+                purple,
                 coins: treasury.coins,
+                compasses: science.compasses,
+                tablets: science.tablets,
+                gears: science.gears,
                 mvTokensAge1: military.mvTokensAge1,
                 mvTokensAge2: military.mvTokensAge2,
                 mvTokensAge3: military.mvTokensAge3,
+                wonderStagesBuilt,
                 selectedLeaders: (Array.isArray(dd('leaders').selectedLeaders) ? dd('leaders').selectedLeaders : []),
+                agrippinaOnly: !!dd('leaders').agrippinaOnly,
               };
             };
 

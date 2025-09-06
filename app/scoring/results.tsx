@@ -1,10 +1,13 @@
 // app/scoring/results.tsx - Minimal results screen (restored) with header and proportional podium
 import React, { useEffect, useMemo } from 'react';
 import { Alert, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, UIManager, View } from 'react-native';
+import { router } from 'expo-router';
+import { usePlayerStore } from '../../store/playerStore';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useScoringStore } from '../../store/scoringStore';
 import { useSetupStore } from '../../store/setupStore';
 import { WONDERS_DATABASE } from '../../data/wondersDatabase';
+import { evaluateBadgesForContext } from '../../data/badges';
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0F0E1A' },
@@ -50,6 +53,82 @@ export default function ResultsScreen() {
 
   const leaderboard = useMemo(() => getLeaderboard(), [getLeaderboard]);
   const winner = leaderboard[0];
+
+  const handleSave = () => {
+    try {
+      // Persist game to history
+      const setup = useSetupStore.getState();
+      const totals = getAllTotals();
+      const ranks: Record<string, number> = {};
+      leaderboard.forEach((e) => (ranks[e.playerId] = e.rank));
+      const scores: Record<string, number> = {};
+      Object.entries(totals).forEach(([pid, total]) => (scores[pid] = total));
+
+      // Build history entry (expanded for analytics)
+      const playerOrder = setup.getOrderedPlayers().map((p) => p.id);
+      const wondersForHistory = setup.getAssignedWonders();
+      const perPlayerBreakdowns: Record<string, any> = {};
+      players.forEach((p) => { perPlayerBreakdowns[p.id] = getCategoryBreakdown(p.id); });
+
+      // Compute per-player badges (for analytics/history)
+      const badgesAwarded: Record<string, string[]> = {};
+      players.forEach((p) => {
+        const w = wondersForHistory[p.id];
+        const ctx = {
+          playerId: p.id,
+          rank: ranks[p.id] || 0,
+          score: scores[p.id] || 0,
+          breakdown: perPlayerBreakdowns[p.id] || {},
+          expansions: setup.expansions,
+          wonderBoardId: w?.boardId,
+          playerCount: players.length,
+        } as const;
+        badgesAwarded[p.id] = evaluateBadgesForContext(ctx).map((b) => b.id);
+      });
+
+      const historyEntry = {
+        date: new Date(),
+        players: players.map((p) => p.name),
+        playerOrder,
+        expansions: setup.expansions,
+        winner: winner?.playerId,
+        scores,
+        ranks,
+        wonders: wondersForHistory,
+        categoryBreakdowns: perPlayerBreakdowns,
+        badgesAwarded,
+        edificeProjects: setup.edificeProjects,
+        duration: gameMetadata?.endTime && gameMetadata?.startTime
+          ? Math.round(((new Date(gameMetadata.endTime).getTime() - new Date(gameMetadata.startTime).getTime()) / 1000) / 60)
+          : undefined,
+        metadata: { gameNumber: (gameMetadata as any)?.gameNumber },
+      } as const;
+      setup.addGameToHistory(historyEntry);
+
+      // Post-game analytics into Player DB
+      usePlayerStore.getState().recordGameResult({
+        gameId: `${(gameMetadata as any)?.gameNumber ?? Date.now()}`,
+        date: new Date().toISOString(),
+        playerOrder,
+        scores,
+        ranks,
+        expansions: setup.expansions,
+        wonders: Object.fromEntries(playerOrder.map((pid) => [pid, { boardId: wondersForHistory[pid]?.boardId, side: wondersForHistory[pid]?.side } as any])),
+        categoryBreakdowns: perPlayerBreakdowns,
+      });
+
+      completeScoring();
+      Alert.alert('Saved', 'Game results saved. Returning to Home.', [
+        { text: 'OK', onPress: () => router.replace('/') },
+      ]);
+    } catch (e: any) {
+      Alert.alert('Error', e?.message || 'Failed to save results.');
+    }
+  };
+
+  const handleShare = () => {
+    Alert.alert('Share', 'Sharing coming soon.');
+  };
 
   const header = (() => {
     if (!winner) return null;
@@ -103,13 +182,7 @@ export default function ResultsScreen() {
     return { average, highest, lowest, spread, durationMin };
   }, [getAllTotals, gameMetadata?.startTime, gameMetadata?.endTime]);
 
-  const handleShare = () => Alert.alert('Share Results', 'Coming soon');
-  const handleSave = async () => {
-    try {
-      completeScoring();
-      Alert.alert('Saved', 'Scores saved locally');
-    } catch {}
-  };
+  // Note: handleSave and handleShare are defined earlier; remove duplicates here.
 
   return (
     <SafeAreaView style={styles.container}>
@@ -181,7 +254,18 @@ export default function ResultsScreen() {
         {/* Rankings */}
         <View style={styles.rankingsContainer}>
           {leaderboard.map((e) => {
-            const breakdown = getCategoryBreakdown(e.playerId);
+            const breakdown = getCategoryBreakdown(e.playerId) as any;
+            const setup = useSetupStore.getState();
+            const playerWonder = setup.wonders?.[e.playerId];
+            const ctx = {
+              playerId: e.playerId,
+              rank: e.rank,
+              score: e.total,
+              breakdown,
+              expansions: setup.expansions,
+              wonderBoardId: playerWonder?.boardId,
+              playerCount: players.length,
+            } as const;
             // Simple badge set (display only)
             const BADGES = {
               warmonger: { icon: '⚔️', name: 'Warmonger', condition: (b: any) => (b.military || 0) >= 20 },
@@ -193,9 +277,7 @@ export default function ResultsScreen() {
               perfectScore: { icon: '💯', name: 'Century Club', condition: (_: any) => e.total >= 100 },
               underdog: { icon: '🐺', name: 'Underdog', condition: (_: any) => e.rank === 1 && e.total < 60 },
             } as const;
-            const badges = Object.entries(BADGES)
-              .filter(([_, v]) => v.condition(breakdown))
-              .map(([key, v]) => ({ key, icon: v.icon, name: v.name }));
+            const badges = evaluateBadgesForContext(ctx);
             return (
               <View key={e.playerId} style={styles.rankingCard}>
                 <View style={styles.rankingHeader}>
@@ -208,7 +290,7 @@ export default function ResultsScreen() {
                 {badges.length > 0 && (
                   <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
                     {badges.slice(0, 6).map(b => (
-                      <View key={b.key} style={{
+                      <View key={b.id} style={{
                         backgroundColor: 'rgba(99,102,241,0.2)', borderRadius: 12, paddingVertical: 2, paddingHorizontal: 8,
                         borderWidth: 1, borderColor: 'rgba(99,102,241,0.3)'
                       }}>
