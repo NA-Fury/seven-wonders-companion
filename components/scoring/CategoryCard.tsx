@@ -1462,7 +1462,7 @@ export const CategoryCard = memo(function CategoryCard({
               )}
             </View>
 
-            {/* Selected leaders list as removable chips */}
+            {/* Selected leaders list as removable chips + leader-specific prompts */}
             {selectedLeaders.length > 0 && (
               <View style={styles.detailField}>
                 <Text style={styles.detailLabel}>Recruited Leaders ({selectedLeaders.length})</Text>
@@ -1488,11 +1488,32 @@ export const CategoryCard = memo(function CategoryCard({
                         }}>
                           {name}{vp ? ` (+${vp} VP)` : ''}
                         </Text>
+                        {/* Agrippina: quick confirmation toggle */}
+                        {name.toLowerCase() === 'agrippina' && (
+                          <View style={{ flexDirection:'row', alignItems:'center', marginLeft:8, gap:6 }}>
+                            <Text style={{ color:'#C4A24C', fontSize:11 }}>Only face-up Leader?</Text>
+                            <TouchableOpacity
+                              onPress={() => updateDetailedField('agrippinaOnly', !detailedData.agrippinaOnly)}
+                              style={{
+                                paddingHorizontal:8,
+                                paddingVertical:3,
+                                borderRadius:10,
+                                borderWidth:1,
+                                borderColor: detailedData.agrippinaOnly ? '#10B981' : 'rgba(196,162,76,0.3)',
+                                backgroundColor: detailedData.agrippinaOnly ? 'rgba(16,185,129,0.25)' : 'transparent'
+                              }}
+                            >
+                              <Text style={{ color: detailedData.agrippinaOnly ? '#10B981' : 'rgba(243,231,211,0.6)', fontSize:11 }}>
+                                {detailedData.agrippinaOnly ? 'True' : 'False'}
+                              </Text>
+                            </TouchableOpacity>
+                          </View>
+                        )}
                         <TouchableOpacity 
                           onPress={() => removeLeader(name)} 
                           style={{ marginLeft:8 }}
                         >
-                          <Text style={{ color:'#818CF8', fontSize:12 }}>✕</Text>
+                          <Text style={{ color:'#818CF8', fontSize:12 }}>?</Text>
                         </TouchableOpacity>
                       </View>
                     );
@@ -1514,7 +1535,7 @@ export const CategoryCard = memo(function CategoryCard({
             <View style={styles.detailField}>
               <Text style={styles.detailLabel}>
                 Leaders with immediate VP (Sappho, Zenobia, Nefertiti, Cleopatra, Aspasia) are auto-scored. 
-                Coins, military, diplomacy, and end-game effects are stored for future analysis.
+                Coins, military, diplomacy, and end-game effects are integrated into detailed scoring where applicable. Nearly all leaders that provide points have been attempted to register for scoring; please provide feedback if something is missing or wrong.
               </Text>
             </View>
           </>

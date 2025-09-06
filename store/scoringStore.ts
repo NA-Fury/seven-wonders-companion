@@ -709,11 +709,15 @@ export const useScoringStore = create<ScoringState>()(
                 black: cities.blackCardsCount,
                 purple,
                 coins: treasury.coins,
+                compasses: science.compasses,
+                tablets: science.tablets,
+                gears: science.gears,
                 mvTokensAge1: military.mvTokensAge1,
                 mvTokensAge2: military.mvTokensAge2,
                 mvTokensAge3: military.mvTokensAge3,
                 wonderStagesBuilt,
                 selectedLeaders: (Array.isArray(dd('leaders').selectedLeaders) ? dd('leaders').selectedLeaders : []),
+                agrippinaOnly: !!dd('leaders').agrippinaOnly,
               };
             };
 
