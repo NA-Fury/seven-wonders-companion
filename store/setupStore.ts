@@ -4,14 +4,23 @@ import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import { shuffleArray } from '../utils/shuffle';
 
+export type CategoryBreakdown = Record<string, number>;
+
 export type GameHistoryEntry = {
   id: string;
-  date: Date;
+  date: Date | string;
+  // Back-compat: originally stored player display names. New field `playerOrder` stores profile IDs.
   players: string[];
+  playerOrder?: string[]; // profile ids in table order
   expansions: Expansions;
-  winner?: string;
-  scores: Record<string, number>;
-  duration?: number;
+  winner?: string; // profile id
+  scores: Record<string, number>; // profileId -> total points
+  ranks?: Record<string, number>; // profileId -> 1..n
+  wonders?: Record<string, WonderAssignment>; // profileId -> wonder assignment (includes side/shipyard)
+  categoryBreakdowns?: Record<string, CategoryBreakdown>; // profileId -> category breakdown
+  edificeProjects?: EdificeProjects; // selected edifice projects for this game
+  duration?: number; // minutes
+  metadata?: { gameNumber?: number };
 };
 
 export type Expansions = { 

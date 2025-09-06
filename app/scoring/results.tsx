@@ -63,34 +63,40 @@ export default function ResultsScreen() {
       const scores: Record<string, number> = {};
       Object.entries(totals).forEach(([pid, total]) => (scores[pid] = total));
 
-      // Build history entry
+      // Build history entry (expanded for analytics)
+      const playerOrder = setup.getOrderedPlayers().map((p) => p.id);
+      const wondersForHistory = setup.getAssignedWonders();
+      const perPlayerBreakdowns: Record<string, any> = {};
+      players.forEach((p) => { perPlayerBreakdowns[p.id] = getCategoryBreakdown(p.id); });
+
       const historyEntry = {
         date: new Date(),
         players: players.map((p) => p.name),
+        playerOrder,
         expansions: setup.expansions,
         winner: winner?.playerId,
         scores,
+        ranks,
+        wonders: wondersForHistory,
+        categoryBreakdowns: perPlayerBreakdowns,
+        edificeProjects: setup.edificeProjects,
         duration: gameMetadata?.endTime && gameMetadata?.startTime
           ? Math.round(((new Date(gameMetadata.endTime).getTime() - new Date(gameMetadata.startTime).getTime()) / 1000) / 60)
           : undefined,
+        metadata: { gameNumber: (gameMetadata as any)?.gameNumber },
       } as const;
       setup.addGameToHistory(historyEntry);
 
       // Post-game analytics into Player DB
-      const order = setup.getOrderedPlayers().map((p) => p.id);
-      const wonders = setup.getAssignedWonders();
-      const categoryBreakdowns: Record<string, any> = {};
-      players.forEach((p) => { categoryBreakdowns[p.id] = getCategoryBreakdown(p.id); });
-
       usePlayerStore.getState().recordGameResult({
-        gameId: `${gameMetadata?.gameNumber ?? Date.now()}`,
+        gameId: `${(gameMetadata as any)?.gameNumber ?? Date.now()}`,
         date: new Date().toISOString(),
-        playerOrder: order,
+        playerOrder,
         scores,
         ranks,
         expansions: setup.expansions,
-        wonders,
-        categoryBreakdowns,
+        wonders: Object.fromEntries(playerOrder.map((pid) => [pid, { boardId: wondersForHistory[pid]?.boardId, side: wondersForHistory[pid]?.side } as any])),
+        categoryBreakdowns: perPlayerBreakdowns,
       });
 
       completeScoring();

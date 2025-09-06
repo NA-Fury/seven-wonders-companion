@@ -31,9 +31,9 @@ export default function GameDetailsScreen() {
     }
   })();
 
-  const playerOrder = game.players && game.players.length > 0
-    ? game.players
-    : Object.keys(game.scores || {});
+  const playerOrder = (game.playerOrder && game.playerOrder.length > 0)
+    ? game.playerOrder
+    : (Object.keys(game.scores || {}));
   const scoreboard = [...Object.entries(game.scores || {})]
     .map(([pid, total]) => ({ pid, name: profiles[pid]?.name || pid, total }))
     .sort((a, b) => (b.total as number) - (a.total as number))
@@ -67,6 +67,18 @@ export default function GameDetailsScreen() {
         </View>
       </Card>
 
+      {!!game.edificeProjects && (
+        <Card>
+          <Text style={{ color: 'rgba(243,231,211,0.9)', marginBottom: 8 }}>Edifice Projects</Text>
+          {(['age1','age2','age3'] as const).map((age) => (
+            <View key={age} style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 4 }}>
+              <Text style={{ color: 'rgba(243,231,211,0.8)' }}>{age.toUpperCase()}</Text>
+              <Text style={{ color: '#C4A24C', fontWeight: '600' }}>{(game.edificeProjects as any)[age] || '—'}</Text>
+            </View>
+          ))}
+        </Card>
+      )}
+
       <Card>
         <Text style={{ color: 'rgba(243,231,211,0.9)', marginBottom: 10 }}>Scoreboard</Text>
         <Table
@@ -92,10 +104,51 @@ export default function GameDetailsScreen() {
             </View>
           ))}
         </View>
-        <Text style={{ color: 'rgba(243,231,211,0.7)', marginTop: 8 }}>
-          Wonders and per-category breakdowns not recorded in history yet.
-        </Text>
       </Card>
+
+      {!!game.wonders && (
+        <Card>
+          <Text style={{ color: 'rgba(243,231,211,0.9)', marginBottom: 8 }}>Wonders</Text>
+          {playerOrder.map((pid) => {
+            const w = game.wonders?.[pid];
+            if (!w) return null;
+            return (
+              <View key={`w_${pid}`} style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6 }}>
+                <Text style={{ color: '#F3E7D3', flex: 2 }}>{profiles[pid]?.name || pid}</Text>
+                <Text style={{ color: '#C4A24C', flex: 3 }}>{w.boardId || '—'} {w.side ? `(${w.side})` : ''}</Text>
+                {!!w.shipyardId && (<Text style={{ color: 'rgba(243,231,211,0.8)', flex: 2 }}>Shipyard: {w.shipyardId}</Text>)}
+              </View>
+            );
+          })}
+        </Card>
+      )}
+
+      {!!game.categoryBreakdowns && (
+        <Card>
+          <Text style={{ color: 'rgba(243,231,211,0.9)', marginBottom: 8 }}>Category Breakdown</Text>
+          {playerOrder.map((pid) => {
+            const b = game.categoryBreakdowns?.[pid] as any;
+            if (!b) return null;
+            const entries = Object.entries(b).filter(([,v]) => typeof v === 'number' && v !== 0) as [string, number][];
+            entries.sort((a,b)=> b[1]-a[1]);
+            return (
+              <View key={`c_${pid}`} style={{ marginBottom: 8 }}>
+                <Text style={{ color: '#F3E7D3', fontWeight: '700', marginBottom: 4 }}>{profiles[pid]?.name || pid}</Text>
+                {entries.length === 0 ? (
+                  <Text style={{ color: 'rgba(243,231,211,0.7)' }}>No categories recorded.</Text>
+                ) : (
+                  entries.slice(0, 6).map(([k, v]) => (
+                    <View key={`${pid}_${k}`} style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 2 }}>
+                      <Text style={{ color: 'rgba(243,231,211,0.8)' }}>{k}</Text>
+                      <Text style={{ color: '#C4A24C', fontWeight: '600' }}>{v}</Text>
+                    </View>
+                  ))
+                )}
+              </View>
+            );
+          })}
+        </Card>
+      )}
     </Screen>
   );
 }

@@ -5,7 +5,7 @@ import { useSetupStore } from '../../store/setupStore';
 import { usePlayerStore } from '../../store/playerStore';
 import { Screen, H1, Card } from '../../components/ui';
 import { Table, type SortDir } from '../../components/ui/Table';
-  import { 
+import {
   computeBestAverages,
   computeBiggestWinMargins,
   computeMostWins,
@@ -13,43 +13,55 @@ import { Table, type SortDir } from '../../components/ui/Table';
   computeTopScoresGroupedByGame,
   filterByPlayerCount,
   computePersonalBests,
-  computeWinRateRows,
-  computeGamesPlayedRows,
-  computeTop3RateRows,
-  computeConsistencyRows,
-  computeWonderWinsFromProfiles,
+  computeGamesPlayedFromHistory,
+  computeWinRateFromHistory,
+  computeTop3RateFromHistory,
+  computeConsistencyFromHistory,
+  computeWonderWins,
+  computeWonderWinsDayNight,
+  computeShipyardWins,
+  computeEdificePopularity,
+  computeWinningStrategyCategories,
+  filterHistoryByExpansion,
+  type ExpansionFilter,
 } from '../../utils/leaderboard';
 
 export default function LeaderboardsScreen() {
   const history = useSetupStore((s) => s.gameHistory);
   const profiles = usePlayerStore((s) => s.profiles);
 
-  const [view, setView] = useState<'scores' | 'wins' | 'averages' | 'margins' | 'bests' | 'winrate' | 'games' | 'top3' | 'consistency' | 'wonderwins'>('scores');
+  const [view, setView] = useState<'scores' | 'wins' | 'averages' | 'margins' | 'bests' | 'winrate' | 'games' | 'top3' | 'consistency' | 'wonderwins' | 'wonderdaynight' | 'shipyards' | 'edifice' | 'strategies'>('scores');
   const [sortKey, setSortKey] = useState<string | undefined>(undefined);
   const [sortDir, setSortDir] = useState<SortDir>('desc');
   const [playerCount, setPlayerCount] = useState<number | 'all'>('all');
   const [scoreMode, setScoreMode] = useState<'points' | 'game+points'>('points');
   const [avgMin, setAvgMin] = useState<number>(3);
   const [rateMin, setRateMin] = useState<number>(3);
+  const [expFilter, setExpFilter] = useState<ExpansionFilter>('all');
 
   const profileNames = useMemo(() => profiles, [profiles]);
 
+  const historyByExp = useMemo(() => filterHistoryByExpansion(history, expFilter), [history, expFilter]);
   const historyByCount = useMemo(() => {
-    if (playerCount === 'all') return history;
-    return history.filter((g) => (g.players?.length || Object.keys(g.scores || {}).length || 0) === playerCount);
-  }, [history, playerCount]);
+    if (playerCount === 'all') return historyByExp;
+    return historyByExp.filter((g) => (g.players?.length || Object.keys(g.scores || {}).length || 0) === playerCount);
+  }, [historyByExp, playerCount]);
 
   const topScoresAll = useMemo(() => computeTopScores(historyByCount, profileNames), [historyByCount, profileNames]);
   const topScoresGrouped = useMemo(() => computeTopScoresGroupedByGame(historyByCount, profileNames), [historyByCount, profileNames]);
   const mostWins = useMemo(() => computeMostWins(historyByCount, profileNames), [historyByCount, profileNames]);
   const bestAverages = useMemo(() => computeBestAverages(historyByCount, profileNames, avgMin), [historyByCount, profileNames, avgMin]);
   const biggestMargins = useMemo(() => computeBiggestWinMargins(historyByCount, profileNames), [historyByCount, profileNames]);
-  const personalBests = useMemo(() => computePersonalBests(history, profileNames), [history, profileNames]);
-  const winRateRows = useMemo(() => computeWinRateRows(profiles as any, rateMin), [profiles, rateMin]);
-  const gamesPlayedRows = useMemo(() => computeGamesPlayedRows(profiles as any), [profiles]);
-  const top3RateRows = useMemo(() => computeTop3RateRows(profiles as any, rateMin), [profiles, rateMin]);
-  const consistencyRows = useMemo(() => computeConsistencyRows(profiles as any, rateMin), [profiles, rateMin]);
-  const wonderWins = useMemo(() => computeWonderWinsFromProfiles(profiles as any), [profiles]);
+  const personalBests = useMemo(() => computePersonalBests(historyByCount, profileNames), [historyByCount, profileNames]);
+  const winRateRows = useMemo(() => computeWinRateFromHistory(historyByCount, profileNames, rateMin), [historyByCount, profileNames, rateMin]);
+  const gamesPlayedRows = useMemo(() => computeGamesPlayedFromHistory(historyByCount, profileNames), [historyByCount, profileNames]);
+  const top3RateRows = useMemo(() => computeTop3RateFromHistory(historyByCount, profileNames, rateMin), [historyByCount, profileNames, rateMin]);
+  const consistencyRows = useMemo(() => computeConsistencyFromHistory(historyByCount, profileNames, rateMin), [historyByCount, profileNames, rateMin]);
+  const wonderWins = useMemo(() => computeWonderWins(historyByCount, profileNames), [historyByCount, profileNames]);
+  const wonderDayNight = useMemo(() => computeWonderWinsDayNight(historyByCount), [historyByCount]);
+  const shipyardWins = useMemo(() => computeShipyardWins(historyByCount), [historyByCount]);
+  const edificePop = useMemo(() => computeEdificePopularity(historyByCount), [historyByCount]);
+  const strategyCats = useMemo(() => computeWinningStrategyCategories(historyByCount), [historyByCount]);
 
   const withCountFilter = <T extends { playerCount?: number }>(rows: T[]) => (playerCount === 'all' ? rows : filterByPlayerCount(rows, playerCount));
   const scoresRows = scoreMode === 'points' ? withCountFilter(topScoresAll) : withCountFilter(topScoresGrouped);
@@ -71,7 +83,7 @@ export default function LeaderboardsScreen() {
 
   return (
     <Screen>
-      <H1>🏆 Local Leaderboards</H1>
+       <H1>🏆 Local Leaderboards</H1> 
       <Text style={{ color: 'rgba(243,231,211,0.75)', marginBottom: 12 }}>Highlights and records across saved games.</Text>
 
       {/* View switcher */}
@@ -87,8 +99,26 @@ export default function LeaderboardsScreen() {
           {headerPill('Top 3 Rate', view === 'top3', () => { setView('top3'); setSortKey(undefined); }, 'top3')}
           {headerPill('Consistency', view === 'consistency', () => { setView('consistency'); setSortKey(undefined); }, 'consistency')}
           {headerPill('Wonder Wins', view === 'wonderwins', () => { setView('wonderwins'); setSortKey(undefined); }, 'wonderwins')}
+          {headerPill('Day vs Night', view === 'wonderdaynight', () => { setView('wonderdaynight'); setSortKey(undefined); }, 'wonderdaynight')}
+          {headerPill('Shipyard Wins', view === 'shipyards', () => { setView('shipyards'); setSortKey(undefined); }, 'shipyards')}
+          {headerPill('Edifice Popularity', view === 'edifice', () => { setView('edifice'); setSortKey(undefined); }, 'edifice')}
+          {headerPill('Winning Strategies', view === 'strategies', () => { setView('strategies'); setSortKey(undefined); }, 'strategies')}
         </View>
       </ScrollView>
+
+      {/* Expansion filter */}
+      <Card>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            {headerPill('All Games', expFilter === 'all', () => setExpFilter('all'), 'exp_all')}
+            {headerPill('Base', expFilter === 'base', () => setExpFilter('base'), 'exp_base')}
+            {headerPill('Leaders', expFilter === 'leaders', () => setExpFilter('leaders'), 'exp_leaders')}
+            {headerPill('Cities', expFilter === 'cities', () => setExpFilter('cities'), 'exp_cities')}
+            {headerPill('Armada', expFilter === 'armada', () => setExpFilter('armada'), 'exp_armada')}
+            {headerPill('Edifice', expFilter === 'edifice', () => setExpFilter('edifice'), 'exp_edifice')}
+          </View>
+        </ScrollView>
+      </Card>
 
       {/* Controls for current view */}
       {view === 'scores' && (
@@ -277,16 +307,74 @@ export default function LeaderboardsScreen() {
         <Table
           columns={[
             { key: 'wonderId', title: 'Wonder', flex: 2 },
-            { key: 'name', title: 'Player', flex: 2 },
             { key: 'wins', title: 'Wins', flex: 1, align: 'right', sortAccessor: (r: any) => r.wins },
           ]}
-          rows={wonderWins}
+          rows={wonderWins as any}
           sortKey={sortKey}
           sortDir={sortDir}
           onSort={(k, d) => { setSortKey(k); setSortDir(d); }}
           emptyText={'No wonder wins tracked yet.'}
         />
       )}
+
+      {view === 'wonderdaynight' && (
+        <Table
+          columns={[
+            { key: 'wonderId', title: 'Wonder', flex: 2 },
+            { key: 'day', title: 'Day Wins', flex: 1, align: 'right', sortAccessor: (r: any) => r.day },
+            { key: 'night', title: 'Night Wins', flex: 1, align: 'right', sortAccessor: (r: any) => r.night },
+          ]}
+          rows={wonderDayNight as any}
+          sortKey={sortKey}
+          sortDir={sortDir}
+          onSort={(k, d) => { setSortKey(k); setSortDir(d); }}
+          emptyText={'No day/night wins yet.'}
+        />
+      )}
+
+      {view === 'shipyards' && (
+        <Table
+          columns={[
+            { key: 'shipyardId', title: 'Shipyard', flex: 2 },
+            { key: 'wins', title: 'Wins', flex: 1, align: 'right', sortAccessor: (r: any) => r.wins },
+          ]}
+          rows={shipyardWins as any}
+          sortKey={sortKey}
+          sortDir={sortDir}
+          onSort={(k, d) => { setSortKey(k); setSortDir(d); }}
+          emptyText={'No Armada shipyard wins yet.'}
+        />
+      )}
+
+      {view === 'edifice' && (
+        <Table
+          columns={[
+            { key: 'projectId', title: 'Edifice', flex: 2 },
+            { key: 'count', title: 'Games', flex: 1, align: 'right', sortAccessor: (r: any) => r.count },
+          ]}
+          rows={edificePop as any}
+          sortKey={sortKey}
+          sortDir={sortDir}
+          onSort={(k, d) => { setSortKey(k); setSortDir(d); }}
+          emptyText={'No Edifice projects recorded.'}
+        />
+      )}
+
+      {view === 'strategies' && (
+        <Table
+          columns={[
+            { key: 'category', title: 'Winning Strategy', flex: 2 },
+            { key: 'wins', title: 'Wins', flex: 1, align: 'right', sortAccessor: (r: any) => r.wins },
+          ]}
+          rows={strategyCats as any}
+          sortKey={sortKey}
+          sortDir={sortDir}
+          onSort={(k, d) => { setSortKey(k); setSortDir(d); }}
+          emptyText={'No strategy data yet.'}
+        />
+      )}
     </Screen>
   );
 }
+
+
