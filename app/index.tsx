@@ -12,14 +12,14 @@ type MenuItem = {
 };
 
 const MENU: MenuItem[] = [
-  { key: 'new', title: 'New Game', subtitle: 'Start a new session', route: '/new-game' },
-  { key: 'players', title: 'Players', subtitle: 'Profiles & stats', route: '/players' },
-  { key: 'leaderboards', title: 'Local Leaderboards', subtitle: 'Top scores & records', route: '/leaderboards' },
-  { key: 'badges', title: 'Badges', subtitle: 'Collectibles & records', route: '/badges' },
-  { key: 'ency', title: 'Encyclopaedia', subtitle: 'Rules & clarifications', route: '/encyclopaedia' },
-  { key: 'ref', title: 'Reference & Notes', subtitle: 'FAQs and your notes', route: '/reference' },
-  { key: 'news', title: 'News & Analysis', subtitle: 'Patch notes (future)', route: '/news' },
-  { key: 'settings', title: 'Settings & Feedback', subtitle: 'Preferences & contact', route: '/settings' },
+  { key: 'new', title: '🎲 New Game', subtitle: 'Start a new session', route: '/new-game' },
+  { key: 'players', title: '🧑‍🤝‍🧑 Players', subtitle: 'Profiles & stats', route: '/players' },
+  { key: 'leaderboards', title: '🏆 Local Leaderboards', subtitle: 'Top scores & records', route: '/leaderboards' },
+  { key: 'badges', title: '🏅 Badges', subtitle: 'Collectibles & records', route: '/badges' },
+  { key: 'ency', title: '📖 Encyclopaedia', subtitle: 'Rules & clarifications', route: '/encyclopaedia' },
+  { key: 'ref', title: '📚 Reference & Notes', subtitle: 'FAQs and your notes', route: '/reference' },
+  { key: 'news', title: '📰 News & Analysis', subtitle: 'Patch notes (future)', route: '/news' },
+  { key: 'settings', title: '⚙️ Settings & Feedback', subtitle: 'Preferences & contact', route: '/settings' },
 ];
 
 export default function Index() {
