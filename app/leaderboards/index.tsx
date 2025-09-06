@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, memo } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { useSetupStore } from '../../store/setupStore';
@@ -66,96 +66,101 @@ export default function LeaderboardsScreen() {
   const withCountFilter = <T extends { playerCount?: number }>(rows: T[]) => (playerCount === 'all' ? rows : filterByPlayerCount(rows, playerCount));
   const scoresRows = scoreMode === 'points' ? withCountFilter(topScoresAll) : withCountFilter(topScoresGrouped);
 
-  const headerPill = (label: string, active: boolean, onPress: () => void, key?: string | number) => (
-    <Pressable key={key}
-      onPress={onPress} style={{
-      paddingHorizontal: 12,
-      paddingVertical: 8,
-      borderRadius: 999,
-      backgroundColor: active ? 'rgba(196,162,76,0.2)' : 'rgba(243,231,211,0.08)',
-      borderWidth: 1,
-      borderColor: active ? 'rgba(196,162,76,0.6)' : 'rgba(243,231,211,0.2)',
-      marginRight: 8,
-    }}>
-      <Text style={{ color: active ? '#C4A24C' : 'rgba(243,231,211,0.8)', fontWeight: '700' }}>{label}</Text>
-    </Pressable>
-  );
+  const Chip = memo(function Chip({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) {
+    return (
+      <Pressable
+        onPress={onPress}
+        style={({ pressed }) => ({
+          minWidth: 92,
+          height: 34,
+          paddingHorizontal: 12,
+          borderRadius: 17,
+          alignItems: 'center',
+          justifyContent: 'center',
+          marginRight: 8,
+          marginBottom: 8,
+          backgroundColor: active ? 'rgba(196,162,76,0.2)' : 'rgba(243,231,211,0.08)',
+          borderWidth: 1,
+          borderColor: active ? 'rgba(196,162,76,0.6)' : 'rgba(243,231,211,0.2)',
+          opacity: pressed ? 0.85 : 1,
+        })}
+      >
+        <Text style={{ color: active ? '#C4A24C' : 'rgba(243,231,211,0.9)', fontWeight: '700', fontSize: 13 }} numberOfLines={1}>
+          {label}
+        </Text>
+      </Pressable>
+    );
+  });
 
   return (
     <Screen>
-       <H1>🏆 Local Leaderboards</H1> 
+      <ScrollView showsVerticalScrollIndicator contentContainerStyle={{ paddingBottom: 40 }}>
+        <H1>🏆 Local Leaderboards</H1>
       <Text style={{ color: 'rgba(243,231,211,0.75)', marginBottom: 12 }}>Highlights and records across saved games.</Text>
 
-      {/* View switcher */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
-        <View style={{ flexDirection: 'row' }}>
-          {headerPill('Top Scores', view === 'scores', () => { setView('scores'); setSortKey(undefined); }, 'scores')}
-          {headerPill('Most Wins', view === 'wins', () => { setView('wins'); setSortKey(undefined); }, 'wins')}
-          {headerPill('Best Averages', view === 'averages', () => { setView('averages'); setSortKey(undefined); }, 'averages')}
-          {headerPill('Biggest Margins', view === 'margins', () => { setView('margins'); setSortKey(undefined); }, 'margins')}
-          {headerPill('Personal Bests', view === 'bests', () => { setView('bests'); setSortKey(undefined); }, 'bests')}
-          {headerPill('Win Rate', view === 'winrate', () => { setView('winrate'); setSortKey(undefined); }, 'winrate')}
-          {headerPill('Most Games', view === 'games', () => { setView('games'); setSortKey(undefined); }, 'games')}
-          {headerPill('Top 3 Rate', view === 'top3', () => { setView('top3'); setSortKey(undefined); }, 'top3')}
-          {headerPill('Consistency', view === 'consistency', () => { setView('consistency'); setSortKey(undefined); }, 'consistency')}
-          {headerPill('Wonder Wins', view === 'wonderwins', () => { setView('wonderwins'); setSortKey(undefined); }, 'wonderwins')}
-          {headerPill('Day vs Night', view === 'wonderdaynight', () => { setView('wonderdaynight'); setSortKey(undefined); }, 'wonderdaynight')}
-          {headerPill('Shipyard Wins', view === 'shipyards', () => { setView('shipyards'); setSortKey(undefined); }, 'shipyards')}
-          {headerPill('Edifice Popularity', view === 'edifice', () => { setView('edifice'); setSortKey(undefined); }, 'edifice')}
-          {headerPill('Winning Strategies', view === 'strategies', () => { setView('strategies'); setSortKey(undefined); }, 'strategies')}
-        </View>
-      </ScrollView>
+      {/* View switcher (wrapped for responsiveness) */}
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginBottom: 12 }}>
+        <Chip label={`🏅 Top Scores`} active={view === 'scores'} onPress={() => { setView('scores'); setSortKey(undefined); }} />
+        <Chip label={`🥇 Most Wins`} active={view === 'wins'} onPress={() => { setView('wins'); setSortKey(undefined); }} />
+        <Chip label={`📈 Best Averages`} active={view === 'averages'} onPress={() => { setView('averages'); setSortKey(undefined); }} />
+        <Chip label={`📊 Biggest Margins`} active={view === 'margins'} onPress={() => { setView('margins'); setSortKey(undefined); }} />
+        <Chip label={`⭐ Personal Bests`} active={view === 'bests'} onPress={() => { setView('bests'); setSortKey(undefined); }} />
+        <Chip label={`🏆 Win Rate`} active={view === 'winrate'} onPress={() => { setView('winrate'); setSortKey(undefined); }} />
+        <Chip label={`🧮 Most Games`} active={view === 'games'} onPress={() => { setView('games'); setSortKey(undefined); }} />
+        <Chip label={`🥉 Top 3 Rate`} active={view === 'top3'} onPress={() => { setView('top3'); setSortKey(undefined); }} />
+        <Chip label={`🧱 Consistency`} active={view === 'consistency'} onPress={() => { setView('consistency'); setSortKey(undefined); }} />
+        <Chip label={`🏛️ Wonder Wins`} active={view === 'wonderwins'} onPress={() => { setView('wonderwins'); setSortKey(undefined); }} />
+        <Chip label={`🌞/🌙 Day vs Night`} active={view === 'wonderdaynight'} onPress={() => { setView('wonderdaynight'); setSortKey(undefined); }} />
+        <Chip label={`⚓ Shipyard Wins`} active={view === 'shipyards'} onPress={() => { setView('shipyards'); setSortKey(undefined); }} />
+        <Chip label={`🏗️ Edifice Popularity`} active={view === 'edifice'} onPress={() => { setView('edifice'); setSortKey(undefined); }} />
+        <Chip label={`🎯 Winning Strategies`} active={view === 'strategies'} onPress={() => { setView('strategies'); setSortKey(undefined); }} />
+      </View>
 
-      {/* Expansion filter */}
+      {/* Expansion filter (wrapped) */}
       <Card>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            {headerPill('All Games', expFilter === 'all', () => setExpFilter('all'), 'exp_all')}
-            {headerPill('Base', expFilter === 'base', () => setExpFilter('base'), 'exp_base')}
-            {headerPill('Leaders', expFilter === 'leaders', () => setExpFilter('leaders'), 'exp_leaders')}
-            {headerPill('Cities', expFilter === 'cities', () => setExpFilter('cities'), 'exp_cities')}
-            {headerPill('Armada', expFilter === 'armada', () => setExpFilter('armada'), 'exp_armada')}
-            {headerPill('Edifice', expFilter === 'edifice', () => setExpFilter('edifice'), 'exp_edifice')}
-          </View>
-        </ScrollView>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
+          <Chip label={`🧰 All Games`} active={expFilter === 'all'} onPress={() => setExpFilter('all')} />
+          <Chip label={`🎲 Base`} active={expFilter === 'base'} onPress={() => setExpFilter('base')} />
+          <Chip label={`👑 Leaders`} active={expFilter === 'leaders'} onPress={() => setExpFilter('leaders')} />
+          <Chip label={`🏙️ Cities`} active={expFilter === 'cities'} onPress={() => setExpFilter('cities')} />
+          <Chip label={`🚢 Armada`} active={expFilter === 'armada'} onPress={() => setExpFilter('armada')} />
+          <Chip label={`🏛️ Edifice`} active={expFilter === 'edifice'} onPress={() => setExpFilter('edifice')} />
+          <Chip label={`♻️ Reset`} active={false} onPress={() => { setExpFilter('all'); setPlayerCount('all'); setScoreMode('points'); setAvgMin(3); setRateMin(3); setSortKey(undefined); }} />
+        </View>
       </Card>
 
       {/* Controls for current view */}
       {view === 'scores' && (
         <Card>
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              {headerPill('Points Only', scoreMode === 'points', () => setScoreMode('points'))}
-              {headerPill('Game + Points', scoreMode === 'game+points', () => setScoreMode('game+points'))}
-            </View>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                {headerPill('All', playerCount === 'all', () => setPlayerCount('all'), 'pc_all')}
-                {[3, 4, 5, 6, 7].map((n) => headerPill(`${n}P`, playerCount === n, () => setPlayerCount(n as any), `pc_${n}`))}
-              </View>
-            </ScrollView>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'flex-start' }}>
+            <Chip label={`🎯 Points Only`} active={scoreMode === 'points'} onPress={() => setScoreMode('points')} />
+            <Chip label={`🎮+🎯 Game + Points`} active={scoreMode === 'game+points'} onPress={() => setScoreMode('game+points')} />
+            <Chip label={`∞ All`} active={playerCount === 'all'} onPress={() => setPlayerCount('all')} />
+            {[3,4,5,6,7].map((n) => (
+              <Chip key={`pc_${n}`} label={`${n}P`} active={playerCount === n} onPress={() => setPlayerCount(n as any)} />
+            ))}
           </View>
         </Card>
       )}
 
       {view === 'averages' && (
         <Card>
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-            <Text style={{ color: 'rgba(243,231,211,0.9)' }}>Minimum games: {avgMin}</Text>
-            <View style={{ flexDirection: 'row' }}>
-              {[1, 3, 5, 10].map((n) => headerPill(`${n}+`, avgMin === n, () => setAvgMin(n), `avg_${n}`))}
-            </View>
+          <Text style={{ color: 'rgba(243,231,211,0.9)', marginBottom: 6 }}>Minimum games: {avgMin}</Text>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
+            {[1, 3, 5, 10].map((n) => (
+              <Chip key={`avg_${n}`} label={`${n}+`} active={avgMin === n} onPress={() => setAvgMin(n)} />
+            ))}
           </View>
         </Card>
       )}
 
       {(view === 'winrate' || view === 'top3' || view === 'consistency') && (
         <Card>
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-            <Text style={{ color: 'rgba(243,231,211,0.9)' }}>Minimum games: {rateMin}</Text>
-            <View style={{ flexDirection: 'row' }}>
-              {[1, 3, 5, 10].map((n) => headerPill(`${n}+`, rateMin === n, () => setRateMin(n), `rate_${n}`))}
-            </View>
+          <Text style={{ color: 'rgba(243,231,211,0.9)', marginBottom: 6 }}>Minimum games: {rateMin}</Text>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
+            {[1, 3, 5, 10].map((n) => (
+              <Chip key={`rate_${n}`} label={`${n}+`} active={rateMin === n} onPress={() => setRateMin(n)} />
+            ))}
           </View>
         </Card>
       )}
@@ -373,8 +378,12 @@ export default function LeaderboardsScreen() {
           emptyText={'No strategy data yet.'}
         />
       )}
+      </ScrollView>
     </Screen>
   );
 }
+
+
+
 
 
