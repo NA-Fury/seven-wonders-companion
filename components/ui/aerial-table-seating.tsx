@@ -281,7 +281,7 @@ export function AerialTableView({
         </View>
 
         {/* Directional Arrows */}
-        <DirectionalArrows 
+        <DirectionalArrows2 
           playerCount={playerIds.length}
           mode={mode}
           config={config}
@@ -323,7 +323,7 @@ export function AerialTableView({
           </Text>
         </View>
         <Text style={{ color: 'rgba(243, 231, 211, 0.6)', fontSize: 11, textAlign: 'center' }}>
-          Tap any player to see their details and neighbors
+          Seating order shown around table. Use controls below to adjust.
         </Text>
       </View>
     </View>
@@ -498,6 +498,140 @@ function DirectionalArrows({ playerCount, mode, config, tableSize }: Directional
   return null;
 }
 
+// New, clearer arrows closer to table center
+function DirectionalArrows2({ playerCount, mode, config, tableSize }: DirectionalArrowsProps) {
+  const getArrowPosition = (index: number, total: number, radius: number) => {
+    const angle = (2 * Math.PI * index) / total - Math.PI / 2;
+    const x = radius * Math.cos(angle);
+    const y = radius * Math.sin(angle);
+    return { x, y, angle };
+  };
+
+  // Position arrows noticeably closer to center than players
+  const arrowRadius = Math.max(20, (tableSize - 120) / 2);
+
+  // Simple high-contrast arrow made of a shaft and a triangular head
+  const ArrowGraphic = ({ color, length = 28, thickness = 3, headSize = 8 }: { color: string; length?: number; thickness?: number; headSize?: number }) => (
+    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+      <View style={{ width: Math.max(4, length - headSize - 2), height: thickness, backgroundColor: color, borderRadius: thickness / 2 }} />
+      <View style={{
+        width: 0,
+        height: 0,
+        borderTopWidth: headSize,
+        borderBottomWidth: headSize,
+        borderLeftWidth: Math.floor(headSize * 1.4),
+        borderTopColor: 'transparent',
+        borderBottomColor: 'transparent',
+        borderLeftColor: color,
+        marginLeft: 2,
+      }} />
+    </View>
+  );
+
+  if (config.direction === 'clockwise' || config.direction === 'counterclockwise') {
+    const isClockwise = config.direction === 'clockwise';
+    return (
+      <>
+        {Array.from({ length: playerCount }).map((_, index) => {
+          const position = getArrowPosition(index, playerCount, arrowRadius);
+          const rotation = (position.angle * 180 / Math.PI) + (isClockwise ? 90 : -90);
+          return (
+            <View
+              key={index}
+              style={{
+                position: 'absolute',
+                transform: [
+                  { translateX: position.x },
+                  { translateY: position.y },
+                  { rotate: `${rotation}deg` }
+                ]
+              }}
+            >
+              <ArrowGraphic color={config.arrowColor} length={30} thickness={4} headSize={9} />
+            </View>
+          );
+        })}
+      </>
+    );
+  }
+
+  if (config.direction === 'neighbors') {
+    return (
+      <>
+        {Array.from({ length: playerCount }).map((_, index) => {
+          const position = getArrowPosition(index, playerCount, arrowRadius);
+          const leftIndex = index === 0 ? playerCount - 1 : index - 1;
+          const rightIndex = index === playerCount - 1 ? 0 : index + 1;
+          const leftPos = getArrowPosition(leftIndex, playerCount, arrowRadius);
+          const rightPos = getArrowPosition(rightIndex, playerCount, arrowRadius);
+          const leftAngle = Math.atan2(leftPos.y - position.y, leftPos.x - position.x) * 180 / Math.PI;
+          const rightAngle = Math.atan2(rightPos.y - position.y, rightPos.x - position.x) * 180 / Math.PI;
+          return (
+            <View key={index}>
+              <View
+                style={{
+                  position: 'absolute',
+                  transform: [
+                    { translateX: position.x - 10 },
+                    { translateY: position.y },
+                    { rotate: `${leftAngle}deg` }
+                  ]
+                }}
+              >
+                <ArrowGraphic color={config.arrowColor} length={26} thickness={3} headSize={8} />
+              </View>
+              <View
+                style={{
+                  position: 'absolute',
+                  transform: [
+                    { translateX: position.x + 10 },
+                    { translateY: position.y },
+                    { rotate: `${rightAngle}deg` }
+                  ]
+                }}
+              >
+                <ArrowGraphic color={config.arrowColor} length={26} thickness={3} headSize={8} />
+              </View>
+            </View>
+          );
+        })}
+      </>
+    );
+  }
+
+  if (config.direction === 'all') {
+    return (
+      <>
+        {Array.from({ length: playerCount }).map((_, fromIndex) => {
+          return Array.from({ length: playerCount }).map((_, toIndex) => {
+            if (fromIndex === toIndex) return null;
+            const fromPos = getArrowPosition(fromIndex, playerCount, arrowRadius);
+            const toPos = getArrowPosition(toIndex, playerCount, arrowRadius);
+            const angle = Math.atan2(toPos.y - fromPos.y, toPos.x - fromPos.x) * 180 / Math.PI;
+            return (
+              <View
+                key={`${fromIndex}-${toIndex}`}
+                style={{
+                  position: 'absolute',
+                  transform: [
+                    { translateX: fromPos.x + (toPos.x - fromPos.x) * 0.3 },
+                    { translateY: fromPos.y + (toPos.y - fromPos.y) * 0.3 },
+                    { rotate: `${angle}deg` }
+                  ],
+                  opacity: 0.6,
+                }}
+              >
+                <ArrowGraphic color={config.arrowColor} length={22} thickness={2} headSize={7} />
+              </View>
+            );
+          });
+        })}
+      </>
+    );
+  }
+  return null;
+}
+
 interface PlayerSeatProps {
   playerId: string;
   playerName: string;
@@ -549,33 +683,27 @@ function PlayerSeat({
         ]
       }}
     >
-      <Pressable
-        onPress={onPress}
-        style={({ pressed }) => ({
-          opacity: pressed ? 0.85 : 1,
-        })}
-      >
-        <Animated.View style={[{
-          width: PLAYER_SIZE,
-          height: PLAYER_SIZE,
-          borderRadius: PLAYER_SIZE / 2,
-          alignItems: 'center',
-          justifyContent: 'center',
-          borderWidth: 2.5,
-          borderColor: isSelected ? '#1C1A1A' : theme,
-          shadowColor: isSelected ? theme : '#000',
-          shadowOffset: { width: 0, height: 3 },
-          elevation: isSelected ? 6 : 3,
-        }, animatedStyle, backgroundStyle]}>
-          <Text style={{ 
-            color: isSelected ? '#1C1A1A' : theme, 
-            fontWeight: 'bold', 
-            fontSize: 18 
-          }}>
-            {playerName.charAt(0).toUpperCase()}
-          </Text>
-        </Animated.View>
-      </Pressable>
+      {/* Disable tap/pop-up: render static view instead of Pressable */}
+      <Animated.View style={[{
+        width: PLAYER_SIZE,
+        height: PLAYER_SIZE,
+        borderRadius: PLAYER_SIZE / 2,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 2.5,
+        borderColor: isSelected ? '#1C1A1A' : theme,
+        shadowColor: isSelected ? theme : '#000',
+        shadowOffset: { width: 0, height: 3 },
+        elevation: isSelected ? 6 : 3,
+      }, animatedStyle, backgroundStyle]}>
+        <Text style={{ 
+          color: isSelected ? '#1C1A1A' : theme, 
+          fontWeight: 'bold', 
+          fontSize: 18 
+        }}>
+          {playerName.charAt(0).toUpperCase()}
+        </Text>
+      </Animated.View>
       
       <Text style={{
         color: isSelected ? theme : '#F3E7D3',
@@ -979,7 +1107,7 @@ export function DragDropPlayerList({
           const isHovering = hoverIndex === index && draggedIndex !== index;
           
           return (
-            <DragDropPlayerItem
+            <DragDropPlayerItem2
               key={`${playerId}-${index}`}
               playerId={playerId}
               playerName={getPlayerName(playerId)}
@@ -998,6 +1126,8 @@ export function DragDropPlayerList({
               onHover={(newHoverIndex) => setHoverIndex(newHoverIndex)}
               currentIndex={index}
               totalItems={playerIds.length}
+              onMoveUp={() => movePlayer(index, index - 1)}
+              onMoveDown={() => movePlayer(index, index + 1)}
             />
           );
         })}
@@ -1213,5 +1343,173 @@ function P({ children, className, style, ...props }: PProps) {
     <Text style={[baseStyle, additionalStyle, style]} {...props}>
       {children}
     </Text>
+  );
+}
+
+// New item with explicit Up/Down controls and clean neighbor text
+function DragDropPlayerItem2({ 
+  playerId,
+  playerName, 
+  position, 
+  neighbors, 
+  isDragging,
+  isHovering,
+  onDragStart,
+  onDragEnd,
+  onHover,
+  currentIndex,
+  totalItems,
+  onMoveUp,
+  onMoveDown,
+}: {
+  playerId: string;
+  playerName: string;
+  position: number;
+  neighbors: { left: string; right: string };
+  isDragging: boolean;
+  isHovering: boolean;
+  onDragStart: () => void;
+  onDragEnd: (finalIndex: number | null) => void;
+  onHover: (index: number | null) => void;
+  currentIndex: number;
+  totalItems: number;
+  onMoveUp: () => void;
+  onMoveDown: () => void;
+}) {
+  const translateY = useSharedValue(0);
+  const scale = useSharedValue(1);
+  const opacity = useSharedValue(1);
+  const spacerHeight = useSharedValue(0);
+
+  const ITEM_HEIGHT = 80;
+
+  React.useEffect(() => {
+    spacerHeight.value = withSpring(isHovering ? ITEM_HEIGHT : 0);
+  }, [isHovering, spacerHeight]);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [
+      { translateY: translateY.value },
+      { scale: scale.value }
+    ],
+    opacity: opacity.value,
+    zIndex: isDragging ? 1000 : 1,
+  }));
+
+  const spacerStyle = useAnimatedStyle(() => ({
+    height: spacerHeight.value,
+  }));
+
+  const panGesture = Gesture.Pan()
+    .onStart(() => {
+      runOnJS(onDragStart)();
+      scale.value = withSpring(1.05);
+      opacity.value = withTiming(0.9);
+    })
+    .onUpdate((event) => {
+      translateY.value = event.translationY;
+      const moveAmount = Math.round(event.translationY / ITEM_HEIGHT);
+      const newHoverIndex = currentIndex + moveAmount;
+      if (newHoverIndex >= 0 && newHoverIndex < totalItems && newHoverIndex !== currentIndex) {
+        runOnJS(onHover)(newHoverIndex);
+      } else {
+        runOnJS(onHover)(null);
+      }
+    })
+    .onEnd((event) => {
+      const moveAmount = Math.round(event.translationY / ITEM_HEIGHT);
+      const finalIndex = currentIndex + moveAmount;
+      translateY.value = withSpring(0);
+      scale.value = withSpring(1);
+      opacity.value = withTiming(1);
+      if (finalIndex >= 0 && finalIndex < totalItems && finalIndex !== currentIndex) {
+        runOnJS(onDragEnd)(finalIndex);
+      } else {
+        runOnJS(onDragEnd)(null);
+      }
+    });
+
+  const canUp = currentIndex > 0;
+  const canDown = currentIndex < totalItems - 1;
+
+  const ControlButton = ({ label, onPress, disabled }: { label: string; onPress: () => void; disabled?: boolean }) => (
+    <Pressable
+      onPress={disabled ? undefined : onPress}
+      style={{
+        backgroundColor: 'rgba(196, 162, 76, 0.2)',
+        borderWidth: 1,
+        borderColor: 'rgba(196, 162, 76, 0.4)',
+        paddingVertical: 6,
+        paddingHorizontal: 10,
+        borderRadius: 8,
+        alignItems: 'center',
+        opacity: disabled ? 0.4 : 1,
+      }}
+    >
+      <Text style={{ color: '#C4A24C', fontSize: 12, fontWeight: 'bold' }}>{label}</Text>
+    </Pressable>
+  );
+
+  return (
+    <>
+      <Animated.View style={spacerStyle} />
+      <GestureDetector gesture={panGesture}>
+        <Animated.View style={[{
+          backgroundColor: isDragging ? 'rgba(19, 92, 102, 0.5)' : 'rgba(19, 92, 102, 0.3)',
+          borderRadius: 12,
+          padding: 14,
+          marginBottom: 6,
+          borderWidth: 1,
+          borderColor: isDragging ? 'rgba(196, 162, 76, 0.6)' : 'rgba(243, 231, 211, 0.1)',
+          minHeight: ITEM_HEIGHT,
+        }, animatedStyle]}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+            {/* Drag handle */}
+            <View style={{
+              backgroundColor: isDragging ? 'rgba(196, 162, 76, 0.4)' : 'rgba(196, 162, 76, 0.2)',
+              borderRadius: 8,
+              paddingHorizontal: 8,
+              paddingVertical: 12,
+              marginRight: 12,
+              alignItems: 'center',
+              justifyContent: 'center',
+              minWidth: 28,
+            }}>
+              <Text style={{ color: isDragging ? '#C4A24C' : 'rgba(196, 162, 76, 0.8)', fontSize: 14 }}>::</Text>
+            </View>
+
+            {/* Info */}
+            <View style={{ flex: 1 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
+                <View style={{
+                  width: 26,
+                  height: 26,
+                  borderRadius: 13,
+                  backgroundColor: '#C4A24C',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginRight: 12,
+                }}>
+                  <Text style={{ color: '#1C1A1A', fontSize: 13, fontWeight: 'bold' }}>{position}</Text>
+                </View>
+                <Text style={{ color: isDragging ? '#C4A24C' : '#F3E7D3', fontSize: 16, fontWeight: 'bold' }}>{playerName}</Text>
+              </View>
+              <View style={{ marginLeft: 38 }}>
+                <Text style={{ color: 'rgba(243, 231, 211, 0.6)', fontSize: 10, marginBottom: 1 }}>Trading Partners:</Text>
+                <Text style={{ color: 'rgba(243, 231, 211, 0.8)', fontSize: 11 }}>
+                  Left: {neighbors.left} | Right: {neighbors.right}
+                </Text>
+              </View>
+            </View>
+
+            {/* Up/Down controls */}
+            <View style={{ gap: 6, marginLeft: 12 }}>
+              <ControlButton label="^" onPress={onMoveUp} disabled={!canUp} />
+              <ControlButton label="v" onPress={onMoveDown} disabled={!canDown} />
+            </View>
+          </View>
+        </Animated.View>
+      </GestureDetector>
+    </>
   );
 }
