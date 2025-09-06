@@ -397,11 +397,10 @@ export const CategoryCard = memo(function CategoryCard({
           if (wonderId === 'carthage') {
             const choice = newData[`${stageKey}Choice`]; // 'left' | 'right'
             const desc: string = stage?.effect?.description || '';
-            // Day stage 2: 'Choose: 7 coins OR +1 Military + 2 VP' -> VP only on RIGHT
+            // Day stage 2: 'Choose: 7 coins OR +1 Military + 2 VP' -> BOTH choices grant +2 VP
             // Night stage 1: 'LEFT: 7 coins + 4 VP; RIGHT: +2 Military' -> VP only on LEFT
             if (/Choose: Gain 7 Coins OR \+1 Military Strength \+ 2 VP/i.test(desc)) {
-              // When LEFT, no VP; when RIGHT, 2 VP
-              stagePts = choice === 'right' ? 2 : 0;
+              stagePts = 2;
             }
             if (/LEFT: Gain 7 Coins \+ 4 VP; RIGHT: \+2 Military Strength/i.test(desc)) {
               // When LEFT, 4 VP; when RIGHT, 0 VP
@@ -683,7 +682,8 @@ export const CategoryCard = memo(function CategoryCard({
                         if (hasLeftRight) {
                           const choice = detailedData[choiceKey];
                           if (/Choose: Gain 7 Coins OR \+1 Military Strength \+ 2 VP/i.test(effectDescription)) {
-                            return choice === 'right' ? ' (+2 VP)' : '';
+                            // Day Stage 2: both choices grant +2 VP
+                            return ' (+2 VP)';
                           }
                           if (/LEFT: Gain 7 Coins \+ 4 VP; RIGHT: \+2 Military Strength/i.test(effectDescription)) {
                             return choice === 'left' ? ' (+4 VP)' : '';
@@ -715,7 +715,7 @@ export const CategoryCard = memo(function CategoryCard({
                         {/* Small hints based on the specific stage */}
                         {/Choose: Gain 7 Coins OR \+1 Military Strength \+ 2 VP/i.test(effectDescription) && (
                           <Text style={styles.noteText}>
-                            Left: +7 coins (remember to include in Treasury). Right: +1 shield and +2 VP.
+                            Both choices grant +2 VP. Left: +7 coins (add to Treasury). Right: +1 shield (adjust Military).
                           </Text>
                         )}
                         {/LEFT: Gain 7 Coins \+ 4 VP; RIGHT: \+2 Military Strength/i.test(effectDescription) && (
@@ -823,7 +823,8 @@ export const CategoryCard = memo(function CategoryCard({
                         const choice = detailedData[`${stageKey}Choice`];
                         const desc: string = stage?.effect?.description || '';
                         if (/Choose: Gain 7 Coins OR \+1 Military Strength \+ 2 VP/i.test(desc)) {
-                          pts = choice === 'right' ? 2 : 0;
+                          // Day Stage 2: both choices grant 2 VP
+                          pts = 2;
                         }
                         if (/LEFT: Gain 7 Coins \+ 4 VP; RIGHT: \+2 Military Strength/i.test(desc)) {
                           pts = choice === 'left' ? 4 : 0;
