@@ -22,11 +22,13 @@ export interface PlayerCitySnapshot {
   yellow?: number;
   red?: number;
   green?: number;
+  purple?: number;
   black?: number;
   coins?: number;
   mvTokensAge1?: number;
   mvTokensAge2?: number;
   mvTokensAge3?: number;
+  wonderStagesBuilt?: number;
   selectedLeaders?: string[]; // names
 }
 
@@ -65,6 +67,31 @@ export function computeLeadersForAll(input: LeadersResolverInput): Record<Player
     if (has('Praxiteles')) {
       const vp = (me.grey || 0) * 2;
       breakdown.push({ name: 'Praxiteles', vp });
+      total += vp;
+    }
+    if (has('Nebuchadnezzar')) {
+      const vp = (me.blue || 0) * 1;
+      breakdown.push({ name: 'Nebuchadnezzar', vp });
+      total += vp;
+    }
+    if (has('Varro')) {
+      const vp = (me.yellow || 0) * 1;
+      breakdown.push({ name: 'Varro', vp });
+      total += vp;
+    }
+    if (has('Pericles')) {
+      const vp = (me.red || 0) * 2;
+      breakdown.push({ name: 'Pericles', vp });
+      total += vp;
+    }
+    if (has('Hypatia')) {
+      const vp = (me.green || 0) * 1;
+      breakdown.push({ name: 'Hypatia', vp });
+      total += vp;
+    }
+    if (has('Hiram')) {
+      const vp = (me.purple || 0) * 2;
+      breakdown.push({ name: 'Hiram', vp });
       total += vp;
     }
     if (has('Darius')) {
@@ -118,9 +145,26 @@ export function computeLeadersForAll(input: LeadersResolverInput): Record<Player
       total += vp;
     }
 
+    // Coins / Wonder / MV token based
+    if (has('Midas')) {
+      const vp = Math.floor((me.coins || 0) / 3);
+      breakdown.push({ name: 'Midas', vp });
+      total += vp;
+    }
+    if (has('Amytis')) {
+      const vp = ((me.wonderStagesBuilt || 0) * 2);
+      breakdown.push({ name: 'Amytis', vp });
+      total += vp;
+    }
+    if (has('Alexander')) {
+      const totalTokens = (me.mvTokensAge1 || 0) + (me.mvTokensAge2 || 0) + (me.mvTokensAge3 || 0);
+      const vp = totalTokens * 1;
+      breakdown.push({ name: 'Alexander', vp });
+      total += vp;
+    }
+
     result[pid] = { totalIndirect: total, breakdown };
   }
 
   return result;
 }
-
