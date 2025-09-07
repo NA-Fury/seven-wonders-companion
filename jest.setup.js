@@ -3,6 +3,9 @@
 // Ensure Expo winter runtime uses static imports in Jest
 process.env.EXPO_USE_STATIC = process.env.EXPO_USE_STATIC || '1';
 
+// Avoid Expo Winter runtime installing globals in Jest
+// (no-op: handled by EXPO_USE_STATIC)
+
 // Prefer built-in matchers from @testing-library/react-native >= 12.4
 try {
   require('@testing-library/react-native/extend-expect');
