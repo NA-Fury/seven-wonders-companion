@@ -35,6 +35,9 @@
         }
       ]
     ],
+    "extra": {
+      "sentryDsn": ""
+    },
     "experiments": {
       "typedRoutes": true
     }

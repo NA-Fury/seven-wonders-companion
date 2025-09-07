@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { Linking, Pressable, Text, TextInput, View, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Constants from 'expo-constants';
+import { openPrefilledBugReport, openDiscussions } from '../../lib/github';
 
 export default function SettingsScreen() {
   const appVersion = useMemo(() => {
@@ -33,7 +34,7 @@ export default function SettingsScreen() {
   };
 
   const handleOpenGitHubDiscussions = async () => {
-    try { await Linking.openURL('https://github.com/NA-Fury/seven-wonders-companion/discussions'); } catch {}
+    try { await openDiscussions(); } catch {}
   };
 
   const handleOpenGitHubProfile = async () => {
@@ -64,6 +65,13 @@ export default function SettingsScreen() {
           numberOfLines={5}
           style={{ backgroundColor: 'rgba(28,26,26,0.6)', color: '#F3E7D3', borderRadius: 12, padding: 12, borderWidth: 1, borderColor: 'rgba(196,162,76,0.25)', textAlignVertical: 'top' }}
         />
+
+        <Pressable
+          onPress={() => openPrefilledBugReport(subject, message)}
+          style={({ pressed }) => ({ backgroundColor: pressed ? 'rgba(196,162,76,0.8)' : '#C4A24C', borderRadius: 14, alignItems: 'center', paddingVertical: 12 })}
+        >
+          <Text style={{ color: '#1C1A1A', fontWeight: '800' }}>Report a Bug (prefilled)</Text>
+        </Pressable>
 
         <Pressable
           onPress={handleSendEmail}
@@ -107,4 +115,3 @@ export default function SettingsScreen() {
     </SafeAreaView>
   );
 }
-

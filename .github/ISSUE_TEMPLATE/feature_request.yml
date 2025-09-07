@@ -1,0 +1,20 @@
+name: Feature request
+description: Suggest an idea or improvement
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem to solve
+      description: What's the user problem or use-case?
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed solution
+      description: How would you like it to work?
+  - type: textarea
+    id: notes
+    attributes:
+      label: Additional context
+      description: Screenshots, examples, similar apps, etc.
+

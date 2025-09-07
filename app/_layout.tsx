@@ -9,6 +9,7 @@ import { useColorScheme } from '@/hooks/useColorScheme';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect } from 'react';
 import { useScoringStore } from '../store/scoringStore';
+import { initSentry } from '../lib/sentry';
 
 
 export default function RootLayout() {
@@ -19,6 +20,9 @@ export default function RootLayout() {
 
   // Initialize gameCounter from AsyncStorage once on mount
   useEffect(() => {
+    // Fire-and-forget Sentry init (no-op if DSN not set)
+    initSentry();
+
     (async () => {
       try {
         const raw = await AsyncStorage.getItem('gameCounter');
