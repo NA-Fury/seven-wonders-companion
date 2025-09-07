@@ -1,0 +1,91 @@
+    treasury: createCategoryScore(),
+    military: createCategoryScore(),
+    civil: createCategoryScore(),
+    commercial: createCategoryScore(),
+    science: createCategoryScore(),
+    guild: createCategoryScore(),
+    cities: createCategoryScore(),
+    leaders: createCategoryScore(),
+    navy: createCategoryScore(),
+    islands: createCategoryScore(),
+    edifice: createCategoryScore(),
+  },
+  total: 0,
+  lastUpdated: new Date(),
+  isComplete: false,
+});
+
+// ---- Store -----------------------------------------------------------------
+
+export const useScoringStore = create<ScoringState>()(
+  immer((set, get) => ({
+    // Initial state
+    gameMetadata: null,
+    playerScores: {},
+    currentPlayerId: null,
+    isLoading: false,
+    autoSave: true,
+    gameCounter: 0,
+    analysisByPlayer: {},
+
+    // Initialize scoring for all players
+    initializeScoring: (playerIds: string[], expansions: any) => {
+      set((state) => {
+        // Increment game counter
+        state.gameCounter += 1;
+        void AsyncStorage.setItem('gameCounter', state.gameCounter.toString());
+        
+        // Clear previous scores and create fresh ones for each player
+        state.playerScores = {};
+        playerIds.forEach((playerId) => {
+          state.playerScores[playerId] = createPlayerScore(playerId);
+        });
+
+        state.currentPlayerId = playerIds[0] || null;
+
+        // All players share the same game metadata
+        state.gameMetadata = {
+          gameId: `game_${Date.now()}`,
+          gameNumber: state.gameCounter, // Same game number for all players
+          startTime: new Date(),
+          playerCount: playerIds.length,
+          expansions: {
+            leaders: expansions?.leaders || false,
+            cities: expansions?.cities || false,
+            armada: expansions?.armada || false,
+            edifice: expansions?.edifice || false,
+          },
+        };
+
+        state.isLoading = false;
+      });
+    },
+
+    // Set current player
+    setCurrentPlayer: (playerId: string) => {
+      set((state) => {
+        if (state.playerScores[playerId]) {
+          state.currentPlayerId = playerId;
+        }
+      });
+    },
+
+    // Update analysis helper data for a player
+    updateAnalysisData: (playerId, data) => {
+      set((state) => {
+        const prev = state.analysisByPlayer[playerId] || {};
+        state.analysisByPlayer[playerId] = { ...prev, ...data };
+
+        // Recompute guilds after analysis data update (affects neighbors' VP)
+        try {
+          const setup = require('./setupStore');
+          const orderedPlayers: Array<{ id: string; name: string }> = setup.useSetupStore.getState().getOrderedPlayers();
+          const order = orderedPlayers.map((p: any) => p.id);
+
+          const getSnapshot = (pid: string) => {
+            const ps = state.playerScores[pid];
+            const dd = (cat: CategoryKey) => ps?.categories?.[cat]?.detailedData || {};
+            const wonderStages = (() => {
+              const w = dd('wonder');
+              return Object.keys(w).filter(k => k.startsWith('stage') && w[k]).length;
+            })();

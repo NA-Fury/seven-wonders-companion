@@ -1,5 +1,7 @@
 // app/_layout.tsx - Updated with proper scoring routes
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
+import * as Sentry from '@sentry/react-native';
+import Constants from 'expo-constants';
 import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -9,10 +11,17 @@ import { useColorScheme } from '@/hooks/useColorScheme';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect } from 'react';
 import { useScoringStore } from '../store/scoringStore';
-import { initSentry } from '../lib/sentry';
 
+// Initialize Sentry once (before render)
+Sentry.init({
+  dsn: Constants.expoConfig?.extra?.sentryDsn ?? process.env.EXPO_PUBLIC_SENTRY_DSN,
+  // enable in dev too (remove enableInExpoDevelopment)
+  enabled: true,
+  enableAutoPerformanceTracing: true,
+  tracesSampleRate: 1.0,
+});
 
-export default function RootLayout() {
+function RootLayout() {
   const colorScheme = useColorScheme();
   const [loaded] = useFonts({
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
@@ -20,23 +29,18 @@ export default function RootLayout() {
 
   // Initialize gameCounter from AsyncStorage once on mount
   useEffect(() => {
-    // Fire-and-forget Sentry init (no-op if DSN not set)
-    initSentry();
-
     (async () => {
       try {
         const raw = await AsyncStorage.getItem('gameCounter');
         const value = raw ? parseInt(raw, 10) : 0;
         useScoringStore.setState({ gameCounter: value });
       } catch {
-        // no-op: ignore storage read errors
+        // no-op
       }
     })();
   }, []);
 
-  if (!loaded) {
-    return null;
-  }
+  if (!loaded) return null;
 
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
@@ -63,3 +67,6 @@ export default function RootLayout() {
     </ThemeProvider>
   );
 }
+
+// Wrap export for breadcrumbs/perf
+export default Sentry.wrap(RootLayout);

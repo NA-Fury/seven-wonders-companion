@@ -1,3 +1,4 @@
+import React from 'react';
 import { StyleSheet, Text, type TextProps } from 'react-native';
 
 import { useThemeColor } from '@/hooks/useThemeColor';
@@ -19,6 +20,7 @@ export function ThemedText({
 
   return (
     <Text
+      {...rest}
       style={[
         { color },
         type === 'default' ? styles.default : undefined,
@@ -28,7 +30,6 @@ export function ThemedText({
         type === 'link' ? styles.link : undefined,
         style,
       ]}
-      {...rest}
     />
   );
 }
@@ -58,3 +59,5 @@ const styles = StyleSheet.create({
     color: '#0a7ea4',
   },
 });
+
+export default ThemedText;

@@ -1,250 +1,130 @@
-// components/ui/aerial-table-seating.tsx - Enhanced with modes and fixed centering
-import React, { useEffect, useState } from 'react';
-import {
-  Dimensions,
-  Modal,
-  Platform,
-  Pressable,
-  ScrollView,
-  Text,
-  View,
-  type TextProps,
-  type TextStyle
-} from 'react-native';
-import {
-  Gesture,
-  GestureDetector,
-  GestureHandlerRootView,
-} from 'react-native-gesture-handler';
-import Animated, {
-  interpolateColor,
-  runOnJS,
-  useAnimatedStyle,
-  useSharedValue,
-  withSpring,
-  withTiming,
-} from 'react-native-reanimated';
+// store/scoringStore.ts - Enhanced with bug fixes and detailed mode support
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import type { Draft } from 'immer';
+import { create } from 'zustand';
+import { immer } from 'zustand/middleware/immer';
+import { resolveMilitaryConflictsForAll, resolveNavalConflictsForAll } from '../data/conflicts';
+import { computeGuildsForAll } from '../data/guildsResolver';
+import { computeLeadersForAll } from '../data/leadersResolver';
 
-const { width } = Dimensions.get('window');
-const TABLE_SIZE = Math.min(width - 80, 320);
-const PLAYER_SIZE = 48;
+export type ScoringMode = 'direct' | 'detailed';
 
-type PProps = TextProps & { className?: string };
-type TableMode = 'age1' | 'age2' | 'age3' | 'military' | 'leaders' | 'navy';
+export type CategoryKey =
+  | 'wonder'
+  | 'treasury'
+  | 'military'
+  | 'civil'
+  | 'commercial'
+  | 'science'
+  | 'guild'
+  | 'cities'
+  | 'leaders'
+  | 'navy'
+  | 'islands'
+  | 'edifice';
 
-interface TableModeConfig {
-  theme: string;
-  backgroundColor: string;
-  borderColor: string;
-  centerColor: string;
-  arrowColor: string;
-  direction: 'clockwise' | 'counterclockwise' | 'neighbors' | 'all';
-  title: string;
-  description: string;
+// Detailed data types for each category
+export interface WonderDetails {
+  stagesCompleted: boolean[];
+  stagePoints: number[];
 }
 
-const TABLE_MODES: Record<TableMode, TableModeConfig> = {
-  age1: {
-    theme: '#CD7F32',
-    backgroundColor: 'rgba(205, 127, 50, 0.2)',
-    borderColor: 'rgba(205, 127, 50, 0.5)',
-    centerColor: 'rgba(205, 127, 50, 0.6)',
-    arrowColor: '#CD7F32',
-    direction: 'clockwise',
-    title: 'Age I',
-    description: 'Bronze Age • Clockwise card passing'
-  },
-  age2: {
-    theme: '#C0C0C0',
-    backgroundColor: 'rgba(192, 192, 192, 0.2)',
-    borderColor: 'rgba(192, 192, 192, 0.5)',
-    centerColor: 'rgba(192, 192, 192, 0.6)',
-    arrowColor: '#C0C0C0',
-    direction: 'counterclockwise',
-    title: 'Age II',
-    description: 'Silver Age • Counterclockwise card passing'
-  },
-  age3: {
-    theme: '#FFD700',
-    backgroundColor: 'rgba(255, 215, 0, 0.2)',
-    borderColor: 'rgba(255, 215, 0, 0.5)',
-    centerColor: 'rgba(255, 215, 0, 0.6)',
-    arrowColor: '#FFD700',
-    direction: 'clockwise',
-    title: 'Age III',
-    description: 'Golden Age • Clockwise card passing'
-  },
-  military: {
-    theme: '#DC143C',
-    backgroundColor: 'rgba(220, 20, 60, 0.2)',
-    borderColor: 'rgba(220, 20, 60, 0.5)',
-    centerColor: 'rgba(220, 20, 60, 0.6)',
-    arrowColor: '#DC143C',
-    direction: 'neighbors',
-    title: 'Military Conflicts',
-    description: 'Combat with immediate neighbors'
-  },
-  leaders: {
-    theme: '#F5F5DC',
-    backgroundColor: 'rgba(245, 245, 220, 0.2)',
-    borderColor: 'rgba(245, 245, 220, 0.5)',
-    centerColor: 'rgba(245, 245, 220, 0.6)',
-    arrowColor: '#F5F5DC',
-    direction: 'counterclockwise',
-    title: 'Leaders Selection',
-    description: 'Leader drafting • Counterclockwise passing'
-  },
-  navy: {
-    theme: '#000080',
-    backgroundColor: 'rgba(0, 0, 128, 0.2)',
-    borderColor: 'rgba(0, 0, 128, 0.5)',
-    centerColor: 'rgba(0, 0, 128, 0.6)',
-    arrowColor: '#000080',
-    direction: 'all',
-    title: 'Navy Conflicts',
-    description: 'Naval combat with all players'
-  }
-};
-
-interface TableModeSelectorProps {
-  currentMode: TableMode;
-  onModeChange: (mode: TableMode) => void;
-  expansions: { leaders: boolean; armada: boolean; cities: boolean; edifice: boolean };
+export interface TreasuryDetails {
+  coins: number;
+  debtFromCards: number;
+  debtFromTax: number;
+  debtFromPiracy: number;
+  commercialPotTaxes: number;
 }
 
-export function TableModeSelector({ currentMode, onModeChange, expansions }: TableModeSelectorProps) {
-  const availableModes: TableMode[] = ['age1', 'age2', 'age3', 'military'];
-  
-  if (expansions.leaders) availableModes.push('leaders');
-  if (expansions.armada) availableModes.push('navy');
-
-  return (
-    <Card>
-      <H2>Table View Mode</H2>
-      <P className="mb-3 text-parchment/70 text-sm">
-        Select a game phase to visualize turn order and conflicts
-      </P>
-      
-      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-        <View style={{ flexDirection: 'row', gap: 8, paddingVertical: 8 }}>
-          {availableModes.map((mode) => {
-            const config = TABLE_MODES[mode];
-            const isActive = currentMode === mode;
-            
-            return (
-              <Pressable
-                key={mode}
-                onPress={() => onModeChange(mode)}
-                style={{
-                  paddingHorizontal: 16,
-                  paddingVertical: 10,
-                  borderRadius: 12,
-                  backgroundColor: isActive ? config.backgroundColor : 'rgba(243, 231, 211, 0.1)',
-                  borderWidth: 1.5,
-                  borderColor: isActive ? config.borderColor : 'rgba(243, 231, 211, 0.2)',
-                  minWidth: 100,
-                  alignItems: 'center',
-                }}
-              >
-                <Text style={{
-                  color: isActive ? config.theme : 'rgba(243, 231, 211, 0.8)',
-                  fontSize: 13,
-                  fontWeight: 'bold',
-                  marginBottom: 2,
-                }}>
-                  {config.title}
-                </Text>
-                <Text style={{
-                  color: isActive ? config.theme : 'rgba(243, 231, 211, 0.6)',
-                  fontSize: 9,
-                  textAlign: 'center',
-                  lineHeight: 12,
-                }}>
-                  {config.description}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </View>
-      </ScrollView>
-      
-      {(currentMode === 'military' || currentMode === 'navy') && (
-        <View style={{
-          backgroundColor: 'rgba(243, 231, 211, 0.05)',
-          borderRadius: 8,
-          padding: 10,
-          marginTop: 8,
-          borderLeftWidth: 3,
-          borderLeftColor: TABLE_MODES[currentMode].theme,
-        }}>
-          <Text style={{ color: 'rgba(243, 231, 211, 0.8)', fontSize: 11, lineHeight: 15 }}>
-            Note: Visualization excludes diplomacy tokens, military boarding, and navy diplomacy effects. 
-            See game rules for adjustments when these are applied during play.
-          </Text>
-        </View>
-      )}
-    </Card>
-  );
+export interface MilitaryDetails {
+  ageIStrength: number;
+  ageIIStrength: number;
+  ageIIIStrength: number;
+  doveDiplomacyAges: number[];
+  boardingTokensApplied: { age: number; count: number }[];
+  boardingTokensReceived: { age: number; count: number }[];
+  redCardsCount: number;
+  chainLinksUsed: number;
+  armadaShipPosition?: number;
 }
 
-interface AerialTableViewProps {
-  playerIds: string[];
-  getPlayerName: (id: string) => string;
-  selectedPlayer: string | null;
-  onPlayerSelect: (playerId: string) => void;
-  mode: TableMode;
-  disabled?: boolean;
+export interface CivilDetails {
+  blueCardsCount: number;
+  directPointsFromCards: number;
+  chainLinksUsed: number;
+  armadaShipPosition?: number;
+  cardsWithArmadaShips?: number;
 }
 
-export function AerialTableView({ 
-  playerIds, 
-  getPlayerName, 
-  selectedPlayer,
-  onPlayerSelect,
-  mode,
-  disabled = false
-}: AerialTableViewProps) {
-  const config = TABLE_MODES[mode];
-  
-  const getPlayerPosition = (index: number, total: number) => {
-    const angle = (2 * Math.PI * index) / total - Math.PI / 2;
-    const radius = (TABLE_SIZE - PLAYER_SIZE - 16) / 2;
-    const x = radius * Math.cos(angle);
-    const y = radius * Math.sin(angle);
-    return { x, y, angle };
-  };
+export interface CommercialDetails {
+  yellowCardsCount: number;
+  chainLinksUsed: number;
+  armadaShipPosition?: number;
+  cardsWithArmadaShips?: number;
+  citiesCardsCount?: number;
+  pointCards: string[];
+}
 
-  return (
-    <View style={{ alignItems: 'center', paddingVertical: 24 }}>
-      {/* Table Surface - Themed */}
-      <View style={{
-        width: TABLE_SIZE,
-        height: TABLE_SIZE,
-        borderRadius: TABLE_SIZE / 2,
-        backgroundColor: config.backgroundColor,
-        borderWidth: 4,
-        borderColor: config.borderColor,
-        alignItems: 'center',
-        justifyContent: 'center',
-        position: 'relative',
-        shadowColor: config.theme,
-        shadowOffset: { width: 0, height: 6 },
-        shadowOpacity: 0.25,
-        shadowRadius: 10,
-        elevation: 10,
-      }}>
-        {/* Outer decorative ring */}
-        <View style={{
-          position: 'absolute',
-          width: TABLE_SIZE - 16,
-          height: TABLE_SIZE - 16,
-          borderRadius: (TABLE_SIZE - 16) / 2,
-          borderWidth: 2,
-          borderColor: config.borderColor,
-          opacity: 0.6,
-        }} />
+export interface ScienceDetails {
+  compasses: number;
+  tablets: number;
+  gears: number;
+  // Optional fixed bonuses by type (leaders, wonders, etc.)
+  fixedBonuses?: { compass?: number; tablet?: number; gear?: number };
+  // Legacy array support (we will count by type when present)
+  bonusSymbols?: { type: 'compass' | 'tablet' | 'gear'; source?: string }[];
+  // Wild tokens that can be assigned to any symbol at end of game (Scientists Guild, Babylon/Carthage stage, Golden Archipelago, neighbor-copy, etc.)
+  choiceTokens?: number;
+  // Tokens that add +1 to your most common symbol (Armada cards, Emerald Archipelago)
+  mostCommonPlusTokens?: number;
+  // Replace one existing symbol with any symbol (Aganice)
+  replaceOneToken?: number; // 0 or 1 typically
+  // Cities: copy neighbors' science symbol(s) at end of game (treated as choice tokens here)
+  neighborCopies?: number;
+  // Detailed breakdown inputs for better UI guidance (optional)
+  greenCardsCount?: number;
+  greenAddedCompass?: number;
+  greenAddedGear?: number;
+  greenAddedTablet?: number;
+  otherAddedCompass?: number;
+  otherAddedGear?: number;
+  otherAddedTablet?: number;
+  // Misc tracking (optional, not used in calc directly)
+  chainLinksUsed?: number;
+  armadaShipPosition?: number;
+}
 
-        {/* Inner decorative ring */}
-        <View style={{
-          position: 'absolute',
-          width: TABLE_SIZE - 40,
+export interface GuildDetails {
+  guildsPlayed: string[];
+  totalPoints: number;
+}
+
+export interface CitiesDetails {
+  blackCardsCount: number;
+  directPointCards: number;
+  affectingNeighbors: { positive: number; negative: number };
+  cardsPlayed: string[];
+}
+
+export interface LeadersDetails {
+  leadersPlayed: string[];
+  totalPoints: number;
+}
+
+export interface NavyDetails {
+  ageIStrength: number;
+  ageIIStrength: number;
+  ageIIIStrength: number;
+  armadaShipPosition: number;
+  cardsContributing: number;
+  blueDoveDiplomacyAges: number[];
+}
+
+export interface IslandDetails {
+  islandCards: { stage1: number; stage2: number; stage3: number };
+  directPoints: number;
+  greenShipPosition: number;
+  islandsOwned: string[];
+}
+

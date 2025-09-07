@@ -38,3 +38,13 @@ See `ROADMAP.md` for near-term and future plans (including potential paid featur
 
 MIT (see `LICENSE`).
 
+## ESLint (Flat Config)
+- Uses ESLint’s flat config via `eslint.config.js` (Expo SDK 50+ style).
+- Path alias `@/` is resolved through:
+  - TypeScript: `tsconfig.json` with `baseUrl: "."` and `paths: { "@/*": ["./*"] }`.
+  - ESLint: `settings['import/resolver']` for `typescript`, `alias` (`@` -> `./`), and `node`.
+  - Babel: `babel-plugin-module-resolver` with `alias: { '@': './' }` for runtime/editor parity.
+- Commands:
+  - `npm run lint` — ESLint
+  - `npm run typecheck` — TypeScript
+- Note: Legacy `.eslintrc` has been removed so the flat config is consistently applied.

@@ -25,18 +25,10 @@
     },
     "plugins": [
       "expo-router",
-      [
-        "expo-splash-screen",
-        {
-          "image": "./assets/images/splash-icon.png",
-          "imageWidth": 200,
-          "resizeMode": "contain",
-          "backgroundColor": "#ffffff"
-        }
-      ]
+      ["@sentry/react-native/expo", { "organization": "gmv-ib", "project": "seven-wonders-companion" }]
     ],
     "extra": {
-      "sentryDsn": ""
+      "sentryDsn": "https://<publicKey>@o<orgId>.ingest.sentry.io/<projectId>"
     },
     "experiments": {
       "typedRoutes": true

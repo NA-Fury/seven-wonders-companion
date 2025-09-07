@@ -1,6 +1,6 @@
 import React from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native';
-import { Screen } from './index';
+import { Screen } from './Screen';
 
 interface SetupScreenProps {
   children: React.ReactNode;
@@ -43,4 +43,3 @@ export function SetupScreen({ children, footer, keyboardOffset = 0 }: SetupScree
     </Screen>
   );
 }
-

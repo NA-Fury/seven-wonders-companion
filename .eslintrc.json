@@ -1,8 +1,0 @@
-{
-  "root": true,
-  "extends": ["expo", "plugin:react-hooks/recommended"],
-  "rules": {
-    // Keep rules minimal; build on this as needed
-  }
-}
-
