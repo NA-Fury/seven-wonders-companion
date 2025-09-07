@@ -1,8 +1,8 @@
 // app/setup/seating.tsx - Fixed modal and enhanced with age/conflict modes
 import { router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { Alert, View } from 'react-native';
-import { Button, Card, H1, H2, P, SetupScreen } from '../../components/ui';
+import { Alert, Pressable, Text, View } from 'react-native';
+import { Card, H1, H2, P, SetupScreen } from '../../components/ui';
 import {
   AerialTableView,
   DragDropPlayerList,
@@ -102,23 +102,43 @@ export default function SeatingScreen() {
     <>
       <SetupScreen
         footer={
-          <View style={{ flexDirection: 'row' }}>
-            <View style={{ flex: 1, marginRight: 12 }}>
-              <Button
-                title="Back to Expansions"
-                variant="ghost"
-                onPress={() => router.back()}
-                className="w-full"
-              />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Button
-                title="Continue to Wonders"
-                onPress={handleContinue}
-                className="w-full"
-                disabled={selectedSeating.length < 3 || selectedSeating.length > 7}
-              />
-            </View>
+          <View style={{ flexDirection: 'row', gap: 12 }}>
+            <Pressable
+              onPress={() => router.back()}
+              style={({ pressed }) => ({
+                flex: 1,
+                borderRadius: 14,
+                minHeight: 48,
+                paddingVertical: 12,
+                alignItems: 'center',
+                justifyContent: 'center',
+                borderWidth: 1,
+                borderColor: 'rgba(196,162,76,0.4)',
+                backgroundColor: pressed ? 'rgba(243,231,211,0.06)' : 'transparent',
+              })}
+            >
+              <Text style={{ color: '#C4A24C', fontWeight: '700', textAlign: 'center' }}>
+                Back to Expansions
+              </Text>
+            </Pressable>
+            <Pressable
+              onPress={handleContinue}
+              disabled={selectedSeating.length < 3 || selectedSeating.length > 7}
+              style={({ pressed }) => ({
+                flex: 1,
+                borderRadius: 14,
+                minHeight: 48,
+                paddingVertical: 12,
+                alignItems: 'center',
+                justifyContent: 'center',
+                backgroundColor: pressed ? 'rgba(196,162,76,0.8)' : '#C4A24C',
+                opacity: selectedSeating.length < 3 || selectedSeating.length > 7 ? 0.5 : 1,
+              })}
+            >
+              <Text style={{ color: '#1C1A1A', fontWeight: '800', textAlign: 'center' }}>
+                Continue to Wonders
+              </Text>
+            </Pressable>
           </View>
         }
       >

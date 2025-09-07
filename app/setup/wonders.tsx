@@ -1,7 +1,7 @@
 // app/setup/wonders.tsx - Fixed version with proper state management
 import { router } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Platform, ScrollView, View } from 'react-native';
+import { ActivityIndicator, Alert, Platform, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button, Card, H1, H2, P } from '../../components/ui';
 import { ProperArmadaShipyardSelector } from '../../components/ui/proper-armada-shipyard';
@@ -409,24 +409,46 @@ export default function WonderAssignmentScreen() {
           borderTopColor: 'rgba(243, 231, 211, 0.1)',
         }}>
           <View style={{ flexDirection: 'row', gap: 12 }}>
-            <Button
-              title="Back to Seating"
-              variant="ghost"
+            <Pressable
               onPress={() => router.back()}
-              className="flex-1"
-            />
-            <Button
-              title={
-                expansions.armada && !allShipyardsAssigned 
-                  ? "Continue to Shipyards" 
-                  : expansions.edifice 
-                    ? "Continue to Edifice" 
-                    : "Continue to Summary"
-              }
+              style={({ pressed }) => ({
+                flex: 1,
+                borderRadius: 14,
+                minHeight: 48,
+                paddingVertical: 12,
+                alignItems: 'center',
+                justifyContent: 'center',
+                borderWidth: 1,
+                borderColor: 'rgba(196,162,76,0.4)',
+                backgroundColor: pressed ? 'rgba(243,231,211,0.06)' : 'transparent',
+              })}
+            >
+              <Text style={{ color: '#C4A24C', fontWeight: '700', textAlign: 'center' }}>
+                Back to Seating
+              </Text>
+            </Pressable>
+            <Pressable
               onPress={handleContinue}
-              className="flex-1"
               disabled={!allAssigned}
-            />
+              style={({ pressed }) => ({
+                flex: 1,
+                borderRadius: 14,
+                minHeight: 48,
+                paddingVertical: 12,
+                alignItems: 'center',
+                justifyContent: 'center',
+                backgroundColor: pressed ? 'rgba(196,162,76,0.8)' : '#C4A24C',
+                opacity: !allAssigned ? 0.5 : 1,
+              })}
+            >
+              <Text style={{ color: '#1C1A1A', fontWeight: '800', textAlign: 'center' }}>
+                {expansions.armada && !allShipyardsAssigned
+                  ? 'Continue to Shipyards'
+                  : expansions.edifice
+                    ? 'Continue to Edifice'
+                    : 'Continue to Summary'}
+              </Text>
+            </Pressable>
           </View>
         </View>
       </View>

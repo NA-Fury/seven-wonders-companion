@@ -165,11 +165,13 @@ export function ToggleRow(
     value,
     onToggle,
     className,
+    prefix,
   }: {
     label: string;
     value: boolean;
     onToggle: (v: boolean) => void;
     className?: string;
+    prefix?: React.ReactNode;
   },
 ) {
   const knobJustify = value ? 'items-end' : 'items-start';
@@ -185,12 +187,17 @@ export function ToggleRow(
       }}
       className={cx('flex-row items-center justify-between py-3', className)}
     >
-      <Text style={{
-        color: '#F3E7D3',
-        fontSize: 16,
-      }} className="text-parchment text-base">
-        {label}
-      </Text>
+      <View style={{ flexDirection: 'row', alignItems: 'center', flexShrink: 1 }}>
+        {prefix ? (
+          <View style={{ marginRight: 8 }}>{prefix}</View>
+        ) : null}
+        <Text style={{
+          color: '#F3E7D3',
+          fontSize: 16,
+        }} className="text-parchment text-base">
+          {label}
+        </Text>
+      </View>
       <View style={{
         width: 48,
         height: 28,
@@ -216,3 +223,4 @@ export * from './enhanced';
 export * from './wonder-assignment';
 export * from './wonder-card';
 export * from './setup-screen';
+export * from './AppLogo';

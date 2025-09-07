@@ -45,6 +45,9 @@ export function EdificeProjectSelector({
     }
   };
 
+  // Helper for Roman numerals (I, II, III)
+  const romanAge = (age: 1 | 2 | 3) => ['I', 'II', 'III'][age - 1] as 'I' | 'II' | 'III';
+
   return (
     <View>
       {/* Age Header */}
@@ -56,7 +59,7 @@ export function EdificeProjectSelector({
         alignItems: 'center',
       }}>
         <Text style={{ color: 'white', fontSize: 16, fontWeight: 'bold', marginBottom: 4 }}>
-          Age {age} Projects
+          {`Age ${romanAge(age as 1 | 2 | 3)} Projects`}
         </Text>
         <Text style={{ color: 'rgba(255, 255, 255, 0.9)', fontSize: 12, textAlign: 'center' }}>
           {getAgeDescription(age)}
@@ -255,6 +258,9 @@ export function EdificeSelectionSummary({
       default: return '#6B7280';
     }
   };
+
+  // Helper for Roman numerals (I, II, III)
+  const romanAge = (age: 1 | 2 | 3) => ['I', 'II', 'III'][age - 1] as 'I' | 'II' | 'III';
 
   return (
     <View style={{

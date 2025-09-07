@@ -3,6 +3,7 @@ import { router } from 'expo-router';
 import React, { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -15,6 +16,9 @@ import { getProjectById } from '../../data/edificeDatabase';
 import { WONDERS_DATABASE } from '../../data/wondersDatabase';
 import { useScoringStore } from '../../store/scoringStore';
 import { useSetupStore } from '../../store/setupStore';
+
+// Helper for Roman numerals
+const romanAge = (age: 1 | 2 | 3) => (['I', 'II', 'III'][age - 1] as 'I' | 'II' | 'III');
 
 const styles = StyleSheet.create({
   container: {
@@ -529,7 +533,8 @@ export default function GameSummaryScreen() {
                   {project ? (
                     <>
                       <Text style={{ color: '#C4A24C', fontSize: 14, fontWeight: 'bold' }}>
-                        Age {age}: {project.name}
+                        {/* Age I/II/III */}
+                        Age {romanAge(age as 1 | 2 | 3)}: {project.name}
                       </Text>
                       <Text style={{ color: 'rgba(243, 231, 211, 0.7)', fontSize: 11, marginTop: 4 }}>
                         {project.effect.description}
@@ -537,7 +542,8 @@ export default function GameSummaryScreen() {
                     </>
                   ) : (
                     <Text style={{ color: '#EF4444', fontSize: 13 }}>
-                      Age {age}: No project selected
+                      {/* Age I/II/III */}
+                      Age {romanAge(age as 1 | 2 | 3)}: No project selected
                     </Text>
                   )}
                 </View>
@@ -584,36 +590,25 @@ export default function GameSummaryScreen() {
           )}
         </View>
 
-        {/* Navigation Buttons */}
-        <View style={{ flexDirection: 'row', gap: 12, marginTop: 16 }}>
-          <TouchableOpacity
-            style={[styles.proceedButton, { 
-              flex: 1, 
-              backgroundColor: 'rgba(107, 114, 128, 0.5)' 
-            }]}
+        {/* Navigation - single wide Back button */}
+        <View style={{ marginTop: 16 }}>
+          <Pressable
             onPress={handleBack}
+            style={({ pressed }) => ({
+              borderRadius: 14,
+              minHeight: 48,
+              paddingVertical: 12,
+              alignItems: 'center',
+              justifyContent: 'center',
+              borderWidth: 1,
+              borderColor: 'rgba(196,162,76,0.4)',
+              backgroundColor: pressed ? 'rgba(243,231,211,0.06)' : 'transparent',
+            })}
           >
-            <Text style={[styles.proceedButtonText, { color: '#F3E7D3' }]}>
+            <Text style={{ color: '#C4A24C', fontWeight: '700', textAlign: 'center' }}>
               Back to Setup
             </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[
-              styles.proceedButton,
-              { flex: 1 },
-              !isReadyToPlay && styles.proceedButtonDisabled,
-            ]}
-            onPress={handleProceedToScoring}
-            disabled={!isReadyToPlay}
-          >
-            <Text style={[
-              styles.proceedButtonText,
-              !isReadyToPlay && styles.proceedButtonTextDisabled,
-            ]}>
-              Calculate Scores
-            </Text>
-          </TouchableOpacity>
+          </Pressable>
         </View>
       </ScrollView>
     </SafeAreaView>

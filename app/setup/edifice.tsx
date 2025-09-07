@@ -1,7 +1,7 @@
 // app/setup/edifice.tsx
 import { router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { Alert, ScrollView, View } from 'react-native';
+import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
 import { Button, Card, H1, H2, P, Screen } from '../../components/ui';
 import { EdificeProjectDetail } from '../../components/ui/edifice-card';
 import { EdificeProjectSelector, EdificeSelectionSummary } from '../../components/ui/edifice-selection';
@@ -99,19 +99,23 @@ export default function EdificeSelectionScreen() {
         {/* Selection Mode & Controls */}
         <Card>
           <H2>Selection Mode</H2>
-          <View style={{ flexDirection: 'row', marginBottom: 16 }}>
-            <Button
-              title="📋 Manual Selection"
-              variant={selectionMode === 'manual' ? 'primary' : 'ghost'}
-              onPress={() => setSelectionMode('manual')}
-              className="flex-1 mr-2"
-            />
-            <Button
-              title="🎲 Random Selection"
-              variant={selectionMode === 'random' ? 'primary' : 'ghost'}
-              onPress={() => setSelectionMode('random')}
-              className="flex-1 ml-2"
-            />
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
+            <View style={{ flex: 1, minWidth: '48%' }}>
+              <Button
+                title="📋 Manual Selection"
+                variant={selectionMode === 'manual' ? 'primary' : 'ghost'}
+                onPress={() => setSelectionMode('manual')}
+                className="w-full"
+              />
+            </View>
+            <View style={{ flex: 1, minWidth: '48%' }}>
+              <Button
+                title="🎲 Random Selection"
+                variant={selectionMode === 'random' ? 'primary' : 'ghost'}
+                onPress={() => setSelectionMode('random')}
+                className="w-full"
+              />
+            </View>
           </View>
 
           {selectionMode === 'random' && (
@@ -125,15 +129,6 @@ export default function EdificeSelectionScreen() {
                 Randomly selects balanced projects for varied gameplay
               </P>
             </View>
-          )}
-
-          {Object.keys(selectedProjects).length > 0 && (
-            <Button
-              title="🗑️ Clear All Selections"
-              onPress={handleClearSelection}
-              variant="ghost"
-              className="mt-2"
-            />
           )}
         </Card>
 
@@ -150,15 +145,24 @@ export default function EdificeSelectionScreen() {
           <>
             {/* Age Selection Tabs */}
             <Card>
-              <View style={{ flexDirection: 'row', marginBottom: 16 }}>
+              <View
+                style={{
+                  flexDirection: 'row',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  gap: 12,
+                  marginBottom: 16,
+                }}
+              >
                 {[1, 2, 3].map((age) => (
-                  <Button
-                    key={age}
-                    title={`Age ${age}`}
-                    variant={currentAge === age ? 'primary' : 'ghost'}
-                    onPress={() => setCurrentAge(age as 1 | 2 | 3)}
-                    className="flex-1 mx-1"
-                  />
+                  <View key={age} style={{ minWidth: 96 }}>
+                    <Button
+                      title={`Age ${['I', 'II', 'III'][age - 1]}`}
+                      variant={currentAge === age ? 'primary' : 'ghost'}
+                      onPress={() => setCurrentAge(age as 1 | 2 | 3)}
+                      className="w-full"
+                    />
+                  </View>
                 ))}
               </View>
 
@@ -181,20 +185,44 @@ export default function EdificeSelectionScreen() {
         )}
 
         {/* Navigation */}
-        <Card className="flex-row gap-3 mt-4">
-          <Button
-            title="Back to Wonders"
-            variant="ghost"
+        <View style={{ flexDirection: 'row', gap: 12, marginTop: 16 }}>
+          <Pressable
             onPress={() => router.back()}
-            className="flex-1"
-          />
-          <Button
-            title="Continue to Summary"
+            style={({ pressed }) => ({
+              flex: 1,
+              borderRadius: 14,
+              minHeight: 48,
+              paddingVertical: 12,
+              alignItems: 'center',
+              justifyContent: 'center',
+              borderWidth: 1,
+              borderColor: 'rgba(196,162,76,0.4)',
+              backgroundColor: pressed ? 'rgba(243,231,211,0.06)' : 'transparent',
+            })}
+          >
+            <Text style={{ color: '#C4A24C', fontWeight: '700', textAlign: 'center' }}>
+              Back to Wonders
+            </Text>
+          </Pressable>
+          <Pressable
             onPress={handleContinue}
-            className="flex-1"
             disabled={!isComplete}
-          />
-        </Card>
+            style={({ pressed }) => ({
+              flex: 1,
+              borderRadius: 14,
+              minHeight: 48,
+              paddingVertical: 12,
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: pressed ? 'rgba(196,162,76,0.8)' : '#C4A24C',
+              opacity: !isComplete ? 0.5 : 1,
+            })}
+          >
+            <Text style={{ color: '#1C1A1A', fontWeight: '800', textAlign: 'center' }}>
+              Continue to Summary
+            </Text>
+          </Pressable>
+        </View>
 
         {/* Bottom padding */}
         <Card className="opacity-0 h-4" />

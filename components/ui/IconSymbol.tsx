@@ -18,6 +18,11 @@ const MAPPING = {
   'paperplane.fill': 'send',
   'chevron.left.forwardslash.chevron.right': 'code',
   'chevron.right': 'chevron-right',
+  // Added app-specific symbols
+  'crown.fill': 'emoji-events',
+  'building.2.fill': 'apartment',
+  'sailboat.fill': 'sailing',
+  'building.columns.fill': 'account-balance',
 } as IconMapping;
 
 /**

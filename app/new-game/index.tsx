@@ -42,7 +42,7 @@ export default function NewGameScreen() {
     <SafeAreaView style={{ flex: 1, backgroundColor: '#1C1A1A' }}>
       <View style={{ paddingHorizontal: 20, paddingTop: 16 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-          <Text style={{ color: '#C4A24C', fontSize: 22, fontWeight: '800' }}>New Game</Text>
+          <Text style={{ color: '#C4A24C', fontSize: 22, fontWeight: '800' }}>Players</Text>
           <Pressable onPress={() => router.push('/')}
             style={({ pressed }) => ({ paddingHorizontal: 10, paddingVertical: 6, borderRadius: 10, backgroundColor: pressed ? 'rgba(243,231,211,0.06)' : 'transparent' })}>
             <Text style={{ color: '#FEF3C7', fontSize: 18 }}>☰</Text>
@@ -164,14 +164,19 @@ export default function NewGameScreen() {
             style={({ pressed }) => ({
               flex: 1,
               borderRadius: 14,
+              // Ensure same height and vertical centering as expansions footer buttons
+              minHeight: 48,
               paddingVertical: 12,
               alignItems: 'center',
+              justifyContent: 'center',
               borderWidth: 1,
               borderColor: 'rgba(196,162,76,0.4)',
               backgroundColor: pressed ? 'rgba(243,231,211,0.06)' : 'transparent',
             })}
           >
-            <Text style={{ color: '#C4A24C', fontWeight: '700' }}>Back</Text>
+            <Text style={{ color: '#C4A24C', fontWeight: '700', textAlign: 'center' }}>
+              Back to Main Menu
+            </Text>
           </Pressable>
           <Pressable
             onPress={handleStart}
@@ -179,13 +184,18 @@ export default function NewGameScreen() {
             style={({ pressed }) => ({
               flex: 1,
               borderRadius: 14,
+              // Match height and centering with the Back button and expansions footer
+              minHeight: 48,
               paddingVertical: 12,
               alignItems: 'center',
+              justifyContent: 'center',
               backgroundColor: pressed ? 'rgba(196,162,76,0.8)' : '#C4A24C',
               opacity: selectedForGame.length === 0 || selectedForGame.length > 7 ? 0.5 : 1,
             })}
           >
-            <Text style={{ color: '#1C1A1A', fontWeight: '800' }}>Start</Text>
+            <Text style={{ color: '#1C1A1A', fontWeight: '800', textAlign: 'center' }}>
+              Continue to Expansions
+            </Text>
           </Pressable>
         </View>
       </View>
