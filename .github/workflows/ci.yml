@@ -9,6 +9,8 @@ on:
 jobs:
   build-test:
     runs-on: ubuntu-latest
+    env:
+      EXPO_USE_STATIC: '1'
     steps:
       - uses: actions/checkout@v4
 
