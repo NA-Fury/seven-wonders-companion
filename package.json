@@ -28,7 +28,7 @@
     "@react-navigation/bottom-tabs": "^7.3.10",
     "@react-navigation/elements": "^2.3.8",
     "@react-navigation/native": "^7.1.6",
-    "@sentry/react-native": "~6.14.0",
+    "@sentry/react-native": "~7.0.1",
     "babel-preset-expo": "~13.0.0",
     "expo": "53.0.22",
     "expo-blur": "~14.1.5",
