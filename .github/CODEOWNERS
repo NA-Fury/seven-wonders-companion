@@ -1,0 +1,27 @@
+# Lines with the least specific pattern take precedence.
+# Docs: https://docs.github.com/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# Default owner(s) for the entire repository
+* @NA-Fury
+
+# App routing and screens
+app/** @NA-Fury
+
+# UI components and hooks
+components/** @NA-Fury
+hooks/** @NA-Fury
+constants/** @NA-Fury
+
+# State and logic
+store/** @NA-Fury
+utils/** @NA-Fury
+data/** @NA-Fury
+lib/** @NA-Fury
+
+# Tooling / configuration
+.github/** @NA-Fury
+*.json @NA-Fury
+*.js @NA-Fury
+*.ts @NA-Fury
+*.tsx @NA-Fury
+*.md @NA-Fury
