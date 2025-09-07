@@ -1753,11 +1753,11 @@ export const CategoryCard = memo(function CategoryCard({
                             </TouchableOpacity>
                           </View>
                         )}
-                        <TouchableOpacity 
-                          onPress={() => removeLeader(name)} 
-                          style={{ marginLeft:8 }}
+                        <TouchableOpacity
+                          onPress={() => removeLeader(name)}
+                          style={{ marginLeft: 8 }}
                         >
-                          <Text style={{ color:'#818CF8', fontSize:12 }}>?</Text>
+                          <Text style={{ color: '#818CF8', fontSize: 12 }}>×</Text>
                         </TouchableOpacity>
                       </View>
                     );

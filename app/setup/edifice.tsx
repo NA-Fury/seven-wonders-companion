@@ -50,22 +50,7 @@ export default function EdificeSelectionScreen() {
     );
   };
 
-  const handleClearSelection = () => {
-    Alert.alert(
-      'Clear All Projects',
-      'This will remove all project selections. Continue?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Clear', 
-          style: 'destructive',
-          onPress: () => {
-            setSelectedProjects({});
-          }
-        },
-      ]
-    );
-  };
+  // removed unused handleClearSelection
 
   const handleContinue = () => {
     // Save edifice selections first

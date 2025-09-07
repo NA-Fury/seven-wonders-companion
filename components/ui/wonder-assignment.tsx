@@ -265,46 +265,47 @@ export function PlayerWonderDisplay({
           </View>
         </View>
 
-        {/* Action Buttons - Moved to right side with better spacing */}
+        {/* Action Buttons (only show when a wonder is assigned) */}
         <View style={{ alignItems: 'flex-end', marginLeft: 8 }}>
-          <Pressable
-            onPress={onReassign}
-            onPressIn={handlePress}
-            style={{
-              backgroundColor: 'rgba(196, 162, 76, 0.2)',
-              borderRadius: 8,
-              paddingHorizontal: 12,
-              paddingVertical: 6,
-              borderWidth: 1,
-              borderColor: 'rgba(196, 162, 76, 0.4)',
-              marginBottom: 4,
-              minWidth: 60,
-              alignItems: 'center',
-            }}
-          >
-            <Text style={{ color: '#C4A24C', fontSize: 12, fontWeight: 'bold' }}>
-              {wonder ? 'Change' : 'Assign'}
-            </Text>
-          </Pressable>
-          
           {wonder && (
-            <Pressable
-              onPress={onRemove}
-              style={{
-                backgroundColor: 'rgba(239, 68, 68, 0.2)',
-                borderRadius: 8,
-                paddingHorizontal: 12,
-                paddingVertical: 6,
-                borderWidth: 1,
-                borderColor: 'rgba(239, 68, 68, 0.4)',
-                minWidth: 60,
-                alignItems: 'center',
-              }}
-            >
-              <Text style={{ color: '#EF4444', fontSize: 12, fontWeight: 'bold' }}>
-                Remove
-              </Text>
-            </Pressable>
+            <>
+              <Pressable
+                onPress={onReassign}
+                onPressIn={handlePress}
+                style={{
+                  backgroundColor: 'rgba(196, 162, 76, 0.2)',
+                  borderRadius: 8,
+                  paddingHorizontal: 12,
+                  paddingVertical: 6,
+                  borderWidth: 1,
+                  borderColor: 'rgba(196, 162, 76, 0.4)',
+                  marginBottom: 4,
+                  minWidth: 60,
+                  alignItems: 'center',
+                }}
+              >
+                <Text style={{ color: '#C4A24C', fontSize: 12, fontWeight: 'bold' }}>
+                  Change
+                </Text>
+              </Pressable>
+              <Pressable
+                onPress={onRemove}
+                style={{
+                  backgroundColor: 'rgba(239, 68, 68, 0.2)',
+                  borderRadius: 8,
+                  paddingHorizontal: 12,
+                  paddingVertical: 6,
+                  borderWidth: 1,
+                  borderColor: 'rgba(239, 68, 68, 0.4)',
+                  minWidth: 60,
+                  alignItems: 'center',
+                }}
+              >
+                <Text style={{ color: '#EF4444', fontSize: 12, fontWeight: 'bold' }}>
+                  Remove
+                </Text>
+              </Pressable>
+            </>
           )}
         </View>
       </View>

@@ -6,16 +6,17 @@ import { usePlayerStore } from '../../store/playerStore';
 import { useSetupStore } from '../../store/setupStore';
 
 export default function NewGameScreen() {
-  const { getAllProfiles, toggleSelected, selectedForGame, addProfile } = usePlayerStore();
+  const { toggleSelected, selectedForGame, addProfile } = usePlayerStore();
+  const profilesMap = usePlayerStore((s) => s.profiles);
   const { clearPlayers, addExistingPlayer } = useSetupStore();
   const [query, setQuery] = useState('');
 
   const profiles = useMemo(() => {
-    const list = getAllProfiles();
+    const list = Object.values(profilesMap).sort((a, b) => a.name.localeCompare(b.name));
     if (!query.trim()) return list;
     const q = query.trim().toLowerCase();
     return list.filter((p) => p.name.toLowerCase().includes(q));
-  }, [getAllProfiles, query, usePlayerStore.getState().profiles]);
+  }, [profilesMap, query]);
 
   const handleStart = () => {
     const ids = selectedForGame;

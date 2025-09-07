@@ -1,5 +1,5 @@
 import React from 'react';
-import { Linking, Pressable, Text, View } from 'react-native';
+import { Linking, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 const LINKS = [
@@ -12,6 +12,7 @@ const LINKS = [
 export default function NewsScreen() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#1C1A1A' }}>
+      <ScrollView contentContainerStyle={{ paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
       <View style={{ paddingHorizontal: 20, paddingTop: 16 }}>
         <Text style={{ color: '#C4A24C', fontSize: 22, fontWeight: '800' }}>News & Analysis</Text>
         <Text style={{ color: 'rgba(243,231,211,0.7)', marginTop: 4 }}>
@@ -74,7 +75,7 @@ export default function NewsScreen() {
           </Text>
         </View>
       </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
-

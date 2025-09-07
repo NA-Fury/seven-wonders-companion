@@ -286,16 +286,32 @@ export const useSetupStore = create<SetupState & SetupActions>()(
       },
 
       // Wonder assignment
-      assignWonder: (playerId, data) => 
-        set(state => ({ 
-          wonders: { 
-            ...state.wonders, 
-            [playerId]: { 
-              ...state.wonders[playerId], 
-              ...data 
-            } 
-          } 
-        })),
+      assignWonder: (playerId, data) =>
+        set((state) => {
+          // If called with an empty payload, treat as a clear/remove action
+          const isClear =
+            data == null ||
+            (Object.keys(data).length === 0 && data.constructor === Object);
+
+          if (isClear) {
+            return {
+              wonders: {
+                ...state.wonders,
+                [playerId]: {},
+              },
+            } as Partial<SetupState>;
+          }
+
+          return {
+            wonders: {
+              ...state.wonders,
+              [playerId]: {
+                ...state.wonders[playerId],
+                ...data,
+              },
+            },
+          } as Partial<SetupState>;
+        }),
 
       randomizeWonders: () => {
         const state = get();

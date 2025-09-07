@@ -278,22 +278,34 @@ function WonderCardSide({ wonder, side, sideType, isSelected }: WonderCardSidePr
           </Text>
         </View>
 
-        <Text style={{
-          fontSize: 16,
-          fontWeight: 'bold',
-          color: isDayMode ? '#8B4513' : '#E6E6FA',
-          textAlign: 'center',
-          marginBottom: 3,
-        }}>
+        <Text
+          style={{
+            fontSize: 16,
+            fontWeight: 'bold',
+            color: isDayMode ? '#8B4513' : '#E6E6FA',
+            textAlign: 'center',
+            marginBottom: 3,
+            paddingHorizontal: 4,
+            flexShrink: 1,
+          }}
+          numberOfLines={2}
+          ellipsizeMode="tail"
+        >
           {wonder.name}
         </Text>
 
-        <Text style={{
-          fontSize: 12,
-          fontWeight: 'bold',
-          color: isDayMode ? '#DAA520' : '#9370DB',
-          textAlign: 'center',
-        }}>
+        <Text
+          style={{
+            fontSize: 12,
+            fontWeight: 'bold',
+            color: isDayMode ? '#DAA520' : '#9370DB',
+            textAlign: 'center',
+            paddingHorizontal: 4,
+            flexShrink: 1,
+          }}
+          numberOfLines={2}
+          ellipsizeMode="tail"
+        >
           {side.name}
         </Text>
       </View>

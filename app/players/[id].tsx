@@ -1,10 +1,10 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import React, { useMemo, useState } from 'react';
-import { FlatList, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { usePlayerStore, type PlayerProfile } from '../../store/playerStore';
-import { WONDERS_DATABASE } from '../../data/wondersDatabase';
 import { getBadgeById } from '../../data/badges';
+import { WONDERS_DATABASE } from '../../data/wondersDatabase';
+import { usePlayerStore, type PlayerProfile } from '../../store/playerStore';
 
 export default function PlayerDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -14,11 +14,6 @@ export default function PlayerDetailScreen() {
 
   const profile: PlayerProfile | undefined = profiles[id!];
   const [name, setName] = useState(profile?.name || '');
-
-  const allProfilesArray = useMemo(
-    () => Object.values(profiles),
-    [profiles]
-  );
 
   const neighborsList = useMemo(() => {
     const counts = profile?.stats.neighborCounts || {};
@@ -73,6 +68,30 @@ export default function PlayerDetailScreen() {
     ];
   }, [profile?.stats.expansionsUseCounts]);
 
+  // Move this hook ABOVE any early returns to satisfy rules-of-hooks
+  const displayBadges = useMemo(() => {
+    const resolveName = (id: string) => {
+      const fromDb = getBadgeById(id);
+      if (fromDb) return { name: fromDb.name, icon: fromDb.icon };
+      if (id.startsWith('wonder_victor_')) {
+        const wid = id.replace('wonder_victor_', '');
+        const w = WONDERS_DATABASE.find((x) => x.id.toLowerCase() === wid.toLowerCase());
+        if (w) return { name: `${w.name} Victor`, icon: '🏛️' };
+      }
+      const human = id
+        .split('_')
+        .map((s) => (s.length ? s.charAt(0).toUpperCase() + s.slice(1) : s))
+        .join(' ');
+      return { name: human, icon: '🏅' };
+    };
+
+    const badgesArr = profile?.badges || [];
+    return badgesArr.map((b) => {
+      const { name, icon } = resolveName(b.id);
+      return { id: b.id, name, icon, unlockedAt: b.unlockedAt };
+    });
+  }, [profile?.badges]);
+
   if (!profile) {
     return (
       <SafeAreaView style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#1C1A1A' }}>
@@ -93,30 +112,6 @@ export default function PlayerDetailScreen() {
       <Text style={{ color: '#C4A24C', fontWeight: '600' }}>{`${value}`}</Text>
     </View>
   );
-
-  // Resolve badge display data (emoji + proper name)
-  const displayBadges = useMemo(() => {
-    const resolveName = (id: string) => {
-      const fromDb = getBadgeById(id);
-      if (fromDb) return { name: fromDb.name, icon: fromDb.icon };
-      // Fallback: humanize ids and map wonder_victor_* to Wonder name if possible
-      if (id.startsWith('wonder_victor_')) {
-        const wid = id.replace('wonder_victor_', '');
-        const w = WONDERS_DATABASE.find((x) => x.id.toLowerCase() === wid.toLowerCase());
-        if (w) return { name: `${w.name} Victor`, icon: '🏛️' };
-      }
-      const human = id
-        .split('_')
-        .map((s) => (s.length ? s.charAt(0).toUpperCase() + s.slice(1) : s))
-        .join(' ');
-      return { name: human, icon: '🏅' };
-    };
-
-    return (profile.badges || []).map((b) => {
-      const { name, icon } = resolveName(b.id);
-      return { id: b.id, name, icon, unlockedAt: b.unlockedAt };
-    });
-  }, [profile.badges]);
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#1C1A1A' }}>

@@ -267,7 +267,7 @@ export default function ResultsScreen() {
               playerCount: players.length,
             } as const;
             // Simple badge set (display only)
-            const BADGES = {
+            /* const BADGES = {
               warmonger: { icon: '⚔️', name: 'Warmonger', condition: (b: any) => (b.military || 0) >= 20 },
               scientist: { icon: '🧪', name: 'Great Scientist', condition: (b: any) => (b.science || 0) >= 25 },
               merchant: { icon: '💰', name: 'Merchant Prince', condition: (b: any) => (b.commercial || 0) >= 15 },
@@ -276,7 +276,7 @@ export default function ResultsScreen() {
               peaceful: { icon: '🕊️', name: 'Pacifist', condition: (b: any) => (b.military || 0) === 0 },
               perfectScore: { icon: '💯', name: 'Century Club', condition: (_: any) => e.total >= 100 },
               underdog: { icon: '🐺', name: 'Underdog', condition: (_: any) => e.rank === 1 && e.total < 60 },
-            } as const;
+            } as const; */
             const badges = evaluateBadgesForContext(ctx);
             return (
               <View key={e.playerId} style={styles.rankingCard}>

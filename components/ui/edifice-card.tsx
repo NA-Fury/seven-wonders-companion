@@ -75,7 +75,7 @@ export function EdificeProjectCard({
     }
   };
 
-  const romanAge = (age: 1 | 2 | 3) => ['I', 'II', 'III'][age - 1] as 'I' | 'II' | 'III';
+  // removed unused romanAge helper
 
   return (
     <Pressable onPress={handlePress} style={{ margin: 4 }}>

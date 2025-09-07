@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { FlatList, Pressable, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { usePlayerStore } from '../../store/playerStore';
+import { getBadgeById } from '../../data/badges';
 import { router } from 'expo-router';
 
 export default function PlayersScreen() {
@@ -85,14 +86,18 @@ export default function PlayersScreen() {
             </View>
             {item.badges.length > 0 && (
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
-                {item.badges.slice(0, 6).map((b) => (
-                  <View key={b.id} style={{
-                    backgroundColor: 'rgba(99,102,241,0.2)', borderRadius: 12, paddingVertical: 2, paddingHorizontal: 8,
-                    borderWidth: 1, borderColor: 'rgba(99,102,241,0.3)'
-                  }}>
-                    <Text style={{ color: '#818CF8', fontSize: 11, fontWeight: '600' }}>{b.id}</Text>
-                  </View>
-                ))}
+                {item.badges.slice(0, 6).map((b) => {
+                  const meta = getBadgeById(b.id);
+                  const label = meta ? `${meta.icon} ${meta.name}` : b.id;
+                  return (
+                    <View key={b.id} style={{
+                      backgroundColor: 'rgba(99,102,241,0.2)', borderRadius: 12, paddingVertical: 2, paddingHorizontal: 8,
+                      borderWidth: 1, borderColor: 'rgba(99,102,241,0.3)'
+                    }}>
+                      <Text style={{ color: '#818CF8', fontSize: 11, fontWeight: '600' }}>{label}</Text>
+                    </View>
+                  );
+                })}
               </View>
             )}
           </Pressable>

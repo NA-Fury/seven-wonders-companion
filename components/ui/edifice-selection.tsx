@@ -259,8 +259,7 @@ export function EdificeSelectionSummary({
     }
   };
 
-  // Helper for Roman numerals (I, II, III)
-  const romanAge = (age: 1 | 2 | 3) => ['I', 'II', 'III'][age - 1] as 'I' | 'II' | 'III';
+  // removed duplicate romanAge (declared above)
 
   return (
     <View style={{
