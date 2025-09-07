@@ -1,6 +1,6 @@
 // app/scoring/results.tsx - Minimal results screen (restored) with header and proportional podium
-import React, { useEffect, useMemo } from 'react';
-import { Alert, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, UIManager, View } from 'react-native';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Alert, ActivityIndicator, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, UIManager, View } from 'react-native';
 import { router } from 'expo-router';
 import { usePlayerStore } from '../../store/playerStore';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -44,6 +44,7 @@ const styles = StyleSheet.create({
 export default function ResultsScreen() {
   const { players } = useSetupStore();
   const { getLeaderboard, getCategoryBreakdown, getAllTotals, completeScoring, gameMetadata } = useScoringStore();
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -86,7 +87,8 @@ export default function ResultsScreen() {
         badgesAwarded[p.id] = evaluateBadgesForContext(ctx).map((b) => b.id);
       });
 
-      const historyEntry = {
+      // Build slimmer history entry (omit heavy analytics)
+      const historyEntrySlim = {
         date: new Date(),
         players: players.map((p) => p.name),
         playerOrder,
@@ -95,32 +97,45 @@ export default function ResultsScreen() {
         scores,
         ranks,
         wonders: wondersForHistory,
-        categoryBreakdowns: perPlayerBreakdowns,
-        badgesAwarded,
         edificeProjects: setup.edificeProjects,
         duration: gameMetadata?.endTime && gameMetadata?.startTime
           ? Math.round(((new Date(gameMetadata.endTime).getTime() - new Date(gameMetadata.startTime).getTime()) / 1000) / 60)
           : undefined,
         metadata: { gameNumber: (gameMetadata as any)?.gameNumber },
       } as const;
-      setup.addGameToHistory(historyEntry);
 
-      // Post-game analytics into Player DB
-      usePlayerStore.getState().recordGameResult({
-        gameId: `${(gameMetadata as any)?.gameNumber ?? Date.now()}`,
-        date: new Date().toISOString(),
-        playerOrder,
-        scores,
-        ranks,
-        expansions: setup.expansions,
-        wonders: Object.fromEntries(playerOrder.map((pid) => [pid, { boardId: wondersForHistory[pid]?.boardId, side: wondersForHistory[pid]?.side } as any])),
-        categoryBreakdowns: perPlayerBreakdowns,
-      });
+      // Show spinner and defer writes to keep UI snappy
+      setIsSaving(true);
+      setTimeout(() => {
+        setup.addGameToHistory(historyEntrySlim);
 
-      completeScoring();
-      Alert.alert('Saved', 'Game results saved. Returning to Home.', [
-        { text: 'OK', onPress: () => router.replace('/') },
-      ]);
+        const writePlayers = () => {
+          usePlayerStore.getState().recordGameResult({
+            gameId: `${(gameMetadata as any)?.gameNumber ?? Date.now()}`,
+            date: new Date().toISOString(),
+            playerOrder,
+            scores,
+            ranks,
+            expansions: setup.expansions,
+            wonders: Object.fromEntries(
+              playerOrder.map((pid) => [pid, { boardId: wondersForHistory[pid]?.boardId, side: wondersForHistory[pid]?.side } as any])
+            ),
+            categoryBreakdowns: perPlayerBreakdowns,
+          });
+
+          completeScoring();
+          setIsSaving(false);
+          Alert.alert('Saved', 'Game results saved. Returning to Home.', [
+            { text: 'OK', onPress: () => router.replace('/') },
+          ]);
+        };
+
+        if (typeof requestAnimationFrame === 'function') {
+          requestAnimationFrame(() => setTimeout(writePlayers, 0));
+        } else {
+          setTimeout(writePlayers, 0);
+        }
+      }, 0);
     } catch (e: any) {
       Alert.alert('Error', e?.message || 'Failed to save results.');
     }
@@ -337,6 +352,26 @@ export default function ResultsScreen() {
           <TouchableOpacity style={[styles.actionButton, styles.secondaryButton]} onPress={handleShare}><Text style={[styles.actionButtonText, styles.secondaryButtonText]}>Share Results</Text></TouchableOpacity>
         </View>
       </ScrollView>
+      {isSaving && (
+        <View style={{
+          position: 'absolute', left: 0, right: 0, top: 0, bottom: 0,
+          alignItems: 'center', justifyContent: 'center',
+          backgroundColor: 'rgba(15,14,26,0.7)'
+        }}>
+          <View style={{
+            backgroundColor: 'rgba(31, 41, 55, 0.95)',
+            paddingHorizontal: 20, paddingVertical: 16,
+            borderRadius: 14,
+            borderWidth: 1, borderColor: 'rgba(196,162,76,0.35)'
+          }}>
+            <View style={{ alignItems: 'center', gap: 8 }}>
+              <ActivityIndicator size="large" color="#C4A24C" />
+              <Text style={{ color: '#C4A24C', fontWeight: '700' }}>Saving…</Text>
+              <Text style={{ color: 'rgba(243,231,211,0.75)', fontSize: 12 }}>Writing results and analytics</Text>
+            </View>
+          </View>
+        </View>
+      )}
     </SafeAreaView>
   );
 }
