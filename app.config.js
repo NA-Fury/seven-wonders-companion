@@ -1,40 +1,37 @@
 // Dynamic Expo config to avoid shipping placeholder Sentry DSN in dev
 // Expo prefers app.config.* over app.json when both are present.
 
-/** @type {import('expo/config').ExpoConfig} */
+/**
+ * Expo dynamic config that augments the static app.json values.
+ * Using the passed `config` ensures expo-doctor recognizes we consume app.json.
+ */
 module.exports = ({ config }) => {
-  // Use app.json values as base to satisfy expo-doctor
-  const base = (() => {
-    try {
-      const aj = require('./app.json');
-      return aj?.expo || {};
-    } catch (e) {
-      return {};
-    }
-  })();
-
   const dsn = process.env.EXPO_PUBLIC_SENTRY_DSN || process.env.SENTRY_DSN;
 
+  // Build `extra` without placeholder DSN when env not provided
+  const baseExtra = { ...(config.extra || {}) };
+  if (!dsn && 'sentryDsn' in baseExtra) {
+    delete baseExtra.sentryDsn;
+  }
+
   return {
-    ...base,
-    // Ensure critical fields exist even if app.json missing
-    name: base.name || 'seven-wonders-companion',
-    slug: base.slug || 'seven-wonders-companion',
-    version: base.version || '1.0.0',
+    ...config,
+    // Optionally force Metro on web if not already set
     web: {
-      bundler: 'metro',
-      output: 'static',
-      favicon: './assets/images/favicon.png',
-      ...(base.web || {}),
+      bundler: (config.web && config.web.bundler) || 'metro',
+      output: (config.web && config.web.output) || 'static',
+      favicon: (config.web && config.web.favicon) || './assets/images/favicon.png',
+      ...(config.web || {}),
     },
-    plugins: base.plugins || [
+    // Preserve existing plugins; if missing, define defaults
+    plugins: config.plugins || [
       'expo-router',
       ['@sentry/react-native/expo', { organization: 'gmv-ib', project: 'seven-wonders-companion' }],
     ],
     extra: {
-      ...(base.extra || {}),
+      ...baseExtra,
       ...(dsn ? { sentryDsn: dsn } : {}),
     },
-    experiments: { typedRoutes: true, ...(base.experiments || {}) },
+    experiments: { typedRoutes: true, ...(config.experiments || {}) },
   };
 };
