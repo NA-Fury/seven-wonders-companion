@@ -19,6 +19,27 @@ module.exports = ({ config }) => {
   return {
     ...config,
 
+    // iOS / Android identifiers & build numbers
+    ios: {
+      ...(config.ios || {}),
+      bundleIdentifier: 'com.na.fury.wonderscompanion',
+      supportsTablet: true,
+      buildNumber: (config.ios && config.ios.buildNumber) || '1',
+    },
+    android: {
+      ...(config.android || {}),
+
+      package: 'com.na.fury.wonderscompanion',
+      versionCode: (config.android && config.android.versionCode) || 1,
+      adaptiveIcon: {
+        // allow overriding foreground/background if already defined
+        ...(config.android && config.android.adaptiveIcon ? config.android.adaptiveIcon : {}),
+        foregroundImage: './assets/images/adaptive-icon.png',
+        backgroundColor: '#F5F1D0',
+      },
+      edgeToEdgeEnabled: true,
+    },
+
     // Pair OTA (EAS Update) with app version safety
     runtimeVersion: { policy: 'appVersion' },
 

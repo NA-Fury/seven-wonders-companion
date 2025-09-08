@@ -30,13 +30,24 @@
     },
     "plugins": [
       "expo-router",
-      ["@sentry/react-native/expo", { "organization": "gmv-ib", "project": "seven-wonders-companion" }]
+      [
+        "@sentry/react-native/expo",
+        {
+          "organization": "gmv-ib",
+          "project": "seven-wonders-companion"
+        }
+      ]
     ],
     "extra": {
-      "sentryDsn": "https://<publicKey>@o<orgId>.ingest.sentry.io/<projectId>"
+      "sentryDsn": "https://<publicKey>@o<orgId>.ingest.sentry.io/<projectId>",
+      "eas": {
+        "projectId": "56d5d048-d6e6-46e6-a522-e9c6c7cb9f7f"
+      },
+      "router": {}
     },
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "owner": "na-fury"
   }
 }
