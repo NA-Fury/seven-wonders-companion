@@ -19,17 +19,15 @@
     "types": [
       "jest",
       "react",
-      "react-native",
-      "@testing-library/jest-native"
+      "react-native"
     ]
   },
   "include": [
     "**/*.ts",
     "**/*.tsx",
+    "**/*.d.ts",
     "expo-env.d.ts",
     ".expo/types/**/*.ts"
   ],
-  "exclude": [
-    "node_modules"
-  ]
+  "exclude": ["node_modules"]
 }
