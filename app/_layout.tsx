@@ -1,7 +1,8 @@
-// app/_layout.tsx - Updated with proper scoring routes
+// app/_layout.tsx - Updated with proper scoring routes + robust Sentry release
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import * as Sentry from '@sentry/react-native';
 import Constants from 'expo-constants';
+import * as Application from 'expo-application';
 import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -15,10 +16,10 @@ import { useScoringStore } from '../store/scoringStore';
 // Initialize Sentry once (before render)
 Sentry.init({
   dsn: Constants.expoConfig?.extra?.sentryDsn ?? process.env.EXPO_PUBLIC_SENTRY_DSN,
-  // enable in dev too (remove enableInExpoDevelopment)
   enabled: true,
   enableAutoPerformanceTracing: true,
-  tracesSampleRate: 1.0,
+  tracesSampleRate: __DEV__ ? 1.0 : 0.2,
+  release: `${Application.applicationId}@${Application.nativeApplicationVersion}+${Application.nativeBuildVersion}`,
 });
 
 function RootLayout() {
@@ -47,19 +48,19 @@ function RootLayout() {
       <Stack>
         {/* Main index route */}
         <Stack.Screen name="index" options={{ headerShown: false }} />
-        
+
         {/* Setup group routes */}
         <Stack.Screen name="setup" options={{ headerShown: false }} />
-        
+
         {/* Scoring group routes */}
         <Stack.Screen name="scoring" options={{ headerShown: false }} />
-        
+
         {/* Tabs if needed */}
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        
+
         {/* Test routes */}
         <Stack.Screen name="test-mobile" options={{ headerShown: false }} />
-        
+
         {/* Not found */}
         <Stack.Screen name="+not-found" />
       </Stack>

@@ -48,3 +48,10 @@ MIT (see `LICENSE`).
   - `npm run lint` — ESLint
   - `npm run typecheck` — TypeScript
 - Note: Legacy `.eslintrc` has been removed so the flat config is consistently applied.
+
+## Over-the-Air (OTA) Updates
+
+```bash
+# Fixes without a new store build (must match runtimeVersion)
+eas update --branch production --message "Fix: welcome flow"
+
