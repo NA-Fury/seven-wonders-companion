@@ -19,6 +19,8 @@ module.exports = ({ config }) => {
   return {
     ...config,
 
+    newArchEnabled: false, // explicitly disable the new architecture
+
     // iOS / Android identifiers & build numbers
     ios: {
       ...(config.ios || {}),
