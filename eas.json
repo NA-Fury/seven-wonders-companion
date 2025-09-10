@@ -19,6 +19,14 @@
     }
   },
   "submit": {
-    "production": { "ios": {}, "android": {} }
+    "production": {
+      "android": {
+        "track": "internal",          
+        "releaseStatus": "draft"  
+      },
+      "ios": {
+        "ascAppId": "YOUR_ASC_APP_ID_IF_KNOWN" 
+      }
+    }
   }
 }
