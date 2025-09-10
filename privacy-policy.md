@@ -1,6 +1,6 @@
 # Privacy Policy for Seven Wonders Companion
 
-Effective date: [today's date]
+Effective date: 10/09/2025
 
 Seven Wonders Companion ("the App") respects your privacy.  
 This Privacy Policy explains how we handle information when you use the App.
@@ -17,9 +17,6 @@ This information is used only to respond to your inquiry and is not stored or sh
 ## Data Use
 Diagnostic data is used solely to improve the performance and reliability of the App.  
 We do not sell, rent, or share any data with third parties for marketing or advertising purposes.
-
-## Children
-The App is not specifically targeted at children under 13. We do not knowingly collect personal information from children.
 
 ## Contact
 If you have questions about this Privacy Policy, contact me at:  
