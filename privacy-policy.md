@@ -22,5 +22,5 @@ We do not sell, rent, or share any data with third parties for marketing or adve
 The App is not specifically targeted at children under 13. We do not knowingly collect personal information from children.
 
 ## Contact
-If you have questions about this Privacy Policy, contact us at:  
+If you have questions about this Privacy Policy, contact me at:  
 📧 naziha2305@gmail.com
