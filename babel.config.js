@@ -10,7 +10,9 @@ module.exports = function (api) {
           alias: { '@': './' },
           extensions: ['.ts', '.tsx', '.js', '.jsx', '.json']
         }
-      ]
+      ],
+      // Must be last: required for react-native-reanimated
+      'react-native-reanimated/plugin'
     ]
   };
 };
