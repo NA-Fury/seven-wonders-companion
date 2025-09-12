@@ -84,7 +84,7 @@
     "cross-env": "^10.0.0",
     "react-test-renderer": "19.0.0",
     "schema-utils": "^4.2.0",
-    "typescript": "~5.8.3"
+    "typescript": "~5.9.2"
   },
   "jest": {
     "preset": "jest-expo",
