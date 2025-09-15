@@ -1,6 +1,7 @@
+// __tests__/haptic-tab.test.tsx
 import React from 'react';
-import { render, fireEvent } from '@testing-library/react-native';
-import { Pressable, Text } from 'react-native';
+import { render, fireEvent, waitFor } from '@testing-library/react-native';
+import { Text } from 'react-native';
 
 // Mock expo-haptics
 jest.mock('expo-haptics', () => ({
@@ -14,17 +15,22 @@ import * as Haptics from 'expo-haptics';
 describe('HapticTab', () => {
   it('triggers haptic feedback and forwards onPress', async () => {
     const onPress = jest.fn();
-    const { UNSAFE_getByType } = render(
-      <HapticTab onPress={onPress} style={{}} accessibilityState={{ selected: false }}>
+
+    const { getByRole } = render(
+      <HapticTab
+        onPress={onPress}
+        accessibilityRole="button"             // ensures a11y role for the query
+        accessibilityState={{ selected: false }}
+        style={{}}
+      >
         <Text>Tab</Text>
       </HapticTab>
     );
 
-    const pressable = UNSAFE_getByType(Pressable);
-    fireEvent.press(pressable);
+    const button = getByRole('button');
+    fireEvent.press(button);
 
-    expect(Haptics.impactAsync).toHaveBeenCalled();
+    await waitFor(() => expect(Haptics.impactAsync).toHaveBeenCalled());
     expect(onPress).toHaveBeenCalled();
   });
 });
-
