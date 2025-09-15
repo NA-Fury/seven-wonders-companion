@@ -11,8 +11,8 @@ module.exports = function (api) {
           extensions: ['.ts', '.tsx', '.js', '.jsx', '.json']
         }
       ],
-      // Must be last: required for react-native-reanimated
-      'react-native-reanimated/plugin'
+      // Must be last: required for Reanimated v4 (moved to worklets)
+      'react-native-worklets/plugin'
     ]
   };
 };
