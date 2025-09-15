@@ -24,13 +24,20 @@ jobs:
         with:
           node-version-file: .nvmrc
           cache: yarn
+          check-latest: true
+
+      - name: Print versions
+        run: |
+          node -v
+          corepack enable
+          yarn -v
 
       - name: Install dependencies (Yarn Classic)
         run: |
           corepack enable
           yarn install --frozen-lockfile
 
-      # Try up to 3 times in case the Expo API flickers
+      # retry to dodge transient expo API issues; still fail on real problems
       - name: Run expo-doctor (with retry)
         id: doctor
         run: |
@@ -45,10 +52,8 @@ jobs:
             echo "expo-doctor failed (attempt $attempts). Retrying in 10s…"
             sleep 10
           done
-          # If still failing after retries, bubble up the failure
           exit 1
 
-      # Upload logs if anything went wrong
       - name: Upload doctor log
         if: failure()
         uses: actions/upload-artifact@v4
@@ -56,7 +61,6 @@ jobs:
           name: expo-doctor-log
           path: doctor.log
 
-      # If the *only* reason is a fetch error, don't fail the job
       - name: Soft-fail on fetch-only errors
         if: failure()
         run: |
