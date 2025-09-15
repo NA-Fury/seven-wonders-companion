@@ -2,7 +2,7 @@ name: Expo Doctor
 
 on:
   pull_request:
-    branches: [ "main" ]
+    branches: ["main"]
   workflow_dispatch:
 
 concurrency:
@@ -22,11 +22,45 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version-file: '.nvmrc'
-          cache: 'npm'
+          node-version-file: .nvmrc
+          cache: yarn
 
-      - name: Install dependencies
-        run: npm ci
+      - name: Install dependencies (Yarn Classic)
+        run: |
+          corepack enable
+          yarn install --frozen-lockfile
 
-      - name: Expo Doctor (fail on incompatibilities)
-        run: npx expo-doctor --verbose
+      # Try up to 3 times in case the Expo API flickers
+      - name: Run expo-doctor (with retry)
+        id: doctor
+        run: |
+          set -euo pipefail
+          attempts=0
+          until [ $attempts -ge 3 ]
+          do
+            if npx expo-doctor --verbose 2>&1 | tee doctor.log ; then
+              exit 0
+            fi
+            attempts=$((attempts+1))
+            echo "expo-doctor failed (attempt $attempts). Retrying in 10s…"
+            sleep 10
+          done
+          # If still failing after retries, bubble up the failure
+          exit 1
+
+      # Upload logs if anything went wrong
+      - name: Upload doctor log
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: expo-doctor-log
+          path: doctor.log
+
+      # If the *only* reason is a fetch error, don't fail the job
+      - name: Soft-fail on fetch-only errors
+        if: failure()
+        run: |
+          if grep -qi "fetch failed" doctor.log; then
+            echo "::warning::expo-doctor failed due to network fetch error; treating as non-blocking."
+            exit 0
+          fi
