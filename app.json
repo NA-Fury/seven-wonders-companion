@@ -7,7 +7,7 @@
     "icon": "./assets/images/icon.png",
     "scheme": "sevenwonderscompanion",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
+    "newArchEnabled": false,
     "splash": {
       "image": "./assets/images/splash-icon.png",
       "backgroundColor": "#F5F1D0",
@@ -36,13 +36,9 @@
     },
     "plugins": [
       "expo-router",
-      [
-        "@sentry/react-native/expo",
-        {
-          "organization": "gmv-ib",
-          "project": "seven-wonders-companion"
-        }
-      ]
+      ["@sentry/react-native/expo", { "organization": "gmv-ib", "project": "seven-wonders-companion" }],
+      "expo-font",
+      "expo-web-browser"
     ],
     "extra": {
       "sentryDsn": "https://<publicKey>@o<orgId>.ingest.sentry.io/<projectId>",
