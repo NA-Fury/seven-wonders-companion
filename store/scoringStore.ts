@@ -309,7 +309,13 @@ const computeTotal = (categories: CategoryMap | Draft<CategoryMap>): number => {
   let total = 0;
   for (const key of CATEGORY_KEYS) {
     const cat = categories[key];
-    const pts = (cat?.directPoints ?? cat?.calculatedPoints ?? 0);
+    let pts = 0;
+    // Leaders can grant both direct VP (immediate) and indirect VP (end-game conditions)
+    if (key === 'leaders') {
+      pts = (cat?.directPoints || 0) + (cat?.calculatedPoints || 0);
+    } else {
+      pts = (cat?.directPoints ?? cat?.calculatedPoints ?? 0);
+    }
     total += pts;
   }
   return total;
@@ -699,6 +705,11 @@ export const useScoringStore = create<ScoringState>()(
                 return selected.length;
               })();
 
+              // Prefer values from Military; fall back to Cities where users may have entered tokens
+              const mvAge1 = (military as any).mvTokensAge1 ?? (cities as any).mvTokensAge1;
+              const mvAge2 = (military as any).mvTokensAge2 ?? (cities as any).mvTokensAge2;
+              const mvAge3 = (military as any).mvTokensAge3 ?? (cities as any).mvTokensAge3;
+
               return {
                 brown: analysis.brownCards,
                 grey: analysis.grayCards,
@@ -712,9 +723,9 @@ export const useScoringStore = create<ScoringState>()(
                 compasses: science.compasses,
                 tablets: science.tablets,
                 gears: science.gears,
-                mvTokensAge1: military.mvTokensAge1,
-                mvTokensAge2: military.mvTokensAge2,
-                mvTokensAge3: military.mvTokensAge3,
+                mvTokensAge1: mvAge1,
+                mvTokensAge2: mvAge2,
+                mvTokensAge3: mvAge3,
                 wonderStagesBuilt,
                 selectedLeaders: (Array.isArray(dd('leaders').selectedLeaders) ? dd('leaders').selectedLeaders : []),
                 agrippinaOnly: !!dd('leaders').agrippinaOnly,
@@ -893,8 +904,13 @@ export const useScoringStore = create<ScoringState>()(
       
       const breakdown: Record<CategoryKey, number> = {} as any;
       CATEGORY_KEYS.forEach(cat => {
-        breakdown[cat] = playerScore.categories[cat].directPoints ?? 
-                        playerScore.categories[cat].calculatedPoints ?? 0;
+        if (cat === 'leaders') {
+          const lc = playerScore.categories[cat];
+          breakdown[cat] = (lc.directPoints || 0) + (lc.calculatedPoints || 0);
+        } else {
+          breakdown[cat] = playerScore.categories[cat].directPoints ?? 
+                          playerScore.categories[cat].calculatedPoints ?? 0;
+        }
       });
       
       return breakdown;

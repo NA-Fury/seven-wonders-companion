@@ -19,7 +19,8 @@ module.exports = ({ config }) => {
   return {
     ...config,
 
-    newArchEnabled: false, // explicitly disable the new architecture
+    // Do not explicitly disable New Architecture; Expo Go always enables it.
+    // Leave this undefined to avoid runtime mismatches.
 
     // iOS / Android identifiers & build numbers
     ios: {

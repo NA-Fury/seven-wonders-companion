@@ -563,7 +563,8 @@ export const CategoryCard = memo(function CategoryCard({
   }, [playerId, category, score?.detailedData]);
 
   // FIXED: Move all computed values after all hooks
-  const suggestions = leaderQuery.length >= 1 ? searchLeaders(leaderQuery, 8).map((l:any) => l.name) : [];
+  // Return full leader objects for rendering (id, name, immediate effects, etc.)
+  const suggestions = leaderQuery.length >= 1 ? searchLeaders(leaderQuery, 8) : [];
   const selectedLeaders: string[] = Array.isArray(detailedData.selectedLeaders) ? (detailedData.selectedLeaders as string[]) : [];
   const totalDirectVP = sumImmediateVP(selectedLeaders);
   
