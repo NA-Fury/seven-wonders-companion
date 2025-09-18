@@ -1776,6 +1776,17 @@ export const CategoryCard = memo(function CategoryCard({
               </Text>
             </View>
 
+            {/* Calculated indirect VP preview (from resolver) */}
+            <View style={styles.calculatedScore}>
+              <Text style={styles.calculatedLabel}>Indirect VP from Leaders</Text>
+              <Text style={styles.calculatedValue}>
+                {playerScores?.[playerId]?.categories?.leaders?.calculatedPoints ?? 0}
+              </Text>
+              <Text style={[styles.calculatedLabel, { marginTop: 4 }]}>
+                Updates from card counts/names, coins, and stages
+              </Text>
+            </View>
+
             {/* Notes/help */}
             <View style={styles.detailField}>
               <Text style={styles.detailLabel}>
@@ -2265,11 +2276,25 @@ export const CategoryCard = memo(function CategoryCard({
             returnKeyType="done"
           />
           
-          {score?.isDetailed && score.directPoints === null && score.calculatedPoints !== undefined && (
-            <View style={styles.tbdLabel}>
-              <Text style={styles.tbdText}>Auto: {score.calculatedPoints}</Text>
-            </View>
-          )}
+          {(() => {
+            if (!score?.isDetailed) return null;
+            if (category === 'leaders') {
+              const combined = (score?.directPoints || 0) + (score?.calculatedPoints || 0);
+              return (
+                <View style={styles.tbdLabel}>
+                  <Text style={styles.tbdText}>Auto: {combined}</Text>
+                </View>
+              );
+            }
+            if (score.directPoints === null && score.calculatedPoints !== undefined) {
+              return (
+                <View style={styles.tbdLabel}>
+                  <Text style={styles.tbdText}>Auto: {score.calculatedPoints}</Text>
+                </View>
+              );
+            }
+            return null;
+          })()}
           
           <TouchableOpacity
             style={[

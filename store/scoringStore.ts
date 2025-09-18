@@ -481,6 +481,84 @@ export const useScoringStore = create<ScoringState>()(
         } catch (e) {
           console.warn('Recompute guilds (analysis update) failed:', e);
         }
+
+        // Also recompute Leaders indirect VP when analysis helpers change (brown/grey inputs)
+        try {
+          const setup = require('./setupStore');
+          const orderedPlayers: Array<{ id: string; name: string }> = setup.useSetupStore.getState().getOrderedPlayers();
+          const order = orderedPlayers.map((p: any) => p.id);
+
+          const getSnapshot = (pid: string) => {
+            const ps = state.playerScores[pid];
+            const dd = (k: CategoryKey) => ps?.categories?.[k]?.detailedData || {};
+            const analysis = state.analysisByPlayer[pid] || {};
+            const commercial = dd('commercial');
+            const civil = dd('civil');
+            const military = dd('military');
+            const science = dd('science');
+            const cities = dd('cities');
+            const treasury = dd('treasury');
+            const guild = dd('guild');
+            const wonder = dd('wonder');
+
+            const wonderStagesBuilt = (() => {
+              const keys = Object.keys(wonder);
+              return keys.filter(k => k.startsWith('stage') && (wonder as any)[k]).length;
+            })();
+            const purple = (() => {
+              const selected: string[] = Array.isArray((guild as any).selectedPurpleCards) ? (guild as any).selectedPurpleCards : [];
+              if (typeof (guild as any).purpleCardsCount === 'number') return (guild as any).purpleCardsCount as number;
+              return selected.length;
+            })();
+            const black = (() => {
+              if (typeof (cities as any).blackCardsCount === 'number') return (cities as any).blackCardsCount as number;
+              const arr: string[] = Array.isArray((cities as any).selectedBlackCards) ? (cities as any).selectedBlackCards : [];
+              return arr.length;
+            })();
+
+            const mvAge1 = (military as any).mvTokensAge1 ?? (cities as any).mvTokensAge1;
+            const mvAge2 = (military as any).mvTokensAge2 ?? (cities as any).mvTokensAge2;
+            const mvAge3 = (military as any).mvTokensAge3 ?? (cities as any).mvTokensAge3;
+
+            return {
+              brown: analysis.brownCards,
+              grey: analysis.grayCards,
+              blue: (civil as any).blueCardsCount,
+              yellow: (Array.isArray((commercial as any).selectedYellowCards) ? (commercial as any).selectedYellowCards.length : (commercial as any).yellowCardsCount) || 0,
+              red: (military as any).redCardsCount,
+              green: (science as any).greenCardsCount,
+              black,
+              purple,
+              coins: (treasury as any).coins,
+              compasses: (science as any).compasses,
+              tablets: (science as any).tablets,
+              gears: (science as any).gears,
+              mvTokensAge1: mvAge1,
+              mvTokensAge2: mvAge2,
+              mvTokensAge3: mvAge3,
+              mvTokensTotal: (cities as any).mvTokensTotal,
+              wonderStagesBuilt,
+              selectedLeaders: (Array.isArray(dd('leaders').selectedLeaders) ? dd('leaders').selectedLeaders : []),
+              agrippinaOnly: !!dd('leaders').agrippinaOnly,
+            };
+          };
+
+          const totals = computeLeadersForAll({ order, getSnapshot });
+          for (const pid of order) {
+            const indirect = totals[pid]?.totalIndirect ?? 0;
+            if (state.playerScores[pid]) {
+              state.playerScores[pid].categories.leaders.isDetailed = true;
+              state.playerScores[pid].categories.leaders.calculatedPoints = indirect;
+            }
+          }
+          for (const pid of Object.keys(state.playerScores)) {
+            const ps = state.playerScores[pid];
+            ps.total = computeTotal(ps.categories);
+            ps.lastUpdated = new Date();
+          }
+        } catch (e) {
+          console.warn('Recompute leaders (analysis update) failed:', e);
+        }
       });
     },
 
@@ -492,6 +570,163 @@ export const useScoringStore = create<ScoringState>()(
 
         playerScore.categories[category].directPoints = points;
         playerScore.categories[category].isDetailed = isDetailed;
+
+        // Recompute resolvers that depend on this category
+        try {
+          const setup = require('./setupStore');
+          const orderedPlayers: Array<{ id: string; name: string }> = setup.useSetupStore.getState().getOrderedPlayers();
+          const order = orderedPlayers.map((p: any) => p.id);
+
+          // Guilds: depends on many categories including leaders count
+          const guildAffected = (
+            category === 'guild' ||
+            category === 'civil' ||
+            category === 'commercial' ||
+            category === 'military' ||
+            category === 'science' ||
+            category === 'cities' ||
+            category === 'leaders' ||
+            category === 'wonder' ||
+            category === 'treasury'
+          );
+          if (guildAffected) {
+            const getSnapshot = (pid: string) => {
+              const ps = state.playerScores[pid];
+              const dd = (cat: CategoryKey) => ps?.categories?.[cat]?.detailedData || {};
+              const wonderStages = (() => {
+                const w = dd('wonder');
+                return Object.keys(w).filter(k => k.startsWith('stage') && (w as any)[k]).length;
+              })();
+              const leadersCount = (() => {
+                const l = dd('leaders');
+                const arr: string[] = Array.isArray((l as any).selectedLeaders) ? (l as any).selectedLeaders : [];
+                return arr.length;
+              })();
+              const purpleCount = (() => {
+                const g = dd('guild');
+                if (typeof (g as any).purpleCardsCount === 'number') return (g as any).purpleCardsCount as number;
+                const arr: string[] = Array.isArray((g as any).selectedPurpleCards) ? (g as any).selectedPurpleCards : [];
+                return arr.length;
+              })();
+              const edifice = dd('edifice');
+              const cities = dd('cities');
+              const commercial = dd('commercial');
+              const civil = dd('civil');
+              const military = dd('military');
+              const science = dd('science');
+              const treasury = dd('treasury');
+
+              const analysis = state.analysisByPlayer[pid] || {};
+              return {
+                brown: analysis.brownCards,
+                grey: analysis.grayCards,
+                blue: (civil as any).blueCardsCount,
+                yellow: (Array.isArray((commercial as any).selectedYellowCards) ? (commercial as any).selectedYellowCards.length : (commercial as any).yellowCardsCount) || 0,
+                red: (military as any).redCardsCount,
+                green: (science as any).greenCardsCount,
+                purple: purpleCount,
+                black: (cities as any).blackCardsCount,
+                leaders: leadersCount,
+                wonderStagesBuilt: wonderStages,
+                coins: (treasury as any).coins,
+                edificePawns: {
+                  age1: !!(edifice as any).contributedAge1,
+                  age2: !!(edifice as any).contributedAge2,
+                  age3: !!(edifice as any).contributedAge3,
+                },
+                selectedGuilds: (Array.isArray((dd('guild') as any).selectedPurpleCards) ? (dd('guild') as any).selectedPurpleCards : []),
+              };
+            };
+
+            const totals = computeGuildsForAll({ order, getSnapshot });
+            for (const pid of order) {
+              const cat = state.playerScores[pid]?.categories?.guild;
+              if (cat) {
+                cat.isDetailed = true;
+                cat.calculatedPoints = totals[pid]?.total ?? 0;
+              }
+            }
+          }
+
+          // Leaders: depends on many categories including purple, black, counts, coins and wonder stages
+          const leadersAffected = (
+            category === 'leaders' ||
+            category === 'civil' ||
+            category === 'commercial' ||
+            category === 'military' ||
+            category === 'science' ||
+            category === 'cities' ||
+            category === 'treasury' ||
+            category === 'guild' ||
+            category === 'wonder'
+          );
+          if (leadersAffected) {
+            const getSnapshot = (pid: string) => {
+              const ps = state.playerScores[pid];
+              const dd = (k: CategoryKey) => ps?.categories?.[k]?.detailedData || {};
+              const analysis = state.analysisByPlayer[pid] || {};
+              const commercial = dd('commercial');
+              const civil = dd('civil');
+              const military = dd('military');
+              const science = dd('science');
+              const cities = dd('cities');
+              const treasury = dd('treasury');
+              const guild = dd('guild');
+              const wonder = dd('wonder');
+
+              const wonderStagesBuilt = (() => {
+                const keys = Object.keys(wonder);
+                return keys.filter(k => k.startsWith('stage') && (wonder as any)[k]).length;
+              })();
+              const purple = (() => {
+                const selected: string[] = Array.isArray((guild as any).selectedPurpleCards) ? (guild as any).selectedPurpleCards : [];
+                if (typeof (guild as any).purpleCardsCount === 'number') return (guild as any).purpleCardsCount as number;
+                return selected.length;
+              })();
+              const black = (() => {
+                if (typeof (cities as any).blackCardsCount === 'number') return (cities as any).blackCardsCount as number;
+                const arr: string[] = Array.isArray((cities as any).selectedBlackCards) ? (cities as any).selectedBlackCards : [];
+                return arr.length;
+              })();
+              const mvAge1 = (military as any).mvTokensAge1 ?? (cities as any).mvTokensAge1;
+              const mvAge2 = (military as any).mvTokensAge2 ?? (cities as any).mvTokensAge2;
+              const mvAge3 = (military as any).mvTokensAge3 ?? (cities as any).mvTokensAge3;
+
+              return {
+                brown: analysis.brownCards,
+                grey: analysis.grayCards,
+                blue: (civil as any).blueCardsCount,
+                yellow: (Array.isArray((commercial as any).selectedYellowCards) ? (commercial as any).selectedYellowCards.length : (commercial as any).yellowCardsCount) || 0,
+                red: (military as any).redCardsCount,
+                green: (science as any).greenCardsCount,
+                black,
+                purple,
+                coins: (treasury as any).coins,
+                compasses: (science as any).compasses,
+                tablets: (science as any).tablets,
+                gears: (science as any).gears,
+                mvTokensAge1: mvAge1,
+                mvTokensAge2: mvAge2,
+                mvTokensAge3: mvAge3,
+                mvTokensTotal: (cities as any).mvTokensTotal,
+                wonderStagesBuilt,
+                selectedLeaders: (Array.isArray((dd('leaders') as any).selectedLeaders) ? (dd('leaders') as any).selectedLeaders : []),
+                agrippinaOnly: !!(dd('leaders') as any).agrippinaOnly,
+              };
+            };
+
+            const totals = computeLeadersForAll({ order, getSnapshot });
+            for (const pid of order) {
+              const cat = state.playerScores[pid]?.categories?.leaders;
+              if (cat) {
+                cat.isDetailed = true;
+                cat.calculatedPoints = totals[pid]?.totalIndirect ?? 0;
+              }
+            }
+          }
+        } catch (e) {
+          // Ignore resolver errors during free typing; guarded elsewhere
+        }
 
         // Recalculate total
         playerScore.total = computeTotal(playerScore.categories);
@@ -710,6 +945,13 @@ export const useScoringStore = create<ScoringState>()(
               const mvAge2 = (military as any).mvTokensAge2 ?? (cities as any).mvTokensAge2;
               const mvAge3 = (military as any).mvTokensAge3 ?? (cities as any).mvTokensAge3;
 
+              // Fallbacks: prefer numeric counts; use selected lists when available
+              const black = (() => {
+                if (typeof (cities as any).blackCardsCount === 'number') return (cities as any).blackCardsCount as number;
+                const arr: string[] = Array.isArray((cities as any).selectedBlackCards) ? (cities as any).selectedBlackCards : [];
+                return arr.length;
+              })();
+
               return {
                 brown: analysis.brownCards,
                 grey: analysis.grayCards,
@@ -717,7 +959,7 @@ export const useScoringStore = create<ScoringState>()(
                 yellow: (Array.isArray(commercial.selectedYellowCards) ? commercial.selectedYellowCards.length : commercial.yellowCardsCount) || 0,
                 red: military.redCardsCount,
                 green: science.greenCardsCount,
-                black: cities.blackCardsCount,
+                black,
                 purple,
                 coins: treasury.coins,
                 compasses: science.compasses,
@@ -726,6 +968,7 @@ export const useScoringStore = create<ScoringState>()(
                 mvTokensAge1: mvAge1,
                 mvTokensAge2: mvAge2,
                 mvTokensAge3: mvAge3,
+                mvTokensTotal: (cities as any).mvTokensTotal,
                 wonderStagesBuilt,
                 selectedLeaders: (Array.isArray(dd('leaders').selectedLeaders) ? dd('leaders').selectedLeaders : []),
                 agrippinaOnly: !!dd('leaders').agrippinaOnly,

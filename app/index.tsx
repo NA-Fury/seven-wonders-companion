@@ -18,7 +18,7 @@ const MENU: MenuItem[] = [
   { key: 'badges', title: '🏅 Badges', subtitle: 'Collectibles & records', route: '/badges' },
   { key: 'ency', title: '📖 Encyclopaedia', subtitle: 'Rules & clarifications', route: '/encyclopaedia' },
   { key: 'ref', title: '📚 Reference & Notes', subtitle: 'FAQs and your notes', route: '/reference' },
-  { key: 'news', title: '📰 News & Analysis', subtitle: 'Patch notes (future)', route: '/news' },
+  { key: 'news', title: '📰 News & Analysis', subtitle: 'Patch Notes and Updates', route: '/news' },
   { key: 'settings', title: '⚙️ Settings & Feedback', subtitle: 'Preferences & contact', route: '/settings' },
 ];
 

@@ -32,6 +32,8 @@ export interface PlayerCitySnapshot {
   mvTokensAge1?: number;
   mvTokensAge2?: number;
   mvTokensAge3?: number;
+  // Optional total tokens if ages are not split (used for Alexander fallback)
+  mvTokensTotal?: number;
   wonderStagesBuilt?: number;
   // UI confirmations
   agrippinaOnly?: boolean;
@@ -199,31 +201,26 @@ export function computeLeadersForAll(input: LeadersResolverInput): Record<Player
       total += vp;
     }
     if (has('Alexander')) {
-      const totalTokens = (me.mvTokensAge1 || 0) + (me.mvTokensAge2 || 0) + (me.mvTokensAge3 || 0);
+      let totalTokens = (me.mvTokensAge1 || 0) + (me.mvTokensAge2 || 0) + (me.mvTokensAge3 || 0);
+      if (totalTokens === 0 && typeof me.mvTokensTotal === 'number') {
+        totalTokens = me.mvTokensTotal || 0;
+      }
       const vp = totalTokens * 1;
       breakdown.push({ name: 'Alexander', vp });
       total += vp;
     }
 
-    // Cynisca: +6 VP if you have no Military Defeat tokens.
-    // Per user request, require explicit 0/0/0 MV tokens entered as a check.
+    // Cynisca: per request, +6 VP if selected (indirect section)
     if (has('Cynisca')) {
-      const missing: string[] = [];
-      const a1 = me.mvTokensAge1;
-      const a2 = me.mvTokensAge2;
-      const a3 = me.mvTokensAge3;
-      if (a1 == null) missing.push('mvTokensAge1');
-      if (a2 == null) missing.push('mvTokensAge2');
-      if (a3 == null) missing.push('mvTokensAge3');
-      const ok = missing.length === 0 && a1 === 0 && a2 === 0 && a3 === 0;
-      const vp = ok ? 6 : 0;
-      breakdown.push({ name: 'Cynisca', vp, ...(missing.length ? { missing } : {}) });
+      const vp = 6;
+      breakdown.push({ name: 'Cynisca', vp });
       total += vp;
     }
 
-    // Agrippina: award +7 only if user confirmed (UI flag)
+    // Agrippina: +7 VP if she is the only selected Leader
     if (has('Agrippina')) {
-      const vp = me.agrippinaOnly ? 7 : 0;
+      const selectedCount = Array.isArray(me.selectedLeaders) ? me.selectedLeaders.length : 0;
+      const vp = selectedCount === 1 ? 7 : 0;
       breakdown.push({ name: 'Agrippina', vp });
       total += vp;
     }

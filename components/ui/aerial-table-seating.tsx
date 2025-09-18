@@ -89,7 +89,8 @@ const TABLE_MODES: Record<TableMode, TableModeConfig> = {
     backgroundColor: 'rgba(245, 245, 220, 0.2)',
     borderColor: 'rgba(245, 245, 220, 0.5)',
     centerColor: 'rgba(245, 245, 220, 0.6)',
-    arrowColor: '#F5F5DC',
+    // Brighter arrow color for Leaders for better visibility
+    arrowColor: '#FFF4C2',
     direction: 'counterclockwise',
     title: 'Leaders Selection',
     description: 'Leader drafting • Counterclockwise passing'
@@ -99,7 +100,7 @@ const TABLE_MODES: Record<TableMode, TableModeConfig> = {
     backgroundColor: 'rgba(0, 0, 128, 0.2)',
     borderColor: 'rgba(0, 0, 128, 0.5)',
     centerColor: 'rgba(0, 0, 128, 0.6)',
-    arrowColor: '#000080',
+    arrowColor: '#414188ff',
     direction: 'all',
     title: 'Navy Conflicts',
     description: 'Naval combat with all players'
@@ -205,6 +206,8 @@ export function AerialTableView({
   disabled = false
 }: AerialTableViewProps) {
   const config = TABLE_MODES[mode];
+  // Brighter center title text specifically for Leaders mode
+  const centerTitleColor = mode === 'leaders' ? '#FFF8DC' : config.theme;
   
   const getPlayerPosition = (index: number, total: number) => {
     const angle = (2 * Math.PI * index) / total - Math.PI / 2;
@@ -254,31 +257,6 @@ export function AerialTableView({
           borderColor: config.borderColor,
           opacity: 0.4,
         }} />
-
-        {/* Table Center Logo - FIXED CENTERING */}
-        <View style={{
-          width: 80,
-          height: 80,
-          borderRadius: 40,
-          backgroundColor: config.backgroundColor,
-          borderWidth: 3,
-          borderColor: config.centerColor,
-          alignItems: 'center',
-          justifyContent: 'center',
-          shadowColor: config.theme,
-          shadowOffset: { width: 0, height: 3 },
-          shadowOpacity: 0.3,
-          shadowRadius: 5,
-          elevation: 5,
-          // EXPLICIT CENTERING
-          position: 'absolute',
-          top: (TABLE_SIZE - 80) / 2,
-          left: (TABLE_SIZE - 80) / 2,
-        }}>
-          <Text style={{ color: config.theme, fontSize: 15, fontWeight: 'bold', lineHeight: 18 }}>7</Text>
-          <Text style={{ color: config.theme, fontSize: 10, fontWeight: 'bold', lineHeight: 12 }}>WONDERS</Text>
-          <Text style={{ color: config.theme, fontSize: 8, lineHeight: 10, opacity: 0.8 }}>TABLE</Text>
-        </View>
 
         {/* Directional Arrows */}
         <DirectionalArrows2 
@@ -346,8 +324,20 @@ function DirectionalArrows2({ playerCount, mode, config, tableSize }: Directiona
     return { x, y, angle };
   };
 
-  // Position arrows noticeably closer to center than players
-  const arrowRadius = Math.max(20, (tableSize - 120) / 2);
+  // Base arrow radius; tune per mode to sit closer to center
+  let arrowRadius = Math.max(20, (tableSize - 150) / 2);
+  // For seating directions (Ages I–III and Leaders), bring arrows slightly more inward
+  if (config.direction === 'clockwise' || config.direction === 'counterclockwise') {
+    arrowRadius = Math.max(20, (tableSize - 180) / 2);
+  }
+  // For military neighbors, bring arrows a touch inward as well
+  if (config.direction === 'neighbors') {
+    arrowRadius = Math.max(20, (tableSize - 170) / 2);
+  }
+  // For navy (all), also nudge inward
+  if (config.direction === 'all') {
+    arrowRadius = Math.max(20, (tableSize - 170) / 2);
+  }
 
   // Simple high-contrast arrow made of a shaft and a triangular head
   const ArrowGraphic = ({ color, length = 28, thickness = 3, headSize = 8 }: { color: string; length?: number; thickness?: number; headSize?: number }) => (
@@ -395,43 +385,54 @@ function DirectionalArrows2({ playerCount, mode, config, tableSize }: Directiona
   }
 
   if (config.direction === 'neighbors') {
+    // Match Navy’s anchoring pattern: place each arrow along the chord
+    // from a seat to its neighbor, rotated to face the neighbor.
+    const t = 0.25; // how far from the seat toward the neighbor (0 = at seat, 0.5 = midpoint)
+    const ARROW_LEN = 24; // shorter than before to reduce intersections
+    const ARROW_THICK = 3;
+    const ARROW_HEAD = 8;
+
     return (
       <>
         {Array.from({ length: playerCount }).map((_, index) => {
-          const position = getArrowPosition(index, playerCount, arrowRadius);
-          const leftIndex = index === 0 ? playerCount - 1 : index - 1;
-          const rightIndex = index === playerCount - 1 ? 0 : index + 1;
+          const fromPos = getArrowPosition(index, playerCount, arrowRadius);
+
+          const leftIndex = (index - 1 + playerCount) % playerCount;
+          const rightIndex = (index + 1) % playerCount;
+
           const leftPos = getArrowPosition(leftIndex, playerCount, arrowRadius);
           const rightPos = getArrowPosition(rightIndex, playerCount, arrowRadius);
-          const leftAngle = Math.atan2(leftPos.y - position.y, leftPos.x - position.x) * 180 / Math.PI;
-          const rightAngle = Math.atan2(rightPos.y - position.y, rightPos.x - position.x) * 180 / Math.PI;
+
+          const renderArrow = (toPos: { x: number; y: number }) => {
+            const angleDeg =
+              (Math.atan2(toPos.y - fromPos.y, toPos.x - fromPos.x) * 180) / Math.PI;
+
+            // Anchor exactly like Navy: position the arrow somewhere along the line from fromPos → toPos
+            const anchorX = fromPos.x + (toPos.x - fromPos.x) * t;
+            const anchorY = fromPos.y + (toPos.y - fromPos.y) * t;
+
+            return (
+              <View
+                key={`${index}-${toPos.x}-${toPos.y}`}
+                style={{
+                  position: 'absolute',
+                  transform: [
+                    { translateX: anchorX },
+                    { translateY: anchorY },
+                    { rotate: `${angleDeg}deg` },
+                  ],
+                }}
+              >
+                <ArrowGraphic color={config.arrowColor} length={ARROW_LEN} thickness={ARROW_THICK} headSize={ARROW_HEAD} />
+              </View>
+            );
+          };
+
           return (
-            <View key={index}>
-              <View
-                style={{
-                  position: 'absolute',
-                  transform: [
-                    { translateX: position.x - 10 },
-                    { translateY: position.y },
-                    { rotate: `${leftAngle}deg` }
-                  ]
-                }}
-              >
-                <ArrowGraphic color={config.arrowColor} length={26} thickness={3} headSize={8} />
-              </View>
-              <View
-                style={{
-                  position: 'absolute',
-                  transform: [
-                    { translateX: position.x + 10 },
-                    { translateY: position.y },
-                    { rotate: `${rightAngle}deg` }
-                  ]
-                }}
-              >
-                <ArrowGraphic color={config.arrowColor} length={26} thickness={3} headSize={8} />
-              </View>
-            </View>
+            <React.Fragment key={index}>
+              {renderArrow(leftPos)}
+              {renderArrow(rightPos)}
+            </React.Fragment>
           );
         })}
       </>

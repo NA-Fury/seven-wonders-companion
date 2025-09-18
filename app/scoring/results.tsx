@@ -75,6 +75,13 @@ export default function ResultsScreen() {
       const badgesAwarded: Record<string, string[]> = {};
       players.forEach((p) => {
         const w = wondersForHistory[p.id];
+        const leadersPicked: string[] = (() => {
+          try {
+            const st = useScoringStore.getState();
+            const dd = st.playerScores?.[p.id]?.categories?.leaders?.detailedData || {};
+            return Array.isArray(dd.selectedLeaders) ? dd.selectedLeaders : [];
+          } catch { return []; }
+        })();
         const ctx = {
           playerId: p.id,
           rank: ranks[p.id] || 0,
@@ -83,6 +90,7 @@ export default function ResultsScreen() {
           expansions: setup.expansions,
           wonderBoardId: w?.boardId,
           playerCount: players.length,
+          leadersRecruited: leadersPicked,
         } as const;
         badgesAwarded[p.id] = evaluateBadgesForContext(ctx).map((b) => b.id);
       });
@@ -121,6 +129,7 @@ export default function ResultsScreen() {
               playerOrder.map((pid) => [pid, { boardId: wondersForHistory[pid]?.boardId, side: wondersForHistory[pid]?.side } as any])
             ),
             categoryBreakdowns: perPlayerBreakdowns,
+            badgesAwarded,
           });
 
           completeScoring();
@@ -272,6 +281,13 @@ export default function ResultsScreen() {
             const breakdown = getCategoryBreakdown(e.playerId) as any;
             const setup = useSetupStore.getState();
             const playerWonder = setup.wonders?.[e.playerId];
+            const leadersPicked: string[] = (() => {
+              try {
+                const st = useScoringStore.getState();
+                const dd = st.playerScores?.[e.playerId]?.categories?.leaders?.detailedData || {};
+                return Array.isArray(dd.selectedLeaders) ? dd.selectedLeaders : [];
+              } catch { return []; }
+            })();
             const ctx = {
               playerId: e.playerId,
               rank: e.rank,
@@ -280,6 +296,7 @@ export default function ResultsScreen() {
               expansions: setup.expansions,
               wonderBoardId: playerWonder?.boardId,
               playerCount: players.length,
+              leadersRecruited: leadersPicked,
             } as const;
             // Simple badge set (display only)
             /* const BADGES = {

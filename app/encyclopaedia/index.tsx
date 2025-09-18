@@ -6,14 +6,10 @@ type LinkItem = { title: string; url: string };
 
 const OFFICIAL: LinkItem[] = [
   { title: 'Official Site — 7 Wonders (Repos Production)', url: 'https://www.rprod.com/en/games/7-wonders/' },
-  { title: 'Official Rulebook — Base (PDF)', url: 'https://www.rprod.com/downloads/en/7wonders_rulebook.pdf' },
 ];
 
 const WIKI: LinkItem[] = [
-  { title: '7 Wonders Wiki — Home', url: 'https://7-wonders.fandom.com/wiki/7_Wonders_Wiki' },
-  { title: 'List of Cards — Overview', url: 'https://7-wonders.fandom.com/wiki/List_of_Cards#Overview' },
-  { title: 'Leader Cards', url: 'https://7-wonders.fandom.com/wiki/Leader_Cards' },
-  { title: 'Military (Shields & Conflicts)', url: 'https://7-wonders.fandom.com/wiki/Military' },
+  { title: '7 Wonders Wiki — Home', url: 'https://7-wonders.fandom.com/wiki/7_Wonders_Wiki' }
 ];
 
 function Section({ title, items }: { title: string; items: LinkItem[] }) {

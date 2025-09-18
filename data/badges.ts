@@ -1,6 +1,7 @@
 // data/badges.ts - Badge catalog + evaluation rules
 import type { Expansions } from '../store/setupStore';
 import { WONDERS_DATABASE } from './wondersDatabase';
+import { RECOMMENDED_BY_WONDER as _REC_RAW } from './leadersDatabase';
 
 export type BadgeSection = 'Records' | 'Wonders' | 'Strategies' | 'Special';
 
@@ -35,7 +36,19 @@ export type BadgeContext = {
   expansions: Expansions;
   wonderBoardId?: string; // e.g., 'alexandria'
   playerCount: number;
+  // Optional enrichments used by synergy badges
+  leadersRecruited?: string[];
 };
+
+// Normalize helper for robust text matching
+const norm = (s: string) => s?.normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+
+// Normalized map of recommended leaders per wonder name
+const RECOMMENDED_BY_WONDER_NORM: Record<string, { day?: string[]; night?: string[] }> = (() => {
+  const out: Record<string, { day?: string[]; night?: string[] }> = {};
+  Object.entries(_REC_RAW || {}).forEach(([k, v]) => { out[norm(k)] = v; });
+  return out;
+})();
 
 // Creative + strategy badges
 const BASE_BADGES: Badge[] = [
@@ -93,10 +106,63 @@ const WONDER_BADGES: Badge[] = WONDERS_DATABASE.map((w) => ({
   unlock: (c) => c.rank === 1 && c.wonderBoardId === w.id,
 }));
 
-export const BADGES: Badge[] = [
+// Additional badges: Leaders, Cities, Naval, Island, Edifice, and synergies
+const EXTRA_BADGES: Badge[] = [
+  // Category focus
+  { id: 'leaders_icon', name: 'Council Favorite', icon: '👑', description: 'Earn 15+ points from Leaders.', section: 'Strategies', unlock: (c) => (c.breakdown.leaders || 0) >= 15 },
+  { id: 'cities_magnate', name: 'Shadow Magnate', icon: '🕶️', description: 'Earn 15+ points from Cities.', section: 'Strategies', unlock: (c) => (c.breakdown.cities || 0) >= 15 },
+  { id: 'naval_warlord', name: 'Sea Warlord', icon: '🚢', description: 'Earn 12+ from Naval Conflicts.', section: 'Strategies', unlock: (c) => !!c.expansions.armada && (c.breakdown.navy || 0) >= 12 },
+  { id: 'island_hopper', name: 'Island Hopper', icon: '🏝️', description: 'Earn 12+ points from Islands.', section: 'Strategies', unlock: (c) => (c.breakdown.islands || 0) >= 12 },
+  { id: 'edifice_ally', name: 'Monumental Ally', icon: '🏛️', description: 'Earn 9+ points from Edifice contributions.', section: 'Strategies', unlock: (c) => (c.breakdown.edifice || 0) >= 9 },
+
+  // Synergy: Cynisca + Tomyris both recruited
+  { id: 'twin_shields', name: 'Twin Shields', icon: '🛡️', description: 'Recruit Cynisca and Tomyris together.', section: 'Special', unlock: (c) => {
+      const names = (c.leadersRecruited || []).map(norm);
+      return names.includes(norm('Cynisca')) && names.includes(norm('Tomyris'));
+    } },
+
+  // Synergy: Wonder + recommended leaders
+  { id: 'chosen_by_the_wonder', name: 'Chosen by the Wonder', icon: '✨', description: 'Recruit a recommended Leader for your Wonder.', section: 'Special', unlock: (c) => {
+      if (!c.wonderBoardId) return false;
+      const w = WONDERS_DATABASE.find(w => w.id === c.wonderBoardId);
+      if (!w) return false;
+      let rec = RECOMMENDED_BY_WONDER_NORM[norm(w.name)] || {};
+      if (!rec) {
+        const fb: Record<string,string> = { ephesos: '�phesos', olympia: 'Olymp�a', rhodos: 'Rh�dos' };
+        const fk = fb[norm(w.name)];
+        if (fk && (_REC_RAW as any)[fk]) rec = (_REC_RAW as any)[fk];
+      }
+      const candidates = new Set([...(rec.day || []), ...(rec.night || [])].map(norm));
+      return (c.leadersRecruited || []).map(norm).some(n => candidates.has(n));
+    } },
+  { id: 'destinys_favorite', name: "Destiny's Favorite", icon: '🌟', description: 'Recruit 2+ recommended Leaders for your Wonder.', section: 'Special', unlock: (c) => {
+      if (!c.wonderBoardId) return false;
+      const w = WONDERS_DATABASE.find(w => w.id === c.wonderBoardId);
+      if (!w) return false;
+      let rec = RECOMMENDED_BY_WONDER_NORM[norm(w.name)] || {};
+      if (!rec) {
+        const fb: Record<string,string> = { ephesos: '�phesos', olympia: 'Olymp�a', rhodos: 'Rh�dos' };
+        const fk = fb[norm(w.name)];
+        if (fk && (_REC_RAW as any)[fk]) rec = (_REC_RAW as any)[fk];
+      }
+      const candidates = new Set([...(rec.day || []), ...(rec.night || [])].map(norm));
+      const count = (c.leadersRecruited || []).map(norm).filter(n => candidates.has(n)).length;
+      return count >= 2;
+    } },
+];
+
+const ALL_BADGES: Badge[] = [
   ...BASE_BADGES,
+  ...EXTRA_BADGES,
   ...WONDER_BADGES,
 ];
+
+// Ensure even total number of badges by optional padding
+const PAD: Badge[] = (ALL_BADGES.length % 2 === 1)
+  ? [{ id: 'even_keeper', name: 'Curator’s Seal', icon: '🔖', description: 'Collection balanced to an even set.', section: 'Special' }]
+  : [];
+
+export const BADGES: Badge[] = [...ALL_BADGES, ...PAD];
 
 export const groupBadges = (ids: string[]) => {
   const set = new Set(ids);
@@ -115,4 +181,3 @@ export const evaluateBadgesForContext = (ctx: BadgeContext): Badge[] => {
   const ids = new Set(evaluateBadgeIdsForContext(ctx));
   return BADGES.filter((b) => ids.has(b.id));
 };
-

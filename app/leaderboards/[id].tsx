@@ -1,6 +1,6 @@
 import { useLocalSearchParams } from 'expo-router';
 import React, { useMemo } from 'react';
-import { Text, View } from 'react-native';
+import { ScrollView, Text, View } from 'react-native';
 import { Screen, H1, Card } from '../../components/ui';
 import { useSetupStore } from '../../store/setupStore';
 import { usePlayerStore } from '../../store/playerStore';
@@ -49,7 +49,11 @@ export default function GameDetailsScreen() {
 
   return (
     <Screen>
-      <H1>📊 Game {String(game.id)}</H1>
+      <ScrollView 
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 20 }}
+      >
+        <H1>📊 Game {String(game.id)}</H1>
       <Card>
         <Text style={{ color: '#F3E7D3' }}>Date: <Text style={{ color: '#C4A24C' }}>{dateText}</Text></Text>
         <Text style={{ color: '#F3E7D3', marginTop: 4 }}>Players: <Text style={{ color: '#C4A24C' }}>{playerOrder.length}</Text></Text>
@@ -149,6 +153,7 @@ export default function GameDetailsScreen() {
           })}
         </Card>
       )}
+      </ScrollView>
     </Screen>
   );
 }

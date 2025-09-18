@@ -47,6 +47,7 @@ export interface GameResultInput {
   expansions: { leaders: boolean; cities: boolean; armada: boolean; edifice: boolean };
   wonders: Record<string, { boardId?: string; side?: WonderSide }>; // profileId -> assignment
   categoryBreakdowns?: Record<string, Partial<Record<CategoryKey, number>>>; // optional
+  badgesAwarded?: Record<string, string[]>; // optional precomputed (e.g., synergy) badges
 }
 
 type PlayerDBState = {
@@ -242,6 +243,9 @@ export const usePlayerStore = create<PlayerDBState & PlayerDBActions>()(
               playerCount,
             };
             const newlyEarned = new Set(evaluateBadgeIdsForContext(ctx));
+            // Merge in any precomputed badges (e.g., synergy based on detailed selections)
+            const extra = input.badgesAwarded?.[pid] || [];
+            extra.forEach((id) => newlyEarned.add(id));
 
             // Record Holder (global highest) — add if this score beats previous global record
             if (score > prevGlobalHigh) {
