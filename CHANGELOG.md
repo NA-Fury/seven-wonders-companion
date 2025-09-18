@@ -14,6 +14,10 @@ This project follows [Conventional Commits](https://www.conventionalcommits.org/
 ### Build/CI
 - Migrate to ESLint flat config and add Expo Doctor to CI.
 
+## [1.1.0] - 2025-09-18
+### Features
+- Leaders Expansions Impovemments + Badges
+
 ## [1.0.0] - 2025-09-07
 ### Features
 - Initial public MVP: game setup, seating, expansions, scoring, history.

@@ -27,13 +27,13 @@ module.exports = ({ config }) => {
       ...(config.ios || {}),
       bundleIdentifier: 'com.na.fury.wonderscompanion',
       supportsTablet: true,
-      buildNumber: (config.ios && config.ios.buildNumber) || '1',
+      buildNumber: config.ios?.buildNumber,
     },
     android: {
       ...(config.android || {}),
 
       package: 'com.na.fury.wonderscompanion',
-      versionCode: (config.android && config.android.versionCode) || 1,
+      versionCode: config.android?.versionCode,
       adaptiveIcon: {
         // allow overriding foreground/background if already defined
         ...(config.android && config.android.adaptiveIcon ? config.android.adaptiveIcon : {}),
