@@ -206,8 +206,6 @@ export function AerialTableView({
   disabled = false
 }: AerialTableViewProps) {
   const config = TABLE_MODES[mode];
-  // Brighter center title text specifically for Leaders mode
-  const centerTitleColor = mode === 'leaders' ? '#FFF8DC' : config.theme;
   
   const getPlayerPosition = (index: number, total: number) => {
     const angle = (2 * Math.PI * index) / total - Math.PI / 2;

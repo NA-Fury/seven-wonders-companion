@@ -33,15 +33,15 @@
     "@react-navigation/native": "^7.1.6",
     "@sentry/react-native": "~6.20.0",
     "babel-preset-expo": "~54.0.0",
-    "expo": "~54.0.0",
+    "expo": "54.0.8",
     "expo-application": "~7.0.7",
     "expo-blur": "~15.0.7",
-    "expo-constants": "~18.0.8",
+    "expo-constants": "~18.0.9",
     "expo-font": "~14.0.8",
     "expo-haptics": "~15.0.7",
     "expo-image": "~3.0.8",
     "expo-linking": "~8.0.8",
-    "expo-router": "~6.0.4",
+    "expo-router": "~6.0.6",
     "expo-splash-screen": "~31.0.10",
     "expo-status-bar": "~3.0.8",
     "expo-symbols": "~1.0.7",
@@ -122,6 +122,9 @@
   },
   "homepage": "https://github.com/NA-Fury/seven-wonders-companion#readme",
   "overrides": {},
+  "resolutions": {
+    "expo-constants": "18.0.9"
+  },
   "expo": {
     "doctor": {
       "reactNativeDirectoryCheck": {
