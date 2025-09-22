@@ -4399,10 +4399,10 @@ expo-modules-core@3.0.16:
   dependencies:
     invariant "^2.2.4"
 
-expo-router@~6.0.6:
-  version "6.0.6"
-  resolved "https://registry.yarnpkg.com/expo-router/-/expo-router-6.0.6.tgz#bdcbbe59fa3ccf4001f35488d5265935e090f4d6"
-  integrity sha512-uSuKQanivBI9RtwmAznLI7It5aPwQLVL2tVBPAOJ70tv6BzP62SpVCf0I8o0j9PmEzORPRLrU2LbQOL962yBHg==
+expo-router@~6.0.7:
+  version "6.0.7"
+  resolved "https://registry.yarnpkg.com/expo-router/-/expo-router-6.0.7.tgz#9bba7e6528887126714ff942a466f483b47d529b"
+  integrity sha512-dP/35aQadCuplEP99CZ0sLrVpnCFCQGnCBtFlI0Tph75PbepdWhI7XC0Vzt7MoNBLF9NW80q5CeZdXTvybc+4w==
   dependencies:
     "@expo/metro-runtime" "^6.1.2"
     "@expo/schema-utils" "^0.1.7"
