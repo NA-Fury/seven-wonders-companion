@@ -5615,10 +5615,10 @@ jest-environment-node@^29.7.0:
     jest-mock "^29.7.0"
     jest-util "^29.7.0"
 
-jest-expo@~54.0.0:
-  version "54.0.11"
-  resolved "https://registry.yarnpkg.com/jest-expo/-/jest-expo-54.0.11.tgz#1ab55d26a2ba7b56a229f0172a2323784f6dcac4"
-  integrity sha512-SR9Tnxp45f6UYWPTbWEkigKnWvNk8CxN6msAHf43PmzKRVClvzIJYSR4+h1hV4aTNVpPXB7vaTTgzl1TG1x53Q==
+jest-expo@~54.0.12:
+  version "54.0.12"
+  resolved "https://registry.yarnpkg.com/jest-expo/-/jest-expo-54.0.12.tgz#297e57d4744d6fb8fbc8a81cad2aa4acb23e899a"
+  integrity sha512-76dZ0Mk4/lBMwmGRWoSFQ08rfmMTVhnAp3Hxua5cND2TVISZcsya3LUZVKfPYxb5lB7H4OR6B7KStQJFkrnJjg==
   dependencies:
     "@expo/config" "~12.0.9"
     "@expo/json-file" "^10.0.7"
