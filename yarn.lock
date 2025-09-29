@@ -1206,10 +1206,10 @@
   resolved "https://registry.yarnpkg.com/@expo/sdk-runtime-versions/-/sdk-runtime-versions-1.0.0.tgz#d7ebd21b19f1c6b0395e50d78da4416941c57f7c"
   integrity sha512-Doz2bfiPndXYFPMRwPyGa1k5QaKDVpY806UJj570epIiMzWaYyCtobasyfC++qfIXVb5Ocy7r3tP9d62hAQ7IQ==
 
-"@expo/server@^0.7.4":
-  version "0.7.4"
-  resolved "https://registry.yarnpkg.com/@expo/server/-/server-0.7.4.tgz#37966ad39cb649a646d35778794c7e8cb1da1fb9"
-  integrity sha512-8bfRzL7h1Qgrmf3auR71sPAcAuxnmNkRJs+8enL8vZi2+hihevLhrayDu7P0A/XGEq7wySAGvBBFfIB00Et/AA==
+"@expo/server@^0.7.4", "@expo/server@^0.7.5":
+  version "0.7.5"
+  resolved "https://registry.yarnpkg.com/@expo/server/-/server-0.7.5.tgz#63c8978dad131e6c4dcc46855e88a756990d33bc"
+  integrity sha512-aNVcerBSJEcUspvXRWChEgFhix1gTNIcgFDevaU/A1+TkfbejNIjGX4rfLEpfyRzzdLIRuOkBNjD+uTYMzohyg==
   dependencies:
     abort-controller "^3.0.0"
     debug "^4.3.4"
@@ -4399,14 +4399,14 @@ expo-modules-core@3.0.16:
   dependencies:
     invariant "^2.2.4"
 
-expo-router@~6.0.6:
-  version "6.0.6"
-  resolved "https://registry.yarnpkg.com/expo-router/-/expo-router-6.0.6.tgz#bdcbbe59fa3ccf4001f35488d5265935e090f4d6"
-  integrity sha512-uSuKQanivBI9RtwmAznLI7It5aPwQLVL2tVBPAOJ70tv6BzP62SpVCf0I8o0j9PmEzORPRLrU2LbQOL962yBHg==
+expo-router@~6.0.8:
+  version "6.0.8"
+  resolved "https://registry.yarnpkg.com/expo-router/-/expo-router-6.0.8.tgz#5d414f05671f6c36aafaecf4e0e7891f646ff161"
+  integrity sha512-cx6vFvBrfPNHpNbN2ij2mF5JKE4JXyq+dJVmWNqt7JplA0aohOOKXS/KQ9vQy88HpnrcJMuYqUNHp44aWyce7g==
   dependencies:
     "@expo/metro-runtime" "^6.1.2"
     "@expo/schema-utils" "^0.1.7"
-    "@expo/server" "^0.7.4"
+    "@expo/server" "^0.7.5"
     "@radix-ui/react-slot" "1.2.0"
     "@radix-ui/react-tabs" "^1.1.12"
     "@react-navigation/bottom-tabs" "^7.4.0"
