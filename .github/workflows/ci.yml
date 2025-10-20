@@ -16,7 +16,7 @@ jobs:
     env: { CI: true }
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           # Use the exact version from .nvmrc (20.18.1)
           node-version-file: .nvmrc
@@ -39,7 +39,7 @@ jobs:
     env: { CI: true }
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version-file: .nvmrc
           cache: yarn
@@ -63,7 +63,7 @@ jobs:
       EXPO_USE_STATIC: '1'
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version-file: .nvmrc
           cache: yarn
