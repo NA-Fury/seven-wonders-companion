@@ -7,13 +7,14 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import { theme } from '@/constants/theme';
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: 'rgba(31, 41, 55, 0.5)',
+    backgroundColor: theme.colors.surface,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(196, 162, 76, 0.2)',
+    borderBottomColor: theme.colors.border,
   },
   listContent: {
     paddingHorizontal: 16,
@@ -27,29 +28,29 @@ const styles = StyleSheet.create({
     minWidth: 100,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(196, 162, 76, 0.2)',
+    borderColor: theme.colors.border,
   },
   playerCardActive: {
-    backgroundColor: 'rgba(196, 162, 76, 0.2)',
-    borderColor: '#C4A24C',
+    backgroundColor: theme.colors.accentSoft,
+    borderColor: theme.colors.borderStrong,
   },
   playerName: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#F3E7D3',
+    color: theme.colors.textPrimary,
     marginBottom: 2,
   },
   playerNameActive: {
-    color: '#FEF3C7',
+    color: theme.colors.textPrimary,
   },
   playerScore: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#C4A24C',
+    color: theme.colors.accent,
   },
   playerScoreLabel: {
     fontSize: 10,
-    color: 'rgba(243, 231, 211, 0.5)',
+    color: theme.colors.textMuted,
     marginTop: 2,
   },
 });

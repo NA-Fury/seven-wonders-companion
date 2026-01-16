@@ -1,7 +1,8 @@
 import { router } from 'expo-router';
 import React, { useMemo, useState } from 'react';
-import { FlatList, Pressable, Text, TextInput, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Button, Card, Field, H1, P, Screen } from '@/components/ui';
+import { theme } from '@/constants/theme';
 import { usePlayerStore } from '../../store/playerStore';
 import { useSetupStore } from '../../store/setupStore';
 
@@ -21,7 +22,6 @@ export default function NewGameScreen() {
   const handleStart = () => {
     const ids = selectedForGame;
     if (ids.length === 0) return;
-    // Reset any previous seating/wonders/edifice and clear prior players
     const setup = useSetupStore.getState();
     setup.resetGame();
     clearPlayers();
@@ -39,167 +39,159 @@ export default function NewGameScreen() {
     if (id) toggleSelected(id);
   };
 
+  const canContinue = selectedForGame.length > 0 && selectedForGame.length <= 7;
+
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#1C1A1A' }}>
-      <View style={{ paddingHorizontal: 20, paddingTop: 16 }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-          <Text style={{ color: '#C4A24C', fontSize: 22, fontWeight: '800' }}>Players</Text>
-          <Pressable onPress={() => router.push('/')}
-            style={({ pressed }) => ({ paddingHorizontal: 10, paddingVertical: 6, borderRadius: 10, backgroundColor: pressed ? 'rgba(243,231,211,0.06)' : 'transparent' })}>
-            <Text style={{ color: '#FEF3C7', fontSize: 18 }}>☰</Text>
-          </Pressable>
-        </View>
-        <Text style={{ color: 'rgba(243,231,211,0.7)', marginTop: 4 }}>
-          Load players from your profiles and select up to 7.
-        </Text>
+    <Screen>
+      <View style={styles.header}>
+        <H1>Players</H1>
+        <P>Load profiles, add new players, and select up to 7 for this game.</P>
       </View>
 
-      <View style={{ paddingHorizontal: 20, paddingTop: 12 }}>
-        <View style={{ flexDirection: 'row', gap: 8 }}>
-          <View style={{ flex: 1 }}>
-            <TextInput
-              value={query}
-              onChangeText={setQuery}
-              placeholder="Search or quick add…"
-              placeholderTextColor="#F3E7D380"
-              style={{
-                backgroundColor: 'rgba(28,26,26,0.6)',
-                color: '#F3E7D3',
-                borderRadius: 12,
-                paddingHorizontal: 14,
-                paddingVertical: 10,
-                borderWidth: 1,
-                borderColor: 'rgba(196,162,76,0.25)'
-              }}
-              returnKeyType="done"
-              onSubmitEditing={handleQuickAdd}
-            />
-          </View>
-          <Pressable
-            onPress={handleQuickAdd}
-            style={({ pressed }) => ({
-              backgroundColor: pressed ? 'rgba(196,162,76,0.8)' : '#C4A24C',
-              borderRadius: 12,
-              paddingHorizontal: 16,
-              alignItems: 'center',
-              justifyContent: 'center',
-            })}
-          >
-            <Text style={{ color: '#1C1A1A', fontWeight: '800' }}>Add</Text>
-          </Pressable>
+      <Card variant="muted">
+        <Field
+          label="Search or quick add"
+          value={query}
+          onChangeText={setQuery}
+          helperText="Type a name to add a new profile or filter existing players."
+          inputProps={{
+            placeholder: 'Search or add a player name',
+            returnKeyType: 'done',
+            onSubmitEditing: handleQuickAdd,
+          }}
+        />
+        <View style={styles.actionRow}>
+          <Button title="Add" onPress={handleQuickAdd} />
+          <View style={{ flex: 1 }} />
+          <Text style={styles.selectedText}>Selected: {selectedForGame.length}/7</Text>
         </View>
-        <Text style={{ color: 'rgba(243,231,211,0.7)', marginTop: 8 }}>
-          Selected: {selectedForGame.length}/7
-        </Text>
-      </View>
+      </Card>
 
       <FlatList
         data={profiles}
         keyExtractor={(p) => p.id}
-        contentContainerStyle={{ padding: 20, paddingBottom: 100 }}
+        contentContainerStyle={{ paddingBottom: 120 }}
         ItemSeparatorComponent={() => <View style={{ height: 8 }} />}
         renderItem={({ item }) => {
           const isSelected = selectedForGame.includes(item.id);
           return (
             <Pressable
               onPress={() => toggleSelected(item.id)}
-              style={({ pressed }) => ({
-                backgroundColor: isSelected
-                  ? 'rgba(196,162,76,0.2)'
-                  : pressed
-                  ? 'rgba(243,231,211,0.06)'
-                  : 'rgba(31,41,55,0.5)',
-                borderWidth: 1,
-                borderColor: isSelected ? '#C4A24C' : 'rgba(196,162,76,0.25)',
-                borderRadius: 14,
-                paddingHorizontal: 14,
-                paddingVertical: 12,
-              })}
+              style={({ pressed }) => [
+                styles.playerCard,
+                isSelected && styles.playerCardSelected,
+                pressed && { opacity: 0.85 },
+              ]}
             >
-              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                <Text style={{ color: '#FEF3C7', fontSize: 16, fontWeight: '700' }}>{item.name}</Text>
-                <Text style={{ color: isSelected ? '#C4A24C' : 'rgba(243,231,211,0.6)' }}>
+              <View style={styles.playerHeader}>
+                <Text style={styles.playerName}>{item.name}</Text>
+                <Text style={[styles.playerAction, isSelected && styles.playerActionSelected]}>
                   {isSelected ? 'Selected' : 'Tap to select'}
                 </Text>
               </View>
-              <View style={{ flexDirection: 'row', gap: 12, marginTop: 6 }}>
-                <Text style={{ color: 'rgba(243,231,211,0.7)' }}>GP {item.stats.gamesPlayed}</Text>
-                <Text style={{ color: 'rgba(243,231,211,0.7)' }}>W {item.stats.wins}</Text>
-                <Text style={{ color: 'rgba(243,231,211,0.7)' }}>Avg {item.stats.averageScore}</Text>
+              <View style={styles.playerStats}>
+                <Text style={styles.statText}>GP {item.stats.gamesPlayed}</Text>
+                <Text style={styles.statText}>W {item.stats.wins}</Text>
+                <Text style={styles.statText}>Avg {item.stats.averageScore}</Text>
               </View>
             </Pressable>
           );
         }}
         ListEmptyComponent={() => (
-          <View style={{ paddingHorizontal: 20, paddingTop: 20 }}>
-            <Text style={{ color: 'rgba(243,231,211,0.7)' }}>
-              No profiles yet. Use the field above to add players quickly.
-            </Text>
-          </View>
+          <Text style={styles.emptyText}>No profiles yet. Add a name to get started.</Text>
         )}
       />
 
-      {/* Manage Players quick link */}
-      <View style={{ paddingHorizontal: 20, paddingBottom: 12 }}>
-        <Pressable onPress={() => router.push('/players')} style={({ pressed }) => ({ alignSelf: 'flex-start', opacity: pressed ? 0.8 : 1 })}>
-          <Text style={{ color: '#C4A24C' }}>Manage Players →</Text>
+      <View style={styles.footer}>
+        <View style={styles.footerRow}>
+          <Button title="Back to Main Menu" variant="ghost" size="sm" onPress={() => router.back()} />
+          <View style={{ width: theme.spacing.md }} />
+          <Button title="Continue to Expansions" size="sm" onPress={handleStart} disabled={!canContinue} />
+        </View>
+        <Pressable onPress={() => router.push('/players')} style={styles.manageLink}>
+          <Text style={styles.manageLinkText}>Manage Players</Text>
         </Pressable>
       </View>
-
-      <View
-        style={{
-          position: 'absolute',
-          left: 0,
-          right: 0,
-          bottom: 0,
-          padding: 16,
-          paddingBottom: 24,
-          backgroundColor: '#1C1A1A',
-          borderTopWidth: 1,
-          borderTopColor: 'rgba(196,162,76,0.25)'
-        }}
-      >
-        <View style={{ flexDirection: 'row', gap: 12 }}>
-          <Pressable
-            onPress={() => router.back()}
-            style={({ pressed }) => ({
-              flex: 1,
-              borderRadius: 14,
-              // Ensure same height and vertical centering as expansions footer buttons
-              minHeight: 48,
-              paddingVertical: 12,
-              alignItems: 'center',
-              justifyContent: 'center',
-              borderWidth: 1,
-              borderColor: 'rgba(196,162,76,0.4)',
-              backgroundColor: pressed ? 'rgba(243,231,211,0.06)' : 'transparent',
-            })}
-          >
-            <Text style={{ color: '#C4A24C', fontWeight: '700', textAlign: 'center' }}>
-              Back to Main Menu
-            </Text>
-          </Pressable>
-          <Pressable
-            onPress={handleStart}
-            disabled={selectedForGame.length === 0 || selectedForGame.length > 7}
-            style={({ pressed }) => ({
-              flex: 1,
-              borderRadius: 14,
-              // Match height and centering with the Back button and expansions footer
-              minHeight: 48,
-              paddingVertical: 12,
-              alignItems: 'center',
-              justifyContent: 'center',
-              backgroundColor: pressed ? 'rgba(196,162,76,0.8)' : '#C4A24C',
-              opacity: selectedForGame.length === 0 || selectedForGame.length > 7 ? 0.5 : 1,
-            })}
-          >
-            <Text style={{ color: '#1C1A1A', fontWeight: '800', textAlign: 'center' }}>
-              Continue to Expansions
-            </Text>
-          </Pressable>
-        </View>
-      </View>
-    </SafeAreaView>
+    </Screen>
   );
 }
+
+const styles = StyleSheet.create({
+  header: {
+    marginBottom: theme.spacing.md,
+  },
+  actionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  selectedText: {
+    color: theme.colors.textSecondary,
+    fontSize: 12,
+  },
+  playerCard: {
+    backgroundColor: theme.colors.surface,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.lg,
+    padding: theme.spacing.md,
+  },
+  playerCardSelected: {
+    backgroundColor: theme.colors.accentSoft,
+    borderColor: theme.colors.borderStrong,
+  },
+  playerHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  playerName: {
+    color: theme.colors.textPrimary,
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  playerAction: {
+    color: theme.colors.textMuted,
+    fontSize: 12,
+  },
+  playerActionSelected: {
+    color: theme.colors.accent,
+    fontWeight: '700',
+  },
+  playerStats: {
+    flexDirection: 'row',
+    marginTop: 6,
+  },
+  statText: {
+    color: theme.colors.textSecondary,
+    marginRight: theme.spacing.md,
+    fontSize: 12,
+  },
+  emptyText: {
+    color: theme.colors.textSecondary,
+    marginTop: theme.spacing.md,
+  },
+  footer: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    paddingHorizontal: theme.spacing.lg,
+    paddingVertical: theme.spacing.md,
+    paddingBottom: 24,
+    backgroundColor: theme.colors.background,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(196,162,76,0.25)',
+  },
+  footerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  manageLink: {
+    marginTop: theme.spacing.sm,
+    alignSelf: 'flex-start',
+  },
+  manageLinkText: {
+    color: theme.colors.accent,
+    fontWeight: '700',
+  },
+});

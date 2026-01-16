@@ -151,7 +151,7 @@ export default function SeatingScreen() {
           <H2>Game Setup</H2>
             <P className="text-aurum mb-1">{getExpansionText()}</P>
             <P className="text-parchment/60 text-sm">
-              {selectedSeating.length} players • Strategic seating matters for trading & military
+              {selectedSeating.length} players - Strategic seating matters for trading and military
             </P>
         </Card>
 
@@ -189,7 +189,7 @@ export default function SeatingScreen() {
         <Card>
           <H2>Player Order</H2>
           <P className="mb-3 text-parchment/70 text-sm">
-            Drag and drop to reorder players • Hold and drag any player to rearrange seating
+            Drag and drop to reorder players - hold and drag any player to rearrange seating
           </P>
           <DragDropPlayerList
             playerIds={selectedSeating}

@@ -1,10 +1,34 @@
 import { useLocalSearchParams } from 'expo-router';
 import React, { useMemo } from 'react';
 import { ScrollView, Text, View } from 'react-native';
-import { Screen, H1, Card } from '../../components/ui';
+import { Card, Chip, H1, Screen } from '@/components/ui';
 import { useSetupStore } from '../../store/setupStore';
 import { usePlayerStore } from '../../store/playerStore';
 import { Table } from '../../components/ui/Table';
+import { ARMADA_SHIPYARDS } from '../../data/armadaDatabase';
+import { ALL_EDIFICE_PROJECTS } from '../../data/edificeDatabase';
+import { WONDERS_DATABASE } from '../../data/wondersDatabase';
+
+const formatIdLabel = (value?: string) => {
+  if (!value) return '';
+  return value
+    .replace(/[_-]+/g, ' ')
+    .replace(/\b\w/g, (m) => m.toUpperCase());
+};
+
+const WONDER_NAME_BY_ID = new Map(WONDERS_DATABASE.map((w) => [w.id, w.name]));
+const SHIPYARD_NAME_BY_ID = new Map(ARMADA_SHIPYARDS.map((s) => [s.id, s.name]));
+const EDIFICE_NAME_BY_ID = new Map(ALL_EDIFICE_PROJECTS.map((p) => [p.id, p.name]));
+
+const getDisplayName = (map: Map<string, string>, value?: string) => {
+  if (!value) return '';
+  return map.get(value) ?? formatIdLabel(value);
+};
+
+const formatSide = (side?: string) => {
+  if (!side) return '';
+  return side === 'night' ? 'Night' : 'Day';
+};
 
 export default function GameDetailsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -16,7 +40,7 @@ export default function GameDetailsScreen() {
   if (!game) {
     return (
       <Screen>
-        <H1>📄 Game Not Found</H1>
+        <H1>Game Not Found</H1>
         <Text style={{ color: 'rgba(243,231,211,0.8)' }}>No game with id {String(id)} found.</Text>
       </Screen>
     );
@@ -41,10 +65,10 @@ export default function GameDetailsScreen() {
 
   const exp = game.expansions || { leaders: false, cities: false, armada: false, edifice: false };
   const expChips = [
-    exp.leaders && '👑 Leaders',
-    exp.cities && '🏙️ Cities',
-    exp.armada && '🚢 Armada',
-    exp.edifice && '🏛️ Edifice',
+    exp.leaders && 'Leaders',
+    exp.cities && 'Cities',
+    exp.armada && 'Armada',
+    exp.edifice && 'Edifice',
   ].filter(Boolean) as string[];
 
   return (
@@ -53,7 +77,7 @@ export default function GameDetailsScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 20 }}
       >
-        <H1>📊 Game {String(game.id)}</H1>
+      <H1>Game {String(game.id)}</H1>
       <Card>
         <Text style={{ color: '#F3E7D3' }}>Date: <Text style={{ color: '#C4A24C' }}>{dateText}</Text></Text>
         <Text style={{ color: '#F3E7D3', marginTop: 4 }}>Players: <Text style={{ color: '#C4A24C' }}>{playerOrder.length}</Text></Text>
@@ -62,9 +86,7 @@ export default function GameDetailsScreen() {
         )}
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginTop: 8 }}>
           {expChips.length > 0 ? expChips.map((t) => (
-            <View key={t} style={{ marginRight: 8, marginTop: 6, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999, backgroundColor: 'rgba(196,162,76,0.15)', borderWidth: 1, borderColor: 'rgba(196,162,76,0.4)' }}>
-              <Text style={{ color: '#C4A24C', fontWeight: '700' }}>{t}</Text>
-            </View>
+            <Chip key={t} label={t} active />
           )) : (
             <Text style={{ color: 'rgba(243,231,211,0.8)', marginTop: 6 }}>Base game only</Text>
           )}
@@ -77,7 +99,9 @@ export default function GameDetailsScreen() {
           {(['age1','age2','age3'] as const).map((age) => (
             <View key={age} style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 4 }}>
               <Text style={{ color: 'rgba(243,231,211,0.8)' }}>{age.toUpperCase()}</Text>
-              <Text style={{ color: '#C4A24C', fontWeight: '600' }}>{(game.edificeProjects as any)[age] || '—'}</Text>
+              <Text style={{ color: '#C4A24C', fontWeight: '600' }}>
+                {getDisplayName(EDIFICE_NAME_BY_ID, (game.edificeProjects as any)[age])}
+              </Text>
             </View>
           ))}
         </Card>
@@ -116,11 +140,18 @@ export default function GameDetailsScreen() {
           {playerOrder.map((pid) => {
             const w = game.wonders?.[pid];
             if (!w) return null;
+            const sideLabel = formatSide(w.side);
             return (
               <View key={`w_${pid}`} style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6 }}>
                 <Text style={{ color: '#F3E7D3', flex: 2 }}>{profiles[pid]?.name || pid}</Text>
-                <Text style={{ color: '#C4A24C', flex: 3 }}>{w.boardId || '—'} {w.side ? `(${w.side})` : ''}</Text>
-                {!!w.shipyardId && (<Text style={{ color: 'rgba(243,231,211,0.8)', flex: 2 }}>Shipyard: {w.shipyardId}</Text>)}
+                <Text style={{ color: '#C4A24C', flex: 3 }}>
+                  {getDisplayName(WONDER_NAME_BY_ID, w.boardId)} {sideLabel ? `(${sideLabel})` : ''}
+                </Text>
+                {!!w.shipyardId && (
+                  <Text style={{ color: 'rgba(243,231,211,0.8)', flex: 2 }}>
+                    Shipyard: {getDisplayName(SHIPYARD_NAME_BY_ID, w.shipyardId)}
+                  </Text>
+                )}
               </View>
             );
           })}
@@ -157,4 +188,3 @@ export default function GameDetailsScreen() {
     </Screen>
   );
 }
-

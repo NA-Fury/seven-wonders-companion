@@ -1,7 +1,8 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import React, { useMemo, useState } from 'react';
-import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Card, Chip, Field, H1, P, Screen } from '@/components/ui';
+import { theme } from '@/constants/theme';
 import { getBadgeById } from '../../data/badges';
 import { WONDERS_DATABASE } from '../../data/wondersDatabase';
 import { usePlayerStore, type PlayerProfile } from '../../store/playerStore';
@@ -17,7 +18,7 @@ export default function PlayerDetailScreen() {
 
   const neighborsList = useMemo(() => {
     const counts = profile?.stats.neighborCounts || {};
-    const entries = Object.entries(counts)
+    return Object.entries(counts)
       .filter(([pid]) => pid !== profile?.id)
       .sort((a, b) => b[1] - a[1])
       .slice(0, 5)
@@ -26,7 +27,6 @@ export default function PlayerDetailScreen() {
         name: profiles[pid]?.name || 'Unknown',
         count,
       }));
-    return entries;
   }, [profile?.stats.neighborCounts, profile?.id, profiles]);
 
   const wondersPlayed = useMemo(() => {
@@ -68,35 +68,34 @@ export default function PlayerDetailScreen() {
     ];
   }, [profile?.stats.expansionsUseCounts]);
 
-  // Move this hook ABOVE any early returns to satisfy rules-of-hooks
   const displayBadges = useMemo(() => {
-    const resolveName = (id: string) => {
-      const fromDb = getBadgeById(id);
+    const resolveName = (badgeId: string) => {
+      const fromDb = getBadgeById(badgeId);
       if (fromDb) return { name: fromDb.name, icon: fromDb.icon };
-      if (id.startsWith('wonder_victor_')) {
-        const wid = id.replace('wonder_victor_', '');
+      if (badgeId.startsWith('wonder_victor_')) {
+        const wid = badgeId.replace('wonder_victor_', '');
         const w = WONDERS_DATABASE.find((x) => x.id.toLowerCase() === wid.toLowerCase());
-        if (w) return { name: `${w.name} Victor`, icon: '🏛️' };
+        if (w) return { name: `${w.name} Victor`, icon: 'W' };
       }
-      const human = id
+      const human = badgeId
         .split('_')
         .map((s) => (s.length ? s.charAt(0).toUpperCase() + s.slice(1) : s))
         .join(' ');
-      return { name: human, icon: '🏅' };
+      return { name: human, icon: 'B' };
     };
 
     const badgesArr = profile?.badges || [];
     return badgesArr.map((b) => {
-      const { name, icon } = resolveName(b.id);
-      return { id: b.id, name, icon, unlockedAt: b.unlockedAt };
+      const { name: badgeName, icon } = resolveName(b.id);
+      return { id: b.id, name: badgeName, icon, unlockedAt: b.unlockedAt };
     });
   }, [profile?.badges]);
 
   if (!profile) {
     return (
-      <SafeAreaView style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#1C1A1A' }}>
-        <Text style={{ color: '#FEF3C7' }}>Profile not found.</Text>
-      </SafeAreaView>
+      <Screen>
+        <Text style={styles.emptyText}>Profile not found.</Text>
+      </Screen>
     );
   }
 
@@ -106,205 +105,223 @@ export default function PlayerDetailScreen() {
     updateProfile(profile.id, { name: trimmed });
   };
 
+  const confirmRemoveProfile = () => {
+    Alert.alert(
+      'Remove Player',
+      `Are you sure you want to remove ${profile.name}? This profile and its records will be permanently removed from the app.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Remove', style: 'destructive', onPress: () => { removeProfile(profile.id); router.back(); } },
+      ]
+    );
+  };
+
   const StatsRow = ({ label, value }: { label: string; value: string | number }) => (
-    <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
-      <Text style={{ color: 'rgba(243,231,211,0.7)' }}>{label}</Text>
-      <Text style={{ color: '#C4A24C', fontWeight: '600' }}>{`${value}`}</Text>
+    <View style={styles.statsRow}>
+      <Text style={styles.statsLabel}>{label}</Text>
+      <Text style={styles.statsValue}>{`${value}`}</Text>
     </View>
   );
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#1C1A1A' }}>
+    <Screen>
       <ScrollView contentContainerStyle={{ paddingBottom: 40 }}>
-        {/* Header + rename */}
-        <View style={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 8 }}>
-          <Pressable onPress={() => router.back()} style={({ pressed }) => ({ alignSelf: 'flex-start', opacity: pressed ? 0.8 : 1, marginBottom: 8 })}>
-            <Text style={{ color: '#C4A24C' }}>← Back</Text>
+        <Pressable onPress={() => router.back()} style={styles.backLink}>
+          <Text style={styles.backLinkText}>Back</Text>
+        </Pressable>
+        <H1>Player Profile</H1>
+        <P>Edit name and review performance.</P>
+
+        <Card variant="muted">
+          <Field
+            label="Name"
+            value={name}
+            onChangeText={setName}
+            helperText="Update the display name for this profile."
+            inputProps={{
+              placeholder: 'Player name',
+              returnKeyType: 'done',
+              onSubmitEditing: saveRename,
+            }}
+          />
+          <Pressable onPress={saveRename} style={styles.primaryButton}>
+            <Text style={styles.primaryButtonText}>Save</Text>
           </Pressable>
-          <Text style={{ color: '#C4A24C', fontSize: 22, fontWeight: '800' }}>Player Profile</Text>
-          <Text style={{ color: 'rgba(243,231,211,0.7)', marginTop: 2 }}>Edit name and review performance.</Text>
-        </View>
+        </Card>
 
-        <View style={{ paddingHorizontal: 20 }}>
-          <View style={{ backgroundColor: 'rgba(31,41,55,0.5)', borderRadius: 16, padding: 14, borderWidth: 1, borderColor: 'rgba(196,162,76,0.25)' }}>
-            <Text style={{ color: 'rgba(243,231,211,0.8)', marginBottom: 6 }}>Name</Text>
-            <View style={{ flexDirection: 'row', gap: 8 }}>
-              <View style={{ flex: 1 }}>
-                <TextInput
-                  value={name}
-                  onChangeText={setName}
-                  placeholder="Player name"
-                  placeholderTextColor="#F3E7D380"
-                  style={{
-                    backgroundColor: 'rgba(28,26,26,0.6)',
-                    color: '#F3E7D3',
-                    borderRadius: 12,
-                    paddingHorizontal: 14,
-                    paddingVertical: 10,
-                    borderWidth: 1,
-                    borderColor: 'rgba(196,162,76,0.25)'
-                  }}
-                  returnKeyType="done"
-                  onSubmitEditing={saveRename}
-                />
-              </View>
-              <Pressable onPress={saveRename} style={({ pressed }) => ({ backgroundColor: pressed ? 'rgba(196,162,76,0.8)' : '#C4A24C', borderRadius: 12, paddingHorizontal: 16, alignItems: 'center', justifyContent: 'center' })}>
-                <Text style={{ color: '#1C1A1A', fontWeight: '800' }}>Save</Text>
-              </Pressable>
-            </View>
-          </View>
-        </View>
+        <Card variant="muted">
+          <Text style={styles.sectionTitle}>Summary</Text>
+          <StatsRow label="Games Played" value={profile.stats.gamesPlayed} />
+          <StatsRow label="Wins" value={profile.stats.wins} />
+          <StatsRow label="Runner Up" value={profile.stats.runnerUp ?? 0} />
+          <StatsRow label="Third Place" value={profile.stats.thirdPlace ?? 0} />
+          <StatsRow label="Win %" value={`${Math.round((profile.stats.winRate || 0) * 100)}%`} />
+          <StatsRow label="Average" value={profile.stats.averageScore} />
+          {profile.stats.highestScore && (
+            <StatsRow label="High Score" value={`${profile.stats.highestScore.score} (Game ${profile.stats.highestScore.gameId})`} />
+          )}
+          {profile.stats.lowestScore && (
+            <StatsRow label="Low Score" value={`${profile.stats.lowestScore.score} (Game ${profile.stats.lowestScore.gameId})`} />
+          )}
+        </Card>
 
-        {/* Summary metrics */}
-        <View style={{ paddingHorizontal: 20, marginTop: 12 }}>
-          <View style={{ backgroundColor: 'rgba(99,102,241,0.1)', borderRadius: 12, padding: 16, borderWidth: 1, borderColor: 'rgba(99,102,241,0.3)' }}>
-            <Text style={{ color: '#818CF8', fontSize: 16, fontWeight: 'bold', marginBottom: 8 }}>Summary</Text>
-            <StatsRow label="Games Played" value={profile.stats.gamesPlayed} />
-            <StatsRow label="Wins" value={profile.stats.wins} />
-            <StatsRow label="Runner Up" value={profile.stats.runnerUp ?? 0} />
-            <StatsRow label="Third Place" value={profile.stats.thirdPlace ?? 0} />
-            <StatsRow label="Win %" value={`${Math.round((profile.stats.winRate || 0) * 100)}%`} />
-            <StatsRow label="Average" value={profile.stats.averageScore} />
-            {profile.stats.highestScore && (
-              <StatsRow label="High Score" value={`${profile.stats.highestScore.score} (Game ${profile.stats.highestScore.gameId})`} />
-            )}
-            {profile.stats.lowestScore && (
-              <StatsRow label="Low Score" value={`${profile.stats.lowestScore.score} (Game ${profile.stats.lowestScore.gameId})`} />
-            )}
-          </View>
-        </View>
-
-        {/* Wonders played */}
-        <View style={{ paddingHorizontal: 20, marginTop: 12 }}>
-          <View style={{ backgroundColor: 'rgba(196,162,76,0.1)', borderRadius: 12, padding: 16, borderWidth: 1, borderColor: 'rgba(196,162,76,0.3)' }}>
-            <Text style={{ color: '#C4A24C', fontSize: 16, fontWeight: 'bold', marginBottom: 8 }}>Wonders Played</Text>
-            {wondersPlayed.favorite && (
-              <Text style={{ color: 'rgba(243,231,211,0.9)', marginBottom: 6 }}>Favorite: {wondersPlayed.favorite.name} ({wondersPlayed.favorite.total})</Text>
-            )}
-            {wondersPlayed.playedArr.length > 0 ? (
-              <View>
-                {wondersPlayed.playedArr.map((w) => (
-                  <View key={w.id} style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
-                    <Text style={{ color: '#FEF3C7' }}>{w.name}</Text>
-                    <Text style={{ color: 'rgba(243,231,211,0.8)' }}>Day {w.day} · Night {w.night} · Total {w.total}</Text>
-                  </View>
-                ))}
-              </View>
-            ) : (
-              <Text style={{ color: 'rgba(243,231,211,0.7)' }}>No wonders played yet.</Text>
-            )}
-            {wondersPlayed.notPlayed.length > 0 && (
-              <View style={{ marginTop: 8 }}>
-                <Text style={{ color: 'rgba(243,231,211,0.7)', marginBottom: 4 }}>Not yet played:</Text>
-                <Text style={{ color: 'rgba(243,231,211,0.7)' }}>{wondersPlayed.notPlayed.join(', ')}</Text>
-              </View>
-            )}
-          </View>
-        </View>
-
-        {/* Strategy profile */}
-        <View style={{ paddingHorizontal: 20, marginTop: 12 }}>
-          <View style={{ backgroundColor: 'rgba(34,197,94,0.08)', borderRadius: 12, padding: 16, borderWidth: 1, borderColor: 'rgba(34,197,94,0.25)' }}>
-            <Text style={{ color: '#86EFAC', fontSize: 16, fontWeight: 'bold', marginBottom: 8 }}>Strategy Profile</Text>
-            {categories.all.length > 0 ? (
-              <>
-                <Text style={{ color: 'rgba(243,231,211,0.8)', marginBottom: 6 }}>Strongest:</Text>
-                {categories.strongest.map(([k, v]) => (
-                  <Text key={k} style={{ color: '#FEF3C7' }}>• {capitalize(k)}: {v}</Text>
-                ))}
-                <View style={{ height: 8 }} />
-                <Text style={{ color: 'rgba(243,231,211,0.8)', marginBottom: 6 }}>Weakest:</Text>
-                {categories.weakest.map(([k, v]) => (
-                  <Text key={k} style={{ color: 'rgba(243,231,211,0.7)' }}>• {capitalize(k)}: {v}</Text>
-                ))}
-              </>
-            ) : (
-              <Text style={{ color: 'rgba(243,231,211,0.7)' }}>No category data yet.</Text>
-            )}
-          </View>
-        </View>
-
-        {/* Neighbors */}
-        <View style={{ paddingHorizontal: 20, marginTop: 12 }}>
-          <View style={{ backgroundColor: 'rgba(244,63,94,0.08)', borderRadius: 12, padding: 16, borderWidth: 1, borderColor: 'rgba(244,63,94,0.25)' }}>
-            <Text style={{ color: '#F87171', fontSize: 16, fontWeight: 'bold', marginBottom: 8 }}>Frequent Neighbors</Text>
-            {neighborsList.length > 0 ? neighborsList.map((n) => (
-              <Pressable key={n.id} onPress={() => router.push(`/players/${n.id}`)} style={({ pressed }) => ({ paddingVertical: 6, opacity: pressed ? 0.7 : 1 })}>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                  <Text style={{ color: '#FEF3C7' }}>{n.name}</Text>
-                  <Text style={{ color: 'rgba(243,231,211,0.8)' }}>{n.count}x</Text>
-                </View>
-              </Pressable>
-            )) : (
-              <Text style={{ color: 'rgba(243,231,211,0.7)' }}>No neighbor data yet.</Text>
-            )}
-          </View>
-        </View>
-
-        {/* Expansions usage */}
-        <View style={{ paddingHorizontal: 20, marginTop: 12 }}>
-          <View style={{ backgroundColor: 'rgba(250,204,21,0.08)', borderRadius: 12, padding: 16, borderWidth: 1, borderColor: 'rgba(250,204,21,0.25)' }}>
-            <Text style={{ color: '#FACC15', fontSize: 16, fontWeight: 'bold', marginBottom: 8 }}>Expansions Usage</Text>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-              {expansionsUsage.map((e) => (
-                <View key={e.key} style={{
-                  backgroundColor: e.value === 0 ? 'rgba(243,231,211,0.06)' : 'rgba(196,162,76,0.2)',
-                  borderWidth: 1,
-                  borderColor: e.value === 0 ? 'rgba(243,231,211,0.1)' : 'rgba(196,162,76,0.35)',
-                  borderRadius: 12,
-                  paddingVertical: 6,
-                  paddingHorizontal: 10,
-                }}>
-                  <Text style={{ color: e.value === 0 ? 'rgba(243,231,211,0.5)' : '#C4A24C' }}>{e.key}: {e.value}</Text>
+        <Card variant="muted">
+          <Text style={styles.sectionTitle}>Wonders Played</Text>
+          {wondersPlayed.favorite && (
+            <Text style={styles.sectionText}>Favorite: {wondersPlayed.favorite.name} ({wondersPlayed.favorite.total})</Text>
+          )}
+          {wondersPlayed.playedArr.length > 0 ? (
+            <View>
+              {wondersPlayed.playedArr.map((w) => (
+                <View key={w.id} style={styles.statsRow}>
+                  <Text style={styles.statsLabel}>{w.name}</Text>
+                  <Text style={styles.statsValue}>Day {w.day} / Night {w.night} / Total {w.total}</Text>
                 </View>
               ))}
             </View>
-          </View>
-        </View>
+          ) : (
+            <Text style={styles.sectionMuted}>No wonders played yet.</Text>
+          )}
+          {wondersPlayed.notPlayed.length > 0 && (
+            <View style={{ marginTop: theme.spacing.sm }}>
+              <Text style={styles.sectionMuted}>Not yet played:</Text>
+              <Text style={styles.sectionMuted}>{wondersPlayed.notPlayed.join(', ')}</Text>
+            </View>
+          )}
+        </Card>
 
-        {/* Badges */}
-        <View style={{ paddingHorizontal: 20, marginTop: 12 }}>
-          <View style={{ backgroundColor: 'rgba(99,102,241,0.1)', borderRadius: 12, padding: 16, borderWidth: 1, borderColor: 'rgba(99,102,241,0.3)' }}>
-            <Text style={{ color: '#818CF8', fontSize: 16, fontWeight: 'bold', marginBottom: 8 }}>Badges ({displayBadges.length})</Text>
-            {displayBadges.length > 0 ? (
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-                {displayBadges.map((b) => (
-                  <View
-                    key={b.id}
-                    style={{
-                      backgroundColor: 'rgba(99,102,241,0.2)',
-                      borderRadius: 12,
-                      paddingVertical: 4,
-                      paddingHorizontal: 10,
-                      borderWidth: 1,
-                      borderColor: 'rgba(99,102,241,0.3)'
-                    }}
-                  >
-                    <Text style={{ color: '#818CF8', fontWeight: '600' }}>
-                      {b.icon} {b.name}
-                    </Text>
-                  </View>
-                ))}
-              </View>
-            ) : (
-              <Text style={{ color: 'rgba(243,231,211,0.7)' }}>No badges yet.</Text>
-            )}
-          </View>
-        </View>
+        <Card variant="muted">
+          <Text style={styles.sectionTitle}>Strategy Profile</Text>
+          {categories.all.length > 0 ? (
+            <>
+              <Text style={styles.sectionText}>Strongest</Text>
+              {categories.strongest.map(([k, v]) => (
+                <Text key={k} style={styles.sectionText}>- {capitalize(k)}: {v}</Text>
+              ))}
+              <View style={{ height: theme.spacing.sm }} />
+              <Text style={styles.sectionText}>Weakest</Text>
+              {categories.weakest.map(([k, v]) => (
+                <Text key={k} style={styles.sectionMuted}>- {capitalize(k)}: {v}</Text>
+              ))}
+            </>
+          ) : (
+            <Text style={styles.sectionMuted}>No category data yet.</Text>
+          )}
+        </Card>
 
-        {/* Danger zone */}
-        <View style={{ paddingHorizontal: 20, marginTop: 12, marginBottom: 24 }}>
-          <Pressable onPress={() => { removeProfile(profile.id); router.back(); }}
-            style={({ pressed }) => ({ backgroundColor: pressed ? 'rgba(239,68,68,0.8)' : 'rgba(239,68,68,1)', borderRadius: 12, paddingVertical: 12, alignItems: 'center' })}
-          >
-            <Text style={{ color: '#1C1A1A', fontWeight: '800' }}>Remove Player</Text>
-          </Pressable>
-        </View>
+        <Card variant="muted">
+          <Text style={styles.sectionTitle}>Frequent Neighbors</Text>
+          {neighborsList.length > 0 ? (
+            neighborsList.map((n) => (
+              <Pressable key={n.id} onPress={() => router.push(`/players/${n.id}`)} style={styles.neighborRow}>
+                <Text style={styles.sectionText}>{n.name}</Text>
+                <Text style={styles.sectionMuted}>{n.count}x</Text>
+              </Pressable>
+            ))
+          ) : (
+            <Text style={styles.sectionMuted}>No neighbor data yet.</Text>
+          )}
+        </Card>
+
+        <Card variant="muted">
+          <Text style={styles.sectionTitle}>Expansions Usage</Text>
+          <View style={styles.chipRow}>
+            {expansionsUsage.map((e) => (
+              <Chip key={e.key} label={`${e.key}: ${e.value}`} active={e.value > 0} />
+            ))}
+          </View>
+        </Card>
+
+        <Card variant="muted">
+          <Text style={styles.sectionTitle}>Badges ({displayBadges.length})</Text>
+          {displayBadges.length > 0 ? (
+            <View style={styles.chipRow}>
+              {displayBadges.map((b) => (
+                <Chip key={b.id} label={`${b.icon} ${b.name}`} active />
+              ))}
+            </View>
+          ) : (
+            <Text style={styles.sectionMuted}>No badges yet.</Text>
+          )}
+        </Card>
+
+        <Pressable onPress={confirmRemoveProfile} style={styles.dangerButton}>
+          <Text style={styles.dangerButtonText}>Remove Player</Text>
+        </Pressable>
       </ScrollView>
-    </SafeAreaView>
+    </Screen>
   );
 }
 
 function capitalize(s: string) {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
+
+const styles = StyleSheet.create({
+  backLink: {
+    marginBottom: theme.spacing.sm,
+  },
+  backLinkText: {
+    color: theme.colors.accent,
+    fontWeight: '700',
+  },
+  emptyText: {
+    color: theme.colors.textSecondary,
+  },
+  sectionTitle: {
+    color: theme.colors.accent,
+    fontSize: 16,
+    fontWeight: '800',
+    marginBottom: theme.spacing.sm,
+  },
+  sectionText: {
+    color: theme.colors.textPrimary,
+    marginBottom: 4,
+  },
+  sectionMuted: {
+    color: theme.colors.textSecondary,
+    marginBottom: 4,
+  },
+  statsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 6,
+  },
+  statsLabel: {
+    color: theme.colors.textSecondary,
+  },
+  statsValue: {
+    color: theme.colors.accent,
+    fontWeight: '600',
+  },
+  neighborRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 6,
+  },
+  chipRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
+  primaryButton: {
+    backgroundColor: theme.colors.accent,
+    borderRadius: theme.radius.md,
+    paddingVertical: theme.spacing.sm,
+    alignItems: 'center',
+  },
+  primaryButtonText: {
+    color: theme.colors.background,
+    fontWeight: '800',
+  },
+  dangerButton: {
+    marginTop: theme.spacing.md,
+    backgroundColor: theme.colors.danger,
+    borderRadius: theme.radius.md,
+    paddingVertical: theme.spacing.sm,
+    alignItems: 'center',
+  },
+  dangerButtonText: {
+    color: theme.colors.background,
+    fontWeight: '800',
+  },
+});

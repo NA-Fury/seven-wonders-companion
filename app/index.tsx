@@ -1,58 +1,122 @@
-// app/index.tsx
 import { router } from 'expo-router';
 import React from 'react';
-import { FlatList, Pressable, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { AppLogo, H1, P, Screen } from '@/components/ui';
+import { theme } from '@/constants/theme';
+import {
+  BadgeCheck,
+  BookOpen,
+  FileText,
+  Gamepad2,
+  Newspaper,
+  Settings,
+  Trophy,
+  Users,
+} from 'lucide-react-native';
 
 type MenuItem = {
   key: string;
   title: string;
-  subtitle?: string;
+  subtitle: string;
   route: string;
+  icon: React.ComponentType<{ size?: number; color?: string }>;
 };
 
 const MENU: MenuItem[] = [
-  { key: 'new', title: '🎲 New Game', subtitle: 'Start a new session', route: '/new-game' },
-  { key: 'players', title: '🧑‍🤝‍🧑 Players', subtitle: 'Profiles & stats', route: '/players' },
-  { key: 'leaderboards', title: '🏆 Local Leaderboards', subtitle: 'Top scores & records', route: '/leaderboards' },
-  { key: 'badges', title: '🏅 Badges', subtitle: 'Collectibles & records', route: '/badges' },
-  { key: 'ency', title: '📖 Encyclopaedia', subtitle: 'Rules & clarifications', route: '/encyclopaedia' },
-  { key: 'ref', title: '📚 Reference & Notes', subtitle: 'FAQs and your notes', route: '/reference' },
-  { key: 'news', title: '📰 News & Analysis', subtitle: 'Patch Notes and Updates', route: '/news' },
-  { key: 'settings', title: '⚙️ Settings & Feedback', subtitle: 'Preferences & contact', route: '/settings' },
+  { key: 'new', title: 'New Game', subtitle: 'Start a new session', route: '/new-game', icon: Gamepad2 },
+  { key: 'players', title: 'Players', subtitle: 'Profiles and stats', route: '/players', icon: Users },
+  { key: 'leaderboards', title: 'Local Leaderboards', subtitle: 'Top scores and records', route: '/leaderboards', icon: Trophy },
+  { key: 'badges', title: 'Badges', subtitle: 'Collectibles and achievements', route: '/badges', icon: BadgeCheck },
+  { key: 'ency', title: 'Encyclopaedia', subtitle: 'Rules and clarifications', route: '/encyclopaedia', icon: BookOpen },
+  { key: 'ref', title: 'Reference and Notes', subtitle: 'FAQs and personal notes', route: '/reference', icon: FileText },
+  { key: 'news', title: 'News and Analysis', subtitle: 'Patch notes and updates', route: '/news', icon: Newspaper },
+  { key: 'settings', title: 'Settings and Feedback', subtitle: 'Preferences and contact', route: '/settings', icon: Settings },
 ];
+
+const styles = StyleSheet.create({
+  header: {
+    marginBottom: theme.spacing.lg,
+    alignItems: 'flex-start',
+  },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: theme.spacing.sm,
+  },
+  titleText: {
+    marginLeft: theme.spacing.md,
+  },
+  menuCard: {
+    backgroundColor: theme.colors.surface,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.lg,
+    paddingVertical: theme.spacing.md,
+    paddingHorizontal: theme.spacing.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  menuIconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: theme.spacing.md,
+    backgroundColor: theme.colors.accentSoft,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  },
+  menuTitle: {
+    color: theme.colors.textPrimary,
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  menuSubtitle: {
+    color: theme.colors.textSecondary,
+    marginTop: 4,
+    fontSize: 12,
+  },
+});
 
 export default function Index() {
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#1C1A1A' }}>
-      <View style={{ paddingHorizontal: 20, paddingTop: 20, paddingBottom: 12 }}>
-        <Text style={{ color: '#C4A24C', fontSize: 24, fontWeight: '800' }}>7 Wonders Companion</Text>
-        <Text style={{ color: 'rgba(243,231,211,0.7)', marginTop: 4 }}>Score faster. Learn deeper. Track progress.</Text>
+    <Screen>
+      <View style={styles.header}>
+        <View style={styles.titleRow}>
+          <AppLogo size={44} />
+          <View style={styles.titleText}>
+            <H1>7 Wonders Companion</H1>
+            <P>Score faster. Learn deeper. Track progress.</P>
+          </View>
+        </View>
       </View>
       <FlatList
         data={MENU}
         keyExtractor={(i) => i.key}
-        contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 32 }}
+        contentContainerStyle={{ paddingBottom: 32 }}
         ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
-        renderItem={({ item }) => (
-          <Pressable
-            onPress={() => router.push(item.route as any)}
-            style={({ pressed }) => ({
-              backgroundColor: pressed ? 'rgba(243,231,211,0.08)' : 'rgba(31,41,55,0.5)',
-              borderWidth: 1,
-              borderColor: 'rgba(196,162,76,0.25)',
-              borderRadius: 16,
-              paddingVertical: 16,
-              paddingHorizontal: 16,
-            })}
-          >
-            <Text style={{ color: '#FEF3C7', fontSize: 18, fontWeight: '700' }}>{item.title}</Text>
-            {!!item.subtitle && (
-              <Text style={{ color: 'rgba(243,231,211,0.7)', marginTop: 4 }}>{item.subtitle}</Text>
-            )}
-          </Pressable>
-        )}
+        renderItem={({ item }) => {
+          const Icon = item.icon;
+          return (
+            <Pressable
+              onPress={() => router.push(item.route as any)}
+              style={({ pressed }) => [
+                styles.menuCard,
+                { backgroundColor: pressed ? 'rgba(243,231,211,0.08)' : theme.colors.surface },
+              ]}
+            >
+              <View style={styles.menuIconWrap}>
+                <Icon size={20} color={theme.colors.accent} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.menuTitle}>{item.title}</Text>
+                <Text style={styles.menuSubtitle}>{item.subtitle}</Text>
+              </View>
+            </Pressable>
+          );
+        }}
       />
-    </SafeAreaView>
+    </Screen>
   );
 }

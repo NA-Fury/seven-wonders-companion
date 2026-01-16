@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
+import { theme } from '@/constants/theme';
 
 const styles = StyleSheet.create({
   container: {
@@ -16,27 +17,27 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#818CF8',
+    color: theme.colors.accentAlt,
     marginBottom: 12,
     paddingLeft: 4,
   },
   helperCard: {
-    backgroundColor: 'rgba(99, 102, 241, 0.1)',
+    backgroundColor: 'rgba(129, 140, 248, 0.1)',
     borderRadius: 12,
     padding: 14,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: 'rgba(99, 102, 241, 0.3)',
+    borderColor: 'rgba(129, 140, 248, 0.3)',
   },
   helperTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#818CF8',
+    color: theme.colors.accentAlt,
     marginBottom: 10,
   },
   helperDescription: {
     fontSize: 11,
-    color: 'rgba(243, 231, 211, 0.6)',
+    color: theme.colors.textMuted,
     marginBottom: 12,
     fontStyle: 'italic',
   },
@@ -51,7 +52,7 @@ const styles = StyleSheet.create({
   },
   inputLabel: {
     fontSize: 11,
-    color: 'rgba(243, 231, 211, 0.7)',
+    color: theme.colors.textSecondary,
     marginBottom: 4,
   },
   input: {
@@ -59,26 +60,26 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     paddingHorizontal: 10,
     paddingVertical: 6,
-    color: '#C4A24C',
+    color: theme.colors.accent,
     fontSize: 14,
     borderWidth: 1,
-    borderColor: 'rgba(196, 162, 76, 0.2)',
+    borderColor: theme.colors.border,
   },
   customQuestionsContainer: {
     marginTop: 12,
   },
   addQuestionButton: {
-    backgroundColor: 'rgba(99, 102, 241, 0.2)',
+    backgroundColor: 'rgba(129, 140, 248, 0.2)',
     borderRadius: 8,
     paddingVertical: 8,
     paddingHorizontal: 12,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(99, 102, 241, 0.3)',
+    borderColor: 'rgba(129, 140, 248, 0.3)',
     marginTop: 8,
   },
   addQuestionText: {
-    color: '#818CF8',
+    color: theme.colors.accentAlt,
     fontSize: 12,
     fontWeight: '600',
   },
@@ -95,7 +96,7 @@ const styles = StyleSheet.create({
   },
   noteText: {
     fontSize: 11,
-    color: '#FB923C',
+    color: theme.colors.warning,
     fontStyle: 'italic',
     textAlign: 'center',
   },
@@ -183,18 +184,18 @@ export const AnalysisHelpers = memo(function AnalysisHelpers({
   
   return (
     <View style={styles.container}>
-      <Text style={styles.sectionTitle}>🔍 Analysis Helpers</Text>
+      <Text style={styles.sectionTitle}>Analysis Helpers</Text>
       
       {/* Resource Cards Helper */}
       <View style={styles.helperCard}>
-        <Text style={styles.helperTitle}>📦 Resource Cards</Text>
+        <Text style={styles.helperTitle}>Resource Cards</Text>
         <Text style={styles.helperDescription}>
           Track resource cards for yellow card and guild calculations
         </Text>
         
         <View style={styles.inputGrid}>
           <View style={styles.inputContainer}>
-            <Text style={styles.inputLabel}>🟫 Brown Cards (Basic Materials)</Text>
+            <Text style={styles.inputLabel}> Brown (Basic Materials)</Text>
             <TextInput
               style={styles.input}
               value={resourceData.brownCards?.toString() || ''}
@@ -206,7 +207,7 @@ export const AnalysisHelpers = memo(function AnalysisHelpers({
           </View>
           
           <View style={styles.inputContainer}>
-            <Text style={styles.inputLabel}>⬜ Gray Cards (Manufactured Goods)</Text>
+            <Text style={styles.inputLabel}> Gray (Manufactured Goods)</Text>
             <TextInput
               style={styles.input}
               value={resourceData.grayCards?.toString() || ''}
@@ -222,7 +223,7 @@ export const AnalysisHelpers = memo(function AnalysisHelpers({
           <>
             <View style={styles.noteCard}>
               <Text style={styles.noteText}>
-                🏛️ Halicarnassus detected! Track discarded cards retrieved
+                 Halicarnassus detected! Track discarded cards retrieved
               </Text>
             </View>
             
@@ -269,7 +270,7 @@ export const AnalysisHelpers = memo(function AnalysisHelpers({
       
       {/* Customizable Questions */}
       <View style={styles.helperCard}>
-        <Text style={styles.helperTitle}>📝 Custom Tracking</Text>
+        <Text style={styles.helperTitle}>Custom Tracking</Text>
         <Text style={styles.helperDescription}>
           Add custom fields based on your cards and strategy
         </Text>
@@ -303,7 +304,7 @@ export const AnalysisHelpers = memo(function AnalysisHelpers({
       
       <View style={styles.noteCard}>
         <Text style={styles.noteText}>
-          💡 This data helps calculate complex scoring patterns automatically
+           This data helps calculate complex scoring patterns automatically
         </Text>
       </View>
     </View>

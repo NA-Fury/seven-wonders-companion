@@ -11,32 +11,33 @@ import {
 } from 'react-native';
 import { useScoringStore } from '../../store/scoringStore';
 import { useSetupStore } from '../../store/setupStore';
+import { theme } from '@/constants/theme';
 
 const styles = StyleSheet.create({
   container: {
     position: 'absolute', bottom: 0, left: 0, right: 0,
     backgroundColor: 'rgba(17, 24, 39, 0.92)',
-    borderTopWidth: 1, borderTopColor: 'rgba(196, 162, 76, 0.2)',
+    borderTopWidth: 1, borderTopColor: theme.colors.border,
     paddingTop: 8, paddingBottom: Platform.select({ ios: 18, android: 12, default: 12 }),
     paddingHorizontal: 12,
   },
   row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  totalLabel: { fontSize: 12, color: 'rgba(243, 231, 211, 0.7)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 },
+  totalLabel: { fontSize: 12, color: theme.colors.textSecondary, marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 },
   scoreContainer: { flexDirection: 'row', alignItems: 'baseline' },
-  scoreValue: { fontSize: 32, fontWeight: 'bold', color: '#FEF3C7' },
-  scoreUnit: { fontSize: 14, color: 'rgba(243, 231, 211, 0.6)', marginLeft: 6 },
+  scoreValue: { fontSize: 32, fontWeight: 'bold', color: theme.colors.textPrimary, fontFamily: theme.fonts.numeric },
+  scoreUnit: { fontSize: 14, color: theme.colors.textMuted, marginLeft: 6 },
   resultsButton: {
-    backgroundColor: '#C4A24C', paddingHorizontal: 20, paddingVertical: 10,
-    borderRadius: 10, borderWidth: 1, borderColor: 'rgba(196,162,76,0.4)',
+    backgroundColor: theme.colors.accent, paddingHorizontal: 20, paddingVertical: 10,
+    borderRadius: 10, borderWidth: 1, borderColor: theme.colors.borderStrong,
   },
   resultsButtonDisabled: { opacity: 0.5, backgroundColor: 'rgba(107, 114, 128, 0.5)' },
   resultsButtonText: { color: '#111827', fontWeight: '800', fontSize: 16 },
   resultsButtonTextDisabled: { color: '#6B7280' },
   progressBar: { marginTop: 10, height: 8, backgroundColor: 'rgba(31,41,55,0.7)', borderRadius: 999, overflow: 'hidden' },
-  progressFill: { height: '100%', backgroundColor: '#C4A24C' },
-  progressReadyFill: { backgroundColor: '#10B981' },
+  progressFill: { height: '100%', backgroundColor: theme.colors.accent },
+  progressReadyFill: { backgroundColor: theme.colors.success },
   progressInfo: { position: 'absolute', top: -20, right: 16, backgroundColor: 'rgba(31, 41, 55, 0.9)', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8 },
-  progressInfoText: { fontSize: 10, color: 'rgba(243,231,211,0.8)' },
+  progressInfoText: { fontSize: 10, color: theme.colors.textSecondary },
 });
 
 interface TotalScoreBarProps {
@@ -81,9 +82,6 @@ export const TotalScoreBar = memo<TotalScoreBarProps>(function TotalScoreBar({
           totalPoints += points;
         }
       });
-      
-      console.log(`Player ${player.name}: ${nonZeroCategories} categories with points, total: ${totalPoints}`);
-      
       // Player is ready if they have at least 3 categories with points
       if (nonZeroCategories >= 3) {
         playersReady += 1;
@@ -92,9 +90,6 @@ export const TotalScoreBar = memo<TotalScoreBarProps>(function TotalScoreBar({
         incompleteNames.push(player.name);
       }
     }
-    
-    console.log(`${playersReady}/${players.length} players ready`);
-    
     return {
       progress: playersReady / players.length,
       ready: playersReady === players.length && players.length > 0,

@@ -45,7 +45,7 @@ function RootLayout() {
 
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack>
+      <Stack screenOptions={{ headerShown: false }}>
         {/* Main index route */}
         <Stack.Screen name="index" options={{ headerShown: false }} />
 

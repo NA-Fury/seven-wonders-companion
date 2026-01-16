@@ -11,8 +11,7 @@ import {
 import { searchBlackCards, sumBlackEndGameVP } from '../../data/blackCardsDatabase';
 import {
   edificeOutcomeForPlayer,
-  evaluateEdificeCompletion,
-  getProjectById
+  evaluateEdificeCompletion
 } from '../../data/edificeDatabase';
 import { getIslandByName, searchIslands, sumImmediateIslandVP } from '../../data/islandsDatabase';
 import { getLeaderByName, searchLeaders, sumImmediateVP } from '../../data/leadersDatabase';
@@ -21,6 +20,8 @@ import { searchYellowCards, sumYellowEndGameVP } from '../../data/yellowCardsDat
 import { CategoryKey, CategoryScore, useScoringStore } from '../../store/scoringStore';
 import { useSetupStore } from '../../store/setupStore';
 import { getWonderById, getWonderSide } from '../../data/wondersDatabase';
+import { calculateWonderStagePoints } from '../../lib/scoring/wonderScoring';
+import { computeEdificeEffects } from '../../lib/scoring/edificeEffects';
 
 // Get actual wonder stages from the database
 function getWonderStagesData(playerId: string): { stages: any[]; wonderName: string; wonderId: string; side: 'day' | 'night' } | null {
@@ -320,21 +321,14 @@ export const CategoryCard = memo(function CategoryCard({
   
   const edificeCompletion = useMemo(
     () => {
-      console.log('🔄 Recalculating edifice completion...', { playerIds: playerIds.length, refreshTrigger });
-      const result = evaluateEdificeCompletion(playerIds, playerScores);
-      console.log('📊 Edifice completion result:', result);
-      return result;
+      void refreshTrigger;
+      return evaluateEdificeCompletion(playerIds, playerScores);
     },
     [playerIds, playerScores, refreshTrigger]
   );
-  
+
   const edificeOutcome = useMemo(
-    () => {
-      console.log('🎯 Recalculating edifice outcome for player:', playerId);
-      const result = edificeOutcomeForPlayer(playerId, playerIds, playerScores);
-      console.log('🎲 Edifice outcome result:', result);
-      return result;
-    },
+    () => edificeOutcomeForPlayer(playerId, playerIds, playerScores),
     [playerId, playerIds, playerScores]
   );
 
@@ -382,86 +376,33 @@ export const CategoryCard = memo(function CategoryCard({
     if (category === 'wonder' && (field.startsWith('stage') || field.includes('Choice') || field.includes('BuriedLeader'))) {
       const wonderStagesData = getWonderStagesData(playerId);
       if (wonderStagesData) {
-        const { wonderId } = wonderStagesData;
-        // Compute base stage points with Carthage overrides and Abu Simbel extras
-        let totalPoints = 0;
-        wonderStagesData.stages.forEach((stage, index) => {
-          const stageKey = `stage${index + 1}`;
-          const isChecked = !!newData[stageKey];
-          if (!isChecked) return;
-
-          // Default: add fixed stage points if any
-          let stagePts = stage.points || 0;
-
-          // Special-case: Carthage stages with left/right choices where VP depends on the choice
-          if (wonderId === 'carthage') {
-            const choice = newData[`${stageKey}Choice`]; // 'left' | 'right'
-            const desc: string = stage?.effect?.description || '';
-            // Day stage 2: 'Choose: 7 coins OR +1 Military + 2 VP' -> BOTH choices grant +2 VP
-            // Night stage 1: 'LEFT: 7 coins + 4 VP; RIGHT: +2 Military' -> VP only on LEFT
-            if (/Choose: Gain 7 Coins OR \+1 Military Strength \+ 2 VP/i.test(desc)) {
-              stagePts = 2;
-            }
-            if (/LEFT: Gain 7 Coins \+ 4 VP; RIGHT: \+2 Military Strength/i.test(desc)) {
-              // When LEFT, 4 VP; when RIGHT, 0 VP
-              stagePts = choice === 'left' ? 4 : 0;
-            }
-          }
-
-          totalPoints += stagePts;
+        const { wonderId, stages } = wonderStagesData;
+        const { points, carthageScienceStageKeys } = calculateWonderStagePoints({
+          wonderId,
+          stages,
+          detailedData: newData,
         });
 
-        // Abu Simbel: add 2x buried leader cost per burial
-        if (wonderId === 'abu_simbel') {
-          const addBurialScore = (slotIdx: number) => {
-            const sk = `stage${slotIdx}`;
-            if (!newData[sk]) return 0; // must be built
-            const name = newData[`${sk}BuriedLeaderName`];
-            if (!name) return 0;
-            const leader = getLeaderByName(name);
-            if (!leader) return 0;
-            let costPaid = leader.cost;
-            if (leader.costType === 'age') {
-              const age = parseInt(String(newData[`${sk}BuriedLeaderAge`] || ''), 10);
-              if (!age || age < 1 || age > 3) return 0; // need age to evaluate cost
-              costPaid = age; // age coins
-            }
-            return (costPaid || 0) * 2;
-          };
+        updateCategoryScore(playerId, category, points, true);
 
-          // Check up to first 3 stages for burial tags (Day has burial on stage 3; Night on stages 1 & 2)
-          totalPoints += addBurialScore(1);
-          totalPoints += addBurialScore(2);
-          totalPoints += addBurialScore(3);
-        }
+        if (carthageScienceStageKeys.length > 0) {
+          try {
+            const current = (useScoringStore.getState().playerScores?.[playerId]?.categories?.science?.detailedData || {}) as Record<string, any>;
+            const currentWild = parseInt(String(current.choiceTokens || 0), 10) || 0;
+            useScoringStore.getState().updateDetailedData(playerId, 'science', {
+              ...current,
+              choiceTokens: currentWild + carthageScienceStageKeys.length,
+            });
 
-        updateCategoryScore(playerId, category, totalPoints, true);
-
-        // Carthage Night Stage 2: RIGHT choice grants a Science wild symbol at end game
-        if (wonderStagesData.wonderId === 'carthage') {
-          wonderStagesData.stages.forEach((stage, index) => {
-            const stageKey = `stage${index + 1}`;
-            const isChecked = !!newData[stageKey];
-            if (!isChecked) return;
-            const desc: string = stage?.effect?.description || '';
-            if (/Endgame Science symbol of your choice/i.test(desc)) {
-              const choice = newData[`${stageKey}Choice`];
-              // Only apply on RIGHT
-              if (choice === 'right' && !newData[`${stageKey}ChoiceSciApplied`]) {
-                try {
-                  const current = (useScoringStore.getState().playerScores?.[playerId]?.categories?.science?.detailedData || {}) as Record<string, any>;
-                  const currentWild = parseInt(String(current.choiceTokens || 0), 10) || 0;
-                  useScoringStore.getState().updateDetailedData(playerId, 'science', { ...current, choiceTokens: currentWild + 1 });
-                  // Mark applied to avoid double-adding if user toggles choices
-                  const marked = { ...newData, [`${stageKey}ChoiceSciApplied`]: true };
-                  setDetailedData(marked);
-                  updateDetailedData(playerId, category, marked);
-                } catch (e) {
-                  console.warn('Failed to propagate Carthage science bonus:', e);
-                }
-              }
-            }
-          });
+            let marked = newData;
+            carthageScienceStageKeys.forEach((stageKey) => {
+              marked = { ...marked, [`${stageKey}ChoiceSciApplied`]: true };
+            });
+            setDetailedData(marked);
+            updateDetailedData(playerId, category, marked);
+          } catch (e) {
+            console.warn('Failed to propagate Carthage science bonus:', e);
+          }
         }
       }
     }
@@ -1953,69 +1894,16 @@ export const CategoryCard = memo(function CategoryCard({
         );
 
       case 'edifice': {
-        const projByAge: Record<1|2|3, any> = {
-          1: edificeProjects?.age1 ? getProjectById(edificeProjects.age1) : null,
-          2: edificeProjects?.age2 ? getProjectById(edificeProjects.age2) : null,
-          3: edificeProjects?.age3 ? getProjectById(edificeProjects.age3) : null,
-        };
+        const {
+          projectsByAge: projByAge,
+          effectsBreakdown,
+          totalCoinsDelta,
+          totalMilitaryTokensII,
+          totalMilitaryTokensIII,
+          totalMilitaryStrength,
+          totalPenaltyEffects,
+        } = computeEdificeEffects(edificeProjects, edificeOutcome);
         const ages: (1|2|3)[] = [1, 2, 3];
-
-        // Calculate total effects for this player
-        let totalCoinsDelta = 0;
-        let totalMilitaryTokensII = 0;
-        let totalMilitaryTokensIII = 0;
-        let totalMilitaryStrength = 0;
-        let totalPenaltyEffects: string[] = [];
-        const effectsBreakdown: string[] = [];
-
-        ages.forEach(age => {
-          const project = projByAge[age];
-          if (!project) return;
-
-          const outcome = edificeOutcome[age];
-
-          if (outcome === 'reward' && project.reward) {
-            const r = project.reward;
-            switch (r.kind) {
-              case 'Coins':
-                totalCoinsDelta += r.amount || 0;
-                effectsBreakdown.push(`Age ${age}: +${r.amount || 0} coins (reward)`);
-                break;
-              case 'MilitaryVictoryToken':
-                if (r.tokenAge === 2) totalMilitaryTokensII += r.amount || 0;
-                else if (r.tokenAge === 3) totalMilitaryTokensIII += r.amount || 0;
-                effectsBreakdown.push(`Age ${age}: +${r.amount || 0} Age ${r.tokenAge} military tokens (reward)`);
-                break;
-              case 'MilitaryStrength':
-                totalMilitaryStrength += r.amount || 0;
-                effectsBreakdown.push(`Age ${age}: +${r.amount || 0} military strength (reward)`);
-                break;
-              case 'EndGameVP':
-                // These would need city snapshot data to calculate properly
-                effectsBreakdown.push(`Age ${age}: VP bonus from ${project.name} (reward) - calculate manually`);
-                break;
-              case 'Special':
-                effectsBreakdown.push(`Age ${age}: ${r.description} (reward)`);
-                break;
-            }
-          } else if (outcome === 'penalty' && project.penalty) {
-            const p = project.penalty;
-            switch (p.kind) {
-              case 'Coins':
-                totalCoinsDelta -= p.amount || 0;
-                effectsBreakdown.push(`Age ${age}: -${p.amount || 0} coins (penalty)`);
-                break;
-              case 'RemoveCard':
-                totalPenaltyEffects.push(`Remove 1 ${p.colorToRemove} card from Age ${age}`);
-                effectsBreakdown.push(`Age ${age}: Remove 1 ${p.colorToRemove} card (penalty)`);
-                break;
-              case 'LoseMilitaryVictoryTokens':
-                totalPenaltyEffects.push(`Lose ${p.amount || 0} military victory tokens from Age ${age}`);
-                effectsBreakdown.push(`Age ${age}: Lose ${p.amount || 0} military tokens (penalty)`);
-                break;
-            }
-          }
-        });
 
         const StagePill = ({active, label, onPress}: any) => (
           <TouchableOpacity
@@ -2050,21 +1938,10 @@ export const CategoryCard = memo(function CategoryCard({
                     borderColor: 'rgba(99, 102, 241, 0.3)',
                   }}
                 >
-                  <Text style={{ color: '#818CF8', fontSize: 10, fontWeight: '600' }}>🔄 Refresh</Text>
+                  <Text style={{ color: '#818CF8', fontSize: 10, fontWeight: '600' }}>Refresh</Text>
                 </TouchableOpacity>
               </View>
             </View>
-
-            {/* Debug Info (remove this in production) */}
-            {edificeCompletion.debug && (
-              <View style={[styles.detailField, { backgroundColor: 'rgba(107, 114, 128, 0.1)', padding: 8, borderRadius: 6 }]}>
-                <Text style={[styles.detailLabel, { fontSize: 10, color: '#9CA3AF' }]}>
-                  🐛 Debug: {edificeCompletion.debug.playerCount} players, need {edificeCompletion.debug.required} contributions
-                  {'\n'}Counts: Age1={edificeCompletion.counts[1]}, Age2={edificeCompletion.counts[2]}, Age3={edificeCompletion.counts[3]}
-                  {'\n'}Your data found: {Object.keys(edificeCompletion.debug.playerData[playerId]?.detailedData || {}).join(', ')}
-                </Text>
-              </View>
-            )}
 
             {/* Effects Summary */}
             {effectsBreakdown.length > 0 && (

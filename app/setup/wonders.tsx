@@ -176,7 +176,7 @@ export default function WonderAssignmentScreen() {
       // When Edifice is enabled, go to the edifice selection next.
       router.push('/setup/edifice');
     } else {
-      // No further setup expansions — go to Game Summary before scoring.
+      // No further setup expansions  go to Game Summary before scoring.
       router.push('/setup/game-summary');
     }
   }, [orderedPlayers, wonders, expansions]);
@@ -257,7 +257,7 @@ export default function WonderAssignmentScreen() {
             <H2>Game Setup</H2>
             <P className="text-aurum mb-1">{getExpansionText()}</P>
             <P className="text-parchment/60 text-sm mb-3">
-              {orderedPlayers.length} players • {availableWonders.length} wonders available • {assignedWonders.filter(a => a.wonder).length} assigned
+              {orderedPlayers.length} players - {availableWonders.length} wonders available - {assignedWonders.filter(a => a.wonder).length} assigned
             </P>
           </Card>
 

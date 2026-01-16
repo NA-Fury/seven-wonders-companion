@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import { Pressable, Text, View } from 'react-native';
+import { theme } from '@/constants/theme';
 
 export type SortDir = 'asc' | 'desc';
 
@@ -58,32 +59,32 @@ export function Table<T extends { id?: string | number }>(
   }, [rows, columns, sortKey, sortDir]);
 
   const thStyle = (align?: 'left' | 'center' | 'right') => ({
-    color: '#C4A24C',
+    color: theme.colors.accent,
     fontWeight: '800' as const,
     fontSize: 12,
     textAlign: align || 'left',
   });
   const tdStyle = (align?: 'left' | 'center' | 'right') => ({
-    color: '#F3E7D3',
+    color: theme.colors.textPrimary,
     fontSize: 13,
     textAlign: align || 'left',
   });
 
   const sortIndicator = (key: string) => {
-    if (sortKey !== key) return '↕';
-    return sortDir === 'asc' ? '▲' : '▼';
+    if (sortKey !== key) return '';
+    return sortDir === 'asc' ? '^' : 'v';
   };
 
   return (
     <View style={{
-      borderRadius: 12,
+      borderRadius: theme.radius.md,
       overflow: 'hidden',
       borderWidth: 1,
-      borderColor: 'rgba(196, 162, 76, 0.25)',
-      backgroundColor: 'rgba(31, 41, 55, 0.4)'
+      borderColor: theme.colors.border,
+      backgroundColor: theme.colors.surface
     }}>
       {/* Header */}
-      <View style={{ flexDirection: 'row', paddingVertical: 10, paddingHorizontal: 12, backgroundColor: 'rgba(196, 162, 76, 0.08)' }}>
+      <View style={{ flexDirection: 'row', paddingVertical: 10, paddingHorizontal: 12, backgroundColor: theme.colors.accentSoft }}>
         {columns.map((c) => {
           const key = typeof c.key === 'string' ? c.key : String(c.key);
           return (
@@ -97,7 +98,7 @@ export function Table<T extends { id?: string | number }>(
               style={{ flex: c.flex ?? 0, width: c.width, marginRight: 12 }}
             >
               <Text style={thStyle(c.align)}>
-                {c.title} <Text style={{ color: 'rgba(243,231,211,0.6)' }}>{sortIndicator(key)}</Text>
+                {c.title} <Text style={{ color: theme.colors.textMuted }}>{sortIndicator(key)}</Text>
               </Text>
             </Pressable>
           );
@@ -107,7 +108,7 @@ export function Table<T extends { id?: string | number }>(
       {/* Rows */}
       {sorted.length === 0 ? (
         <View style={{ padding: 14 }}>
-          <Text style={{ color: 'rgba(243,231,211,0.7)' }}>{emptyText}</Text>
+          <Text style={{ color: theme.colors.textSecondary }}>{emptyText}</Text>
         </View>
       ) : (
         sorted.map((row: any, idx: number) => {

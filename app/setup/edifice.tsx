@@ -65,7 +65,7 @@ export default function EdificeSelectionScreen() {
   return (
     <Screen>
       <ScrollView showsVerticalScrollIndicator={false}>
-        <H1>🏗️ Edifice Projects</H1>
+        <H1>Edifice Projects</H1>
         <P className="mb-4">
           Select one project from each age. These will be available for all players to build during the game.
         </P>
@@ -74,7 +74,7 @@ export default function EdificeSelectionScreen() {
         <Card>
           <H2>Project Selection</H2>
           <P className="text-parchment/60 text-sm mb-3">
-            {players.length} players • Edifice expansion enabled
+            {players.length} players - Edifice expansion enabled
           </P>
           <P className="text-parchment/70 text-sm">
             Choose 3 projects total: one from each age. All players will have access to these projects during the corresponding ages.
@@ -87,7 +87,7 @@ export default function EdificeSelectionScreen() {
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
             <View style={{ flex: 1, minWidth: '48%' }}>
               <Button
-                title="📋 Manual Selection"
+                title="Manual Selection"
                 variant={selectionMode === 'manual' ? 'primary' : 'ghost'}
                 onPress={() => setSelectionMode('manual')}
                 className="w-full"
@@ -95,7 +95,7 @@ export default function EdificeSelectionScreen() {
             </View>
             <View style={{ flex: 1, minWidth: '48%' }}>
               <Button
-                title="🎲 Random Selection"
+                title="Random Selection"
                 variant={selectionMode === 'random' ? 'primary' : 'ghost'}
                 onPress={() => setSelectionMode('random')}
                 className="w-full"
@@ -106,7 +106,7 @@ export default function EdificeSelectionScreen() {
           {selectionMode === 'random' && (
             <View style={{ gap: 8 }}>
               <Button
-                title="🎲 Generate Random Projects"
+                title="Generate Random Projects"
                 onPress={handleRandomSelection}
                 variant="ghost"
               />

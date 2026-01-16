@@ -366,7 +366,7 @@ function WonderCardSide({ wonder, side, sideType, isSelected }: WonderCardSidePr
       </View>
 
       {/* Wonder Stages */}
-      <View style={{ flex: 1, maxHeight: 120 }}>
+      <View style={{ flex: 1, maxHeight: 140 }}>
         <Text style={{
           fontSize: 12,
           fontWeight: 'bold',
@@ -440,10 +440,11 @@ function WonderStageItem({ stage, stageNumber, isDayMode }: WonderStageItemProps
   return (
     <View style={{
       flexDirection: 'row',
-      alignItems: 'center',
+      alignItems: 'flex-start',
       backgroundColor: isDayMode ? 'rgba(139, 69, 19, 0.1)' : 'rgba(99, 102, 241, 0.1)',
       borderRadius: 4,
-      padding: 4,
+      paddingVertical: 4,
+      paddingHorizontal: 6,
       marginBottom: 3,
     }}>
       <View style={{
@@ -460,31 +461,38 @@ function WonderStageItem({ stage, stageNumber, isDayMode }: WonderStageItemProps
           {stageNumber}
         </Text>
       </View>
-      <Text
-        style={{
-          fontSize: 9,
-          color: isDayMode ? '#8B4513' : '#E6E6FA',
-        }}
-        numberOfLines={1}
-      >
-        Cost: {
-          Array.isArray(stage.cost)
-            ? stage.cost.map(c => `${c.amount} ${c.resource}`).join(', ')
-            : (stage.cost && typeof stage.cost === 'object' && 'coins' in stage.cost
-                ? `${stage.cost.coins} Coins`
-                : '—')
-        }
-      </Text>
-      <Text
-        style={{
-          fontSize: 8,
-          color: isDayMode ? '#DAA520' : '#9370DB',
-          fontWeight: 'bold',
-        }}
-        numberOfLines={2}
-      >
-        {stage.effect.description}
-      </Text>
+      <View style={{ flex: 1, minWidth: 0 }}>
+        <Text
+          style={{
+            fontSize: 9,
+            color: isDayMode ? '#8B4513' : '#E6E6FA',
+            flexShrink: 1,
+          }}
+          numberOfLines={2}
+          ellipsizeMode="tail"
+        >
+          Cost: {
+            Array.isArray(stage.cost)
+              ? stage.cost.map(c => `${c.amount} ${c.resource}`).join(', ')
+              : (stage.cost && typeof stage.cost === 'object' && 'coins' in stage.cost
+                  ? `${stage.cost.coins} Coins`
+                  : '-')
+          }
+        </Text>
+        <Text
+          style={{
+            fontSize: 8,
+            color: isDayMode ? '#DAA520' : '#9370DB',
+            fontWeight: 'bold',
+            marginTop: 2,
+            flexShrink: 1,
+          }}
+          numberOfLines={3}
+          ellipsizeMode="tail"
+        >
+          {stage.effect.description}
+        </Text>
+      </View>
     </View>
   );
 }

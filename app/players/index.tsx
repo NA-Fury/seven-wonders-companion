@@ -1,15 +1,17 @@
 import React, { useMemo, useState } from 'react';
-import { FlatList, Pressable, Text, TextInput, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { usePlayerStore } from '../../store/playerStore';
-import { getBadgeById } from '../../data/badges';
+import { Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
+import { Card, Chip, Field, H1, P, Screen } from '@/components/ui';
+import { theme } from '@/constants/theme';
+import { getBadgeById } from '../../data/badges';
+import { usePlayerStore } from '../../store/playerStore';
 
 export default function PlayersScreen() {
   const profilesMap = usePlayerStore((s) => s.profiles);
   const addProfile = usePlayerStore((s) => s.addProfile);
   const removeProfile = usePlayerStore((s) => s.removeProfile);
   const [query, setQuery] = useState('');
+
   const data = useMemo(() => {
     const list = Object.values(profilesMap).sort((a, b) => a.name.localeCompare(b.name));
     if (!query.trim()) return list;
@@ -17,98 +19,148 @@ export default function PlayersScreen() {
     return list.filter((p) => p.name.toLowerCase().includes(q));
   }, [profilesMap, query]);
 
-  const handleQuickAdd = async () => {
+  const handleQuickAdd = () => {
     const name = query.trim() || `Player ${Object.keys(profilesMap).length + 1}`;
     if (!name) return;
     addProfile(name);
     setQuery('');
   };
 
+  const confirmRemove = (id: string, name: string) => {
+    Alert.alert(
+      'Remove Player',
+      `Are you sure you want to remove ${name}? This profile and its records will be permanently removed from the app.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Remove', style: 'destructive', onPress: () => removeProfile(id) },
+      ]
+    );
+  };
+
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#1C1A1A' }}>
-      <View style={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 8 }}>
-        <Text style={{ color: '#C4A24C', fontSize: 22, fontWeight: '800' }}>Players</Text>
-        <Text style={{ color: 'rgba(243,231,211,0.7)' }}>Profiles, performance, and badges.</Text>
+    <Screen>
+      <View style={styles.header}>
+        <H1>Players</H1>
+        <P>Profiles, performance, and badges.</P>
       </View>
-      <View style={{ paddingHorizontal: 20, paddingTop: 12 }}>
-        <View style={{ flexDirection: 'row', gap: 8 }}>
-          <View style={{ flex: 1 }}>
-            <TextInput
-              value={query}
-              onChangeText={setQuery}
-              placeholder="Search or add player…"
-              placeholderTextColor="#F3E7D380"
-              style={{
-                backgroundColor: 'rgba(28,26,26,0.6)',
-                color: '#F3E7D3',
-                borderRadius: 12,
-                paddingHorizontal: 14,
-                paddingVertical: 10,
-                borderWidth: 1,
-                borderColor: 'rgba(196,162,76,0.25)'
-              }}
-              returnKeyType="done"
-              onSubmitEditing={handleQuickAdd}
-            />
-          </View>
-          <Pressable onPress={handleQuickAdd} style={({ pressed }) => ({ backgroundColor: pressed ? 'rgba(196,162,76,0.8)' : '#C4A24C', borderRadius: 12, paddingHorizontal: 16, alignItems: 'center', justifyContent: 'center' })}>
-            <Text style={{ color: '#1C1A1A', fontWeight: '800' }}>Add</Text>
+
+      <Card variant="muted">
+        <Field
+          label="Search or add"
+          value={query}
+          onChangeText={setQuery}
+          helperText="Search existing profiles or add a new player name."
+          inputProps={{
+            placeholder: 'Search or add a player',
+            returnKeyType: 'done',
+            onSubmitEditing: handleQuickAdd,
+          }}
+        />
+        <View style={styles.addRow}>
+          <Pressable onPress={handleQuickAdd} style={styles.addButton}>
+            <Text style={styles.addButtonText}>Add</Text>
           </Pressable>
         </View>
-      </View>
+      </Card>
 
       <FlatList
         data={data}
         keyExtractor={(p) => p.id}
-        contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 120 }}
+        contentContainerStyle={{ paddingBottom: 100 }}
         ItemSeparatorComponent={() => <View style={{ height: 8 }} />}
         renderItem={({ item }) => (
-          <Pressable onPress={() => router.push(`/players/${item.id}`)}
-            style={{
-              backgroundColor: 'rgba(31,41,55,0.5)',
-              borderWidth: 1,
-              borderColor: 'rgba(196,162,76,0.25)',
-              borderRadius: 16,
-              padding: 14,
-            }}
+          <Pressable
+            onPress={() => router.push(`/players/${item.id}`)}
+            style={({ pressed }) => [styles.playerCard, pressed && { opacity: 0.85 }]}
           >
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-              <Text style={{ color: '#FEF3C7', fontSize: 16, fontWeight: '700' }}>{item.name}</Text>
-              <Pressable onPress={() => removeProfile(item.id)}>
-                <Text style={{ color: 'rgba(243,231,211,0.5)' }}>Remove</Text>
+            <View style={styles.playerHeader}>
+              <Text style={styles.playerName}>{item.name}</Text>
+              <Pressable onPress={() => confirmRemove(item.id, item.name)}>
+                <Text style={styles.removeText}>Remove</Text>
               </Pressable>
             </View>
-            <View style={{ flexDirection: 'row', gap: 12, marginTop: 6 }}>
-              <Text style={{ color: 'rgba(243,231,211,0.7)' }}>Games {item.stats.gamesPlayed}</Text>
-              <Text style={{ color: 'rgba(243,231,211,0.7)' }}>Wins {item.stats.wins}</Text>
-              <Text style={{ color: 'rgba(243,231,211,0.7)' }}>Win% {Math.round(item.stats.winRate * 100)}%</Text>
-              <Text style={{ color: 'rgba(243,231,211,0.7)' }}>Avg {item.stats.averageScore}</Text>
+            <View style={styles.playerStats}>
+              <Text style={styles.statText}>Games {item.stats.gamesPlayed}</Text>
+              <Text style={styles.statText}>Wins {item.stats.wins}</Text>
+              <Text style={styles.statText}>Win% {Math.round(item.stats.winRate * 100)}%</Text>
+              <Text style={styles.statText}>Avg {item.stats.averageScore}</Text>
             </View>
             {item.badges.length > 0 && (
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
+              <View style={styles.badgesRow}>
                 {item.badges.slice(0, 6).map((b) => {
                   const meta = getBadgeById(b.id);
                   const label = meta ? `${meta.icon} ${meta.name}` : b.id;
-                  return (
-                    <View key={b.id} style={{
-                      backgroundColor: 'rgba(99,102,241,0.2)', borderRadius: 12, paddingVertical: 2, paddingHorizontal: 8,
-                      borderWidth: 1, borderColor: 'rgba(99,102,241,0.3)'
-                    }}>
-                      <Text style={{ color: '#818CF8', fontSize: 11, fontWeight: '600' }}>{label}</Text>
-                    </View>
-                  );
+                  return <Chip key={b.id} label={label} active />;
                 })}
               </View>
             )}
           </Pressable>
         )}
         ListEmptyComponent={() => (
-          <View style={{ paddingHorizontal: 20, paddingTop: 20 }}>
-            <Text style={{ color: 'rgba(243,231,211,0.7)' }}>No profiles yet.</Text>
-          </View>
+          <Text style={styles.emptyText}>No profiles yet. Add a name to get started.</Text>
         )}
       />
-      
-    </SafeAreaView>
+    </Screen>
   );
 }
+
+const styles = StyleSheet.create({
+  header: {
+    marginBottom: theme.spacing.md,
+  },
+  addRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  addButton: {
+    backgroundColor: theme.colors.accent,
+    borderRadius: theme.radius.md,
+    paddingHorizontal: theme.spacing.lg,
+    paddingVertical: theme.spacing.sm,
+  },
+  addButtonText: {
+    color: theme.colors.background,
+    fontWeight: '800',
+  },
+  playerCard: {
+    backgroundColor: theme.colors.surface,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.lg,
+    padding: theme.spacing.md,
+  },
+  playerHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  playerName: {
+    color: theme.colors.textPrimary,
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  removeText: {
+    color: theme.colors.textMuted,
+    fontSize: 12,
+  },
+  playerStats: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginTop: 6,
+  },
+  statText: {
+    color: theme.colors.textSecondary,
+    marginRight: theme.spacing.md,
+    marginBottom: 4,
+    fontSize: 12,
+  },
+  badgesRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginTop: theme.spacing.sm,
+  },
+  emptyText: {
+    color: theme.colors.textSecondary,
+    marginTop: theme.spacing.md,
+  },
+});

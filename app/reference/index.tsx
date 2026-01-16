@@ -1,7 +1,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { useEffect, useState } from 'react';
-import { Text, TextInput, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { View } from 'react-native';
+import { Field, H1, P, Screen } from '@/components/ui';
+import { theme } from '@/constants/theme';
 
 const NOTES_KEY = 'swc-reference-notes';
 
@@ -26,35 +27,22 @@ export default function ReferenceScreen() {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#1C1A1A' }}>
-      <View style={{ paddingHorizontal: 20, paddingTop: 16 }}>
-        <Text style={{ color: '#C4A24C', fontSize: 22, fontWeight: '800' }}>Reference & Notes</Text>
-        <Text style={{ color: 'rgba(243,231,211,0.7)', marginTop: 4 }}>Keep clarifications, house rules, and FAQs.</Text>
+    <Screen>
+      <View style={{ marginBottom: theme.spacing.md }}>
+        <H1>Reference and Notes</H1>
+        <P>Keep clarifications, house rules, and FAQs.</P>
       </View>
-      <View style={{ paddingHorizontal: 20, paddingTop: 12 }}>
-        <TextInput
-          value={notes}
-          onChangeText={(t) => { setNotes(t); persist(t); }}
-          placeholder="Type your notes here…"
-          placeholderTextColor="#F3E7D380"
-          multiline
-          numberOfLines={10}
-          style={{
-            backgroundColor: 'rgba(28,26,26,0.6)',
-            color: '#F3E7D3',
-            borderRadius: 16,
-            padding: 14,
-            borderWidth: 1,
-            borderColor: 'rgba(196,162,76,0.25)',
-            minHeight: 220,
-            textAlignVertical: 'top',
-          }}
-        />
-        {saved && (
-          <Text style={{ color: 'rgba(243,231,211,0.6)', marginTop: 6, fontSize: 12 }}>Saved {saved}</Text>
-        )}
-      </View>
-    </SafeAreaView>
+      <Field
+        label="Notes"
+        value={notes}
+        onChangeText={(t) => { setNotes(t); persist(t); }}
+        helperText={saved ? `Saved ${saved}` : 'Autosaves as you type.'}
+        inputProps={{
+          placeholder: 'Type your notes here.',
+          multiline: true,
+          numberOfLines: 10,
+        }}
+      />
+    </Screen>
   );
 }
-

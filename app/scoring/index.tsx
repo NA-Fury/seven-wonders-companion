@@ -308,7 +308,7 @@ export default function ScoringScreen() {
                 
                 <View style={styles.metaTag}>
                   <Text style={styles.metaText}>
-                    {new Date().toLocaleDateString()} • {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    {new Date().toLocaleDateString()} - {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                   </Text>
                 </View>
                 
@@ -323,7 +323,7 @@ export default function ScoringScreen() {
                 {wonderData && (
                   <View style={[styles.metaTag, styles.wonderTag]}>
                     <Text style={[styles.metaText, styles.wonderText]}>
-                      {wonderData.wonder.name} ({wonderData.side === 'day' ? '☀️' : '🌙'})
+                      {wonderData.wonder.name} ({wonderData.side === 'day' ? 'Day' : 'Night'})
                     </Text>
                   </View>
                 )}
@@ -331,7 +331,7 @@ export default function ScoringScreen() {
                 {shipyardData && (
                   <View style={[styles.metaTag, styles.shipyardTag]}>
                     <Text style={[styles.metaText, styles.shipyardText]}>
-                      ⚓ {shipyardData.name} ({shipyardData.wonderTrack.toUpperCase()})
+                      Shipyard: {shipyardData.name} ({shipyardData.wonderTrack.toUpperCase()})
                     </Text>
                   </View>
                 )}
@@ -357,14 +357,14 @@ export default function ScoringScreen() {
           {/* Info Message */}
           <View style={styles.messageCard}>
             <Text style={styles.messageText}>
-              💡 The more details you enter, the more analysis we can provide!
+               The more details you enter, the more analysis we can provide!
             </Text>
           </View>
           
           {/* Score Categories */}
           <View style={styles.categoriesContainer}>
             {/* Base Game */}
-            <Text style={styles.sectionTitle}>🏛️ Base Game</Text>
+            <Text style={styles.sectionTitle}>Base Game</Text>
             {BASE_CATEGORIES.map(category => (
               <CategoryCard
                 key={`${currentPlayerId}-${category}`}
@@ -379,7 +379,7 @@ export default function ScoringScreen() {
             {/* Cities Expansion */}
             {expansions.cities && (
               <>
-                <Text style={styles.sectionTitle}>🏙️ Cities Expansion</Text>
+                <Text style={styles.sectionTitle}>Cities Expansion</Text>
                 <CategoryCard
                   key={`${currentPlayerId}-cities`}
                   category="cities"
@@ -393,7 +393,7 @@ export default function ScoringScreen() {
             {/* Leaders Expansion */}
             {expansions.leaders && (
               <>
-                <Text style={styles.sectionTitle}>👑 Leaders Expansion</Text>
+                <Text style={styles.sectionTitle}>Leaders Expansion</Text>
                 <CategoryCard
                   key={`${currentPlayerId}-leaders`}
                   category="leaders"
@@ -407,7 +407,7 @@ export default function ScoringScreen() {
             {/* Armada Expansion */}
             {expansions.armada && (
               <>
-                <Text style={styles.sectionTitle}>⚓ Armada Expansion</Text>
+                <Text style={styles.sectionTitle}>Armada Expansion</Text>
                 <CategoryCard
                   key={`${currentPlayerId}-navy`}
                   category="navy"
@@ -428,7 +428,7 @@ export default function ScoringScreen() {
             {/* Edifice Expansion */}
             {expansions.edifice && (
               <>
-                <Text style={styles.sectionTitle}>🗿 Edifice Expansion</Text>
+                <Text style={styles.sectionTitle}>Edifice Expansion</Text>
                 <CategoryCard
                   key={`${currentPlayerId}-edifice`}
                   category="edifice"

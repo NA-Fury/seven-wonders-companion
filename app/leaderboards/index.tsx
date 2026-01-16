@@ -1,10 +1,13 @@
-import React, { useMemo, useState, memo } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import React, { useMemo, useState } from 'react';
+import { ScrollView, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { useSetupStore } from '../../store/setupStore';
 import { usePlayerStore } from '../../store/playerStore';
-import { Screen, H1, Card } from '../../components/ui';
+import { Card, Chip, H1, Screen } from '@/components/ui';
 import { Table, type SortDir } from '../../components/ui/Table';
+import { ARMADA_SHIPYARDS } from '../../data/armadaDatabase';
+import { ALL_EDIFICE_PROJECTS } from '../../data/edificeDatabase';
+import { WONDERS_DATABASE } from '../../data/wondersDatabase';
 import {
   computeBestAverages,
   computeBiggestWinMargins,
@@ -25,6 +28,22 @@ import {
   filterHistoryByExpansion,
   type ExpansionFilter,
 } from '../../utils/leaderboard';
+
+const formatIdLabel = (value?: string) => {
+  if (!value) return '';
+  return value
+    .replace(/[_-]+/g, ' ')
+    .replace(/\b\w/g, (m) => m.toUpperCase());
+};
+
+const WONDER_NAME_BY_ID = new Map(WONDERS_DATABASE.map((w) => [w.id, w.name]));
+const SHIPYARD_NAME_BY_ID = new Map(ARMADA_SHIPYARDS.map((s) => [s.id, s.name]));
+const EDIFICE_NAME_BY_ID = new Map(ALL_EDIFICE_PROJECTS.map((p) => [p.id, p.name]));
+
+const getDisplayName = (map: Map<string, string>, value?: string) => {
+  if (!value) return '';
+  return map.get(value) ?? formatIdLabel(value);
+};
 
 export default function LeaderboardsScreen() {
   const history = useSetupStore((s) => s.gameHistory);
@@ -66,66 +85,40 @@ export default function LeaderboardsScreen() {
   const withCountFilter = <T extends { playerCount?: number }>(rows: T[]) => (playerCount === 'all' ? rows : filterByPlayerCount(rows, playerCount));
   const scoresRows = scoreMode === 'points' ? withCountFilter(topScoresAll) : withCountFilter(topScoresGrouped);
 
-  const Chip = memo(function Chip({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) {
-    return (
-      <Pressable
-        onPress={onPress}
-        style={({ pressed }) => ({
-          minWidth: 92,
-          height: 34,
-          paddingHorizontal: 12,
-          borderRadius: 17,
-          alignItems: 'center',
-          justifyContent: 'center',
-          marginRight: 8,
-          marginBottom: 8,
-          backgroundColor: active ? 'rgba(196,162,76,0.2)' : 'rgba(243,231,211,0.08)',
-          borderWidth: 1,
-          borderColor: active ? 'rgba(196,162,76,0.6)' : 'rgba(243,231,211,0.2)',
-          opacity: pressed ? 0.85 : 1,
-        })}
-      >
-        <Text style={{ color: active ? '#C4A24C' : 'rgba(243,231,211,0.9)', fontWeight: '700', fontSize: 13 }} numberOfLines={1}>
-          {label}
-        </Text>
-      </Pressable>
-    );
-  });
-
   return (
     <Screen>
       <ScrollView showsVerticalScrollIndicator contentContainerStyle={{ paddingBottom: 40 }}>
-        <H1>🏆 Local Leaderboards</H1>
+        <H1>Local Leaderboards</H1>
       <Text style={{ color: 'rgba(243,231,211,0.75)', marginBottom: 12 }}>Highlights and records across saved games.</Text>
 
       {/* View switcher (wrapped for responsiveness) */}
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginBottom: 12 }}>
-        <Chip label={`🏅 Top Scores`} active={view === 'scores'} onPress={() => { setView('scores'); setSortKey(undefined); }} />
-        <Chip label={`🥇 Most Wins`} active={view === 'wins'} onPress={() => { setView('wins'); setSortKey(undefined); }} />
-        <Chip label={`📈 Best Averages`} active={view === 'averages'} onPress={() => { setView('averages'); setSortKey(undefined); }} />
-        <Chip label={`📊 Biggest Margins`} active={view === 'margins'} onPress={() => { setView('margins'); setSortKey(undefined); }} />
-        <Chip label={`⭐ Personal Bests`} active={view === 'bests'} onPress={() => { setView('bests'); setSortKey(undefined); }} />
-        <Chip label={`🏆 Win Rate`} active={view === 'winrate'} onPress={() => { setView('winrate'); setSortKey(undefined); }} />
-        <Chip label={`🧮 Most Games`} active={view === 'games'} onPress={() => { setView('games'); setSortKey(undefined); }} />
-        <Chip label={`🥉 Top 3 Rate`} active={view === 'top3'} onPress={() => { setView('top3'); setSortKey(undefined); }} />
-        <Chip label={`🧱 Consistency`} active={view === 'consistency'} onPress={() => { setView('consistency'); setSortKey(undefined); }} />
-        <Chip label={`🏛️ Wonder Wins`} active={view === 'wonderwins'} onPress={() => { setView('wonderwins'); setSortKey(undefined); }} />
-        <Chip label={`🌞/🌙 Day vs Night`} active={view === 'wonderdaynight'} onPress={() => { setView('wonderdaynight'); setSortKey(undefined); }} />
-        <Chip label={`⚓ Shipyard Wins`} active={view === 'shipyards'} onPress={() => { setView('shipyards'); setSortKey(undefined); }} />
-        <Chip label={`🏗️ Edifice Popularity`} active={view === 'edifice'} onPress={() => { setView('edifice'); setSortKey(undefined); }} />
-        <Chip label={`🎯 Winning Strategies`} active={view === 'strategies'} onPress={() => { setView('strategies'); setSortKey(undefined); }} />
+        <Chip label="Top Scores" active={view === 'scores'} onPress={() => { setView('scores'); setSortKey(undefined); }} />
+        <Chip label="Most Wins" active={view === 'wins'} onPress={() => { setView('wins'); setSortKey(undefined); }} />
+        <Chip label="Best Averages" active={view === 'averages'} onPress={() => { setView('averages'); setSortKey(undefined); }} />
+        <Chip label="Biggest Margins" active={view === 'margins'} onPress={() => { setView('margins'); setSortKey(undefined); }} />
+        <Chip label="Personal Bests" active={view === 'bests'} onPress={() => { setView('bests'); setSortKey(undefined); }} />
+        <Chip label="Win Rate" active={view === 'winrate'} onPress={() => { setView('winrate'); setSortKey(undefined); }} />
+        <Chip label="Most Games" active={view === 'games'} onPress={() => { setView('games'); setSortKey(undefined); }} />
+        <Chip label="Top 3 Rate" active={view === 'top3'} onPress={() => { setView('top3'); setSortKey(undefined); }} />
+        <Chip label="Consistency" active={view === 'consistency'} onPress={() => { setView('consistency'); setSortKey(undefined); }} />
+        <Chip label="Wonder Wins" active={view === 'wonderwins'} onPress={() => { setView('wonderwins'); setSortKey(undefined); }} />
+        <Chip label="Day vs Night" active={view === 'wonderdaynight'} onPress={() => { setView('wonderdaynight'); setSortKey(undefined); }} />
+        <Chip label="Shipyard Wins" active={view === 'shipyards'} onPress={() => { setView('shipyards'); setSortKey(undefined); }} />
+        <Chip label="Edifice Popularity" active={view === 'edifice'} onPress={() => { setView('edifice'); setSortKey(undefined); }} />
+        <Chip label="Winning Strategies" active={view === 'strategies'} onPress={() => { setView('strategies'); setSortKey(undefined); }} />
       </View>
 
       {/* Expansion filter (wrapped) */}
       <Card>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
-          <Chip label={`🧰 All Games`} active={expFilter === 'all'} onPress={() => setExpFilter('all')} />
-          <Chip label={`🎲 Base`} active={expFilter === 'base'} onPress={() => setExpFilter('base')} />
-          <Chip label={`👑 Leaders`} active={expFilter === 'leaders'} onPress={() => setExpFilter('leaders')} />
-          <Chip label={`🏙️ Cities`} active={expFilter === 'cities'} onPress={() => setExpFilter('cities')} />
-          <Chip label={`🚢 Armada`} active={expFilter === 'armada'} onPress={() => setExpFilter('armada')} />
-          <Chip label={`🏛️ Edifice`} active={expFilter === 'edifice'} onPress={() => setExpFilter('edifice')} />
-          <Chip label={`♻️ Reset`} active={false} onPress={() => { setExpFilter('all'); setPlayerCount('all'); setScoreMode('points'); setAvgMin(3); setRateMin(3); setSortKey(undefined); }} />
+          <Chip label="All Games" active={expFilter === 'all'} onPress={() => setExpFilter('all')} />
+          <Chip label="Base" active={expFilter === 'base'} onPress={() => setExpFilter('base')} />
+          <Chip label="Leaders" active={expFilter === 'leaders'} onPress={() => setExpFilter('leaders')} />
+          <Chip label="Cities" active={expFilter === 'cities'} onPress={() => setExpFilter('cities')} />
+          <Chip label="Armada" active={expFilter === 'armada'} onPress={() => setExpFilter('armada')} />
+          <Chip label="Edifice" active={expFilter === 'edifice'} onPress={() => setExpFilter('edifice')} />
+          <Chip label="Reset" active={false} onPress={() => { setExpFilter('all'); setPlayerCount('all'); setScoreMode('points'); setAvgMin(3); setRateMin(3); setSortKey(undefined); }} />
         </View>
       </Card>
 
@@ -133,9 +126,9 @@ export default function LeaderboardsScreen() {
       {view === 'scores' && (
         <Card>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'flex-start' }}>
-            <Chip label={`🎯 Points Only`} active={scoreMode === 'points'} onPress={() => setScoreMode('points')} />
-            <Chip label={`🎮+🎯 Game + Points`} active={scoreMode === 'game+points'} onPress={() => setScoreMode('game+points')} />
-            <Chip label={`∞ All`} active={playerCount === 'all'} onPress={() => setPlayerCount('all')} />
+            <Chip label="Points Only" active={scoreMode === 'points'} onPress={() => setScoreMode('points')} />
+            <Chip label="Game + Points" active={scoreMode === 'game+points'} onPress={() => setScoreMode('game+points')} />
+            <Chip label="All" active={playerCount === 'all'} onPress={() => setPlayerCount('all')} />
             {[3,4,5,6,7].map((n) => (
               <Chip key={`pc_${n}`} label={`${n}P`} active={playerCount === n} onPress={() => setPlayerCount(n as any)} />
             ))}
@@ -311,7 +304,15 @@ export default function LeaderboardsScreen() {
       {view === 'wonderwins' && (
         <Table
           columns={[
-            { key: 'wonderId', title: 'Wonder', flex: 2 },
+            { 
+              key: 'wonderId', 
+              title: 'Wonder', 
+              flex: 2,
+              render: (r: any) => (
+                <Text style={{ color: '#F3E7D3' }}>{getDisplayName(WONDER_NAME_BY_ID, r.wonderId)}</Text>
+              ),
+              sortAccessor: (r: any) => getDisplayName(WONDER_NAME_BY_ID, r.wonderId),
+            },
             { key: 'wins', title: 'Wins', flex: 1, align: 'right', sortAccessor: (r: any) => r.wins },
           ]}
           rows={wonderWins as any}
@@ -325,7 +326,15 @@ export default function LeaderboardsScreen() {
       {view === 'wonderdaynight' && (
         <Table
           columns={[
-            { key: 'wonderId', title: 'Wonder', flex: 2 },
+            { 
+              key: 'wonderId', 
+              title: 'Wonder', 
+              flex: 2,
+              render: (r: any) => (
+                <Text style={{ color: '#F3E7D3' }}>{getDisplayName(WONDER_NAME_BY_ID, r.wonderId)}</Text>
+              ),
+              sortAccessor: (r: any) => getDisplayName(WONDER_NAME_BY_ID, r.wonderId),
+            },
             { key: 'day', title: 'Day Wins', flex: 1, align: 'right', sortAccessor: (r: any) => r.day },
             { key: 'night', title: 'Night Wins', flex: 1, align: 'right', sortAccessor: (r: any) => r.night },
           ]}
@@ -340,7 +349,15 @@ export default function LeaderboardsScreen() {
       {view === 'shipyards' && (
         <Table
           columns={[
-            { key: 'shipyardId', title: 'Shipyard', flex: 2 },
+            { 
+              key: 'shipyardId', 
+              title: 'Shipyard', 
+              flex: 2,
+              render: (r: any) => (
+                <Text style={{ color: '#F3E7D3' }}>{getDisplayName(SHIPYARD_NAME_BY_ID, r.shipyardId)}</Text>
+              ),
+              sortAccessor: (r: any) => getDisplayName(SHIPYARD_NAME_BY_ID, r.shipyardId),
+            },
             { key: 'wins', title: 'Wins', flex: 1, align: 'right', sortAccessor: (r: any) => r.wins },
           ]}
           rows={shipyardWins as any}
@@ -354,7 +371,15 @@ export default function LeaderboardsScreen() {
       {view === 'edifice' && (
         <Table
           columns={[
-            { key: 'projectId', title: 'Edifice', flex: 2 },
+            { 
+              key: 'projectId', 
+              title: 'Edifice', 
+              flex: 2,
+              render: (r: any) => (
+                <Text style={{ color: '#F3E7D3' }}>{getDisplayName(EDIFICE_NAME_BY_ID, r.projectId)}</Text>
+              ),
+              sortAccessor: (r: any) => getDisplayName(EDIFICE_NAME_BY_ID, r.projectId),
+            },
             { key: 'count', title: 'Games', flex: 1, align: 'right', sortAccessor: (r: any) => r.count },
           ]}
           rows={edificePop as any}
@@ -382,8 +407,6 @@ export default function LeaderboardsScreen() {
     </Screen>
   );
 }
-
-
 
 
 

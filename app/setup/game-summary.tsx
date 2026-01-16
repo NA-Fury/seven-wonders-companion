@@ -377,7 +377,7 @@ export default function GameSummaryScreen() {
               Setup Issues ({setupIssues.length})
             </Text>
             {setupIssues.map((issue, index) => (
-              <Text key={index} style={styles.issueText}>• {issue}</Text>
+              <Text key={index} style={styles.issueText}>- {issue}</Text>
             ))}
             <Text style={[styles.subtitle, { color: '#EF4444', marginTop: 8 }]}>
               Resolve these issues before proceeding to scoring
@@ -406,7 +406,7 @@ export default function GameSummaryScreen() {
             !isReadyToPlay && styles.statusBarError,
           ]}>
             <Text style={styles.statusIcon}>
-              {isReadyToPlay ? '✅' : '⚠️'}
+              {isReadyToPlay ? 'OK' : 'Fix'}
             </Text>
             <Text style={[
               styles.statusText,
@@ -445,12 +445,12 @@ export default function GameSummaryScreen() {
                   <View style={styles.playerNeighbors}>
                     <Text style={styles.neighborLabel}>Neighbors</Text>
                     <Text style={styles.neighborName}>
-                      ← {index === 0 
+                      Left: {index === 0 
                         ? orderedPlayers[orderedPlayers.length - 1].name 
                         : orderedPlayers[index - 1].name}
                     </Text>
                     <Text style={styles.neighborName}>
-                      → {index === orderedPlayers.length - 1 
+                      Right: {index === orderedPlayers.length - 1 
                         ? orderedPlayers[0].name 
                         : orderedPlayers[index + 1].name}
                     </Text>
@@ -466,18 +466,18 @@ export default function GameSummaryScreen() {
                         wonderData.side === 'night' && styles.wonderSideNight,
                       ]}>
                         <Text style={styles.wonderSideText}>
-                          {wonderData.side === 'day' ? '☀️ DAY' : '🌙 NIGHT'}
+                          {wonderData.side === 'day' ? ' DAY' : ' NIGHT'}
                         </Text>
                       </View>
                     </View>
                     <Text style={styles.wonderDetails}>
-                      Resource: {wonder.resource} • {wonder.difficulty}
+                      Resource: {wonder.resource}  {wonder.difficulty}
                     </Text>
 
                     {shipyard && (
                       <View style={styles.shipyardInfo}>
                         <Text style={styles.shipyardText}>
-                          ⚓ {shipyard.name}
+                           {shipyard.name}
                         </Text>
                         <View style={{
                           backgroundColor: {
@@ -508,7 +508,7 @@ export default function GameSummaryScreen() {
         {/* Edifice Projects */}
         {expansions?.edifice && (
           <View style={styles.card}>
-            <Text style={styles.cardTitle}>🗿 Edifice Projects</Text>
+            <Text style={styles.cardTitle}>Edifice Projects</Text>
             <Text style={[styles.subtitle, { marginBottom: 12 }]}>
               Collaborative projects for this game
             </Text>
@@ -554,7 +554,7 @@ export default function GameSummaryScreen() {
 
         {/* Proceed to Scoring */}
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>🎯 Scoring Calculator</Text>
+          <Text style={styles.cardTitle}>Scoring Calculator</Text>
           <Text style={styles.subtitle}>
             Quick score entry with optional detailed breakdowns for deeper analysis
           </Text>
@@ -572,8 +572,8 @@ export default function GameSummaryScreen() {
               !isReadyToPlay && styles.proceedButtonTextDisabled,
             ]}>
               {isReadyToPlay
-                ? '🎯 Enter Scoring Calculator'
-                : `⚠️ Resolve ${setupIssues.length} Setup Issues First`}
+                ? 'Enter Scoring Calculator'
+                : `Resolve ${setupIssues.length} Setup Issues First`}
             </Text>
           </TouchableOpacity>
 
@@ -585,7 +585,7 @@ export default function GameSummaryScreen() {
               marginTop: 8,
               fontStyle: 'italic',
             }}>
-              💡 The more details you enter, the more analysis we can provide!
+               The more details you enter, the more analysis we can provide!
             </Text>
           )}
         </View>

@@ -182,7 +182,7 @@ export default function ResultsScreen() {
         <Text style={styles.title}>Game #{gameMetadata?.gameNumber} Results</Text>
         {!!catchphrase && <Text style={styles.catchphrase}>{catchphrase}</Text>}
         <Text style={styles.winnerLine}>
-          Winner: {players.find(p => p.id === winner.playerId)?.name} — {winner.total} pts
+          Winner: {players.find(p => p.id === winner.playerId)?.name} - {winner.total} pts
         </Text>
         {!!wonderMeta.name && (
           <Text style={styles.subtitle}>
@@ -211,7 +211,7 @@ export default function ResultsScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        <View style={styles.header}>{header}{<Text style={styles.subtitle}>{new Date().toLocaleDateString()} · {players.length} Players</Text>}</View>
+        <View style={styles.header}>{header}{<Text style={styles.subtitle}>{new Date().toLocaleDateString()}  {players.length} Players</Text>}</View>
 
         {/* Podium */}
         {leaderboard.length >= 3 && (
@@ -257,11 +257,11 @@ export default function ResultsScreen() {
           const VICTORY_PHRASES: Record<string, string[]> = {
             military: ['A true Warmonger!', 'The Iron Fist of the Ancient World!'],
             naval: ['Admiral of the Seven Seas!', 'Naval supremacy across the Mediterranean!'],
-            science: ['The Scholar’s Path leads to victory!', 'Knowledge is power!'],
+            science: ['The Scholars Path leads to victory!', 'Knowledge is power!'],
             civil: ['A beacon of civilization!', 'Built a utopia worthy of the ages!'],
             commercial: ['The Merchant Prince claims their throne!', 'Trade routes rule the day!'],
-            wonder: ['Architectural marvels remembered for millennia!', 'Wonder Builder’s magnificence!'],
-            guild: ['The Guild Master’s influence knows no bounds!', 'Associations unite for victory!'],
+            wonder: ['Architectural marvels remembered for millennia!', 'Wonder Builders magnificence!'],
+            guild: ['The Guild Masters influence knows no bounds!', 'Associations unite for victory!'],
             balanced: ['A Renaissance civilization! Master of all trades!', 'Perfectly balanced, as all things should be!'],
           };
           const list = VICTORY_PHRASES[strategy] || VICTORY_PHRASES.balanced;
@@ -300,14 +300,14 @@ export default function ResultsScreen() {
             } as const;
             // Simple badge set (display only)
             /* const BADGES = {
-              warmonger: { icon: '⚔️', name: 'Warmonger', condition: (b: any) => (b.military || 0) >= 20 },
-              scientist: { icon: '🧪', name: 'Great Scientist', condition: (b: any) => (b.science || 0) >= 25 },
-              merchant: { icon: '💰', name: 'Merchant Prince', condition: (b: any) => (b.commercial || 0) >= 15 },
-              builder: { icon: '🏗️', name: 'Master Builder', condition: (b: any) => (b.civil || 0) >= 20 },
-              wonderous: { icon: '🏛️', name: 'Wonder Architect', condition: (b: any) => (b.wonder || 0) >= 15 },
-              peaceful: { icon: '🕊️', name: 'Pacifist', condition: (b: any) => (b.military || 0) === 0 },
-              perfectScore: { icon: '💯', name: 'Century Club', condition: (_: any) => e.total >= 100 },
-              underdog: { icon: '🐺', name: 'Underdog', condition: (_: any) => e.rank === 1 && e.total < 60 },
+              warmonger: { icon: '', name: 'Warmonger', condition: (b: any) => (b.military || 0) >= 20 },
+              scientist: { icon: '', name: 'Great Scientist', condition: (b: any) => (b.science || 0) >= 25 },
+              merchant: { icon: '', name: 'Merchant Prince', condition: (b: any) => (b.commercial || 0) >= 15 },
+              builder: { icon: '', name: 'Master Builder', condition: (b: any) => (b.civil || 0) >= 20 },
+              wonderous: { icon: '', name: 'Wonder Architect', condition: (b: any) => (b.wonder || 0) >= 15 },
+              peaceful: { icon: '', name: 'Pacifist', condition: (b: any) => (b.military || 0) === 0 },
+              perfectScore: { icon: '', name: 'Century Club', condition: (_: any) => e.total >= 100 },
+              underdog: { icon: '', name: 'Underdog', condition: (_: any) => e.rank === 1 && e.total < 60 },
             } as const; */
             const badges = evaluateBadgesForContext(ctx);
             return (
@@ -383,7 +383,7 @@ export default function ResultsScreen() {
           }}>
             <View style={{ alignItems: 'center', gap: 8 }}>
               <ActivityIndicator size="large" color="#C4A24C" />
-              <Text style={{ color: '#C4A24C', fontWeight: '700' }}>Saving…</Text>
+              <Text style={{ color: '#C4A24C', fontWeight: '700' }}>Saving</Text>
               <Text style={{ color: 'rgba(243,231,211,0.75)', fontSize: 12 }}>Writing results and analytics</Text>
             </View>
           </View>

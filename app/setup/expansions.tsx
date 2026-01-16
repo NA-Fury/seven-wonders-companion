@@ -70,7 +70,7 @@ export default function ExpansionsScreen() {
         <P>Select which 7 Wonders expansions you want to include in this game.</P>
 
         <Card>
-          <H2>✅ Base Game</H2>
+          <H2>Base Game</H2>
           <P className="text-parchment/80">
             The core 7 Wonders experience is always included with 7 original wonder boards.
           </P>
@@ -208,7 +208,7 @@ function ExpansionToggleItem({ name, enabled, onToggle, description, wondersAdde
               fontWeight: '600',
               transform: [{ rotate: showDetails ? '180deg' : '0deg' }]
             }}>
-              ⌄
+              
             </Text>
           </Pressable>
         </View>

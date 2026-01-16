@@ -1,7 +1,8 @@
 import React, { useMemo, useState } from 'react';
-import { Linking, Pressable, Text, TextInput, View, Platform } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Linking, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Constants from 'expo-constants';
+import { Button, Card, Field, H1, P, Screen } from '@/components/ui';
+import { theme } from '@/constants/theme';
 import { openPrefilledBugReport, openDiscussions } from '../../lib/github';
 
 export default function SettingsScreen() {
@@ -42,76 +43,78 @@ export default function SettingsScreen() {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#1C1A1A' }}>
-      <View style={{ paddingHorizontal: 20, paddingTop: 16 }}>
-        <Text style={{ color: '#C4A24C', fontSize: 22, fontWeight: '800' }}>Settings & Feedback</Text>
-        <Text style={{ color: 'rgba(243,231,211,0.7)', marginTop: 4 }}>Send feedback and adjust preferences.</Text>
-      </View>
-      <View style={{ paddingHorizontal: 20, paddingTop: 12, gap: 10 }}>
-        <Text style={{ color: 'rgba(243,231,211,0.9)' }}>Feedback</Text>
-        <TextInput
-          value={subject}
-          onChangeText={setSubject}
-          placeholder="Subject"
-          placeholderTextColor="#F3E7D380"
-          style={{ backgroundColor: 'rgba(28,26,26,0.6)', color: '#F3E7D3', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 8, borderWidth: 1, borderColor: 'rgba(196,162,76,0.25)' }}
-        />
-        <TextInput
-          value={message}
-          onChangeText={setMessage}
-          placeholder="Message"
-          placeholderTextColor="#F3E7D380"
-          multiline
-          numberOfLines={5}
-          style={{ backgroundColor: 'rgba(28,26,26,0.6)', color: '#F3E7D3', borderRadius: 12, padding: 12, borderWidth: 1, borderColor: 'rgba(196,162,76,0.25)', textAlignVertical: 'top' }}
-        />
-
-        <Pressable
-          onPress={() => openPrefilledBugReport(subject, message)}
-          style={({ pressed }) => ({ backgroundColor: pressed ? 'rgba(196,162,76,0.8)' : '#C4A24C', borderRadius: 14, alignItems: 'center', paddingVertical: 12 })}
-        >
-          <Text style={{ color: '#1C1A1A', fontWeight: '800' }}>Report a Bug (prefilled)</Text>
-        </Pressable>
-
-        <Pressable
-          onPress={handleSendEmail}
-          style={({ pressed }) => ({ backgroundColor: pressed ? 'rgba(196,162,76,0.8)' : '#C4A24C', borderRadius: 14, alignItems: 'center', paddingVertical: 12 })}
-        >
-          <Text style={{ color: '#1C1A1A', fontWeight: '800' }}>Send via Email</Text>
-        </Pressable>
-
-        <Pressable
-          onPress={handleSendGmail}
-          style={({ pressed }) => ({ backgroundColor: pressed ? 'rgba(243,231,211,0.08)' : 'rgba(31,41,55,0.5)', borderWidth: 1, borderColor: 'rgba(196,162,76,0.25)', borderRadius: 14, alignItems: 'center', paddingVertical: 12 })}
-        >
-          <Text style={{ color: '#FEF3C7', fontWeight: '800' }}>Use Gmail (Web)</Text>
-        </Pressable>
-
-        <Pressable
-          onPress={handleOpenGitHubIssues}
-          style={({ pressed }) => ({ backgroundColor: pressed ? 'rgba(243,231,211,0.08)' : 'rgba(31,41,55,0.5)', borderWidth: 1, borderColor: 'rgba(196,162,76,0.25)', borderRadius: 14, alignItems: 'center', paddingVertical: 12 })}
-        >
-          <Text style={{ color: '#FEF3C7', fontWeight: '800' }}>Open GitHub Issues</Text>
-        </Pressable>
-
-        <Pressable
-          onPress={handleOpenGitHubDiscussions}
-          style={({ pressed }) => ({ backgroundColor: pressed ? 'rgba(243,231,211,0.08)' : 'rgba(31,41,55,0.5)', borderWidth: 1, borderColor: 'rgba(196,162,76,0.25)', borderRadius: 14, alignItems: 'center', paddingVertical: 12 })}
-        >
-          <Text style={{ color: '#FEF3C7', fontWeight: '800' }}>Open GitHub Discussions</Text>
-        </Pressable>
-
-        <Pressable
-          onPress={handleOpenGitHubProfile}
-          style={({ pressed }) => ({ backgroundColor: pressed ? 'rgba(243,231,211,0.08)' : 'rgba(31,41,55,0.5)', borderWidth: 1, borderColor: 'rgba(196,162,76,0.25)', borderRadius: 14, alignItems: 'center', paddingVertical: 12 })}
-        >
-          <Text style={{ color: '#FEF3C7', fontWeight: '800' }}>My GitHub Profile</Text>
-        </Pressable>
-
-        <View style={{ alignItems: 'center', marginTop: 4 }}>
-          <Text style={{ color: 'rgba(243,231,211,0.6)', fontSize: 12 }}>Thanks — every message helps improve the app.</Text>
+    <Screen>
+      <ScrollView contentContainerStyle={{ paddingBottom: theme.spacing.xl }} showsVerticalScrollIndicator={false}>
+        <View style={styles.header}>
+          <H1>Settings and Feedback</H1>
+          <P>Send feedback and adjust preferences.</P>
         </View>
-      </View>
-    </SafeAreaView>
+
+        <Card variant="muted">
+          <Text style={styles.sectionTitle}>Feedback</Text>
+          <Field
+            label="Subject"
+            value={subject}
+            onChangeText={setSubject}
+            inputProps={{ placeholder: 'Subject' }}
+          />
+          <Field
+            label="Message"
+            value={message}
+            onChangeText={setMessage}
+            helperText="Include steps, expected result, and what happened."
+            inputProps={{
+              placeholder: 'Message',
+              multiline: true,
+              numberOfLines: 6,
+            }}
+          />
+          <View style={styles.buttonRow}>
+            <Button title="Report a Bug" onPress={() => openPrefilledBugReport(subject, message)} />
+          </View>
+          <View style={styles.buttonRow}>
+            <Button title="Send via Email" onPress={handleSendEmail} />
+          </View>
+          <View style={styles.buttonRow}>
+            <Button title="Use Gmail (Web)" variant="ghost" onPress={handleSendGmail} />
+          </View>
+        </Card>
+
+        <Card variant="muted">
+          <Text style={styles.sectionTitle}>Quick Links</Text>
+          <View style={styles.buttonRow}>
+            <Button title="Open GitHub Issues" variant="ghost" onPress={handleOpenGitHubIssues} />
+          </View>
+          <View style={styles.buttonRow}>
+            <Button title="Open GitHub Discussions" variant="ghost" onPress={handleOpenGitHubDiscussions} />
+          </View>
+          <View style={styles.buttonRow}>
+            <Button title="My GitHub Profile" variant="ghost" onPress={handleOpenGitHubProfile} />
+          </View>
+        </Card>
+
+        <Text style={styles.footerText}>Thanks - every message helps improve the app.</Text>
+      </ScrollView>
+    </Screen>
   );
 }
+
+const styles = StyleSheet.create({
+  header: {
+    marginBottom: theme.spacing.md,
+  },
+  sectionTitle: {
+    color: theme.colors.accent,
+    fontWeight: '800',
+    marginBottom: theme.spacing.sm,
+  },
+  buttonRow: {
+    marginBottom: theme.spacing.sm,
+  },
+  footerText: {
+    color: theme.colors.textSecondary,
+    fontSize: 12,
+    textAlign: 'center',
+    marginTop: theme.spacing.sm,
+  },
+});
