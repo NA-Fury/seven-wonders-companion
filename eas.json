@@ -36,8 +36,9 @@
   "submit": {
     "production": {
       "android": {
-        "track": "internal",          
-        "releaseStatus": "draft"  
+        "track": "internal",
+        "releaseStatus": "completed",
+        "serviceAccountKeyPath": "./secrets/google-play-service-account.json"
       },
       "ios": {
         "ascAppId": "YOUR_ASC_APP_ID_IF_KNOWN" 
