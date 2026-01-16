@@ -1,7 +1,7 @@
 {
   "name": "seven-wonders-companion",
   "main": "expo-router/entry",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "scripts": {
     "start": "expo start",
     "start:lan": "expo start --lan",
@@ -17,6 +17,8 @@
     "prebuild": "expo prebuild --clean",
     "build:android": "eas build --platform android",
     "build:ios": "eas build --platform ios",
+    "release:android": "eas build --platform android --profile production --wait && eas submit --platform android --profile production --latest",
+    "submit:android": "eas submit --platform android --profile production --latest",
     "test": "cross-env EXPO_USE_STATIC=1 jest",
     "test:once": "cross-env EXPO_USE_STATIC=1 jest --watchAll=false",
     "test:watch": "cross-env EXPO_USE_STATIC=1 jest --watch",

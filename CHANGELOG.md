@@ -3,6 +3,16 @@
 All notable changes to this project are documented here.  
 This project follows [Conventional Commits](https://www.conventionalcommits.org/).
 
+## [1.1.1] - 2026-01-15
+### Fixes
+- Normalize wonder, shipyard, and edifice names in leaderboards and game details.
+- Add confirmation before deleting player profiles.
+- Reduce New Game footer button size for small screens.
+- Wrap Wonder card stage text to avoid clipping.
+
+### Build/Release
+- Add Android EAS release scripts and bump app version metadata.
+
 ## [1.0.1] - 2025-09-08
 ### Fixes
 - Leaders scoring: adjust new leader scoring in `data/leadersResolver.ts`.
